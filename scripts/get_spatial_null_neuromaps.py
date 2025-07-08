@@ -1,19 +1,15 @@
-import os
+import os, sys
 import nibabel as ni
-from neuromaps import datasets, nulls, images, parcellate, transforms
 import numpy as np
-
+import hcp_utils
+import json
+import argparse
+from neuromaps import datasets, nulls, images, parcellate, transforms
 from importlib_resources import files
 
-import json
-
-CONFIG_PATH = files('geometry_vs_topography.etc').joinpath('config.json')
-with open(CONFIG_PATH) as f:
-    config = json.load(f)
-    
-hcp_utils_path = config['python_libraries']['hcp_utils']
-if hcp_utils_path not in sys.path:
-    sys.path.insert(0, hcp_utils_path)
+#CONFIG_PATH = files('geometry_vs_topography.etc').joinpath('config.json')
+#with open(CONFIG_PATH) as f:
+#    config = json.load(f)
 
 NEUROMAPS = [
     ('abagen', 'genepc1', 'fsaverage', '10k'),
@@ -31,33 +27,37 @@ NEUROMAPS = [
     
 
 def main():
-    
     parser = argparse.ArgumentParser(description="Get spatial null models of 12 neuromaps aligned with the sensory association axis")
-    
     parser.add_argument('--out', type=str, required=True,
                         help='Path to output directory')
-    parser.add_argument('--atlas', type=str, required=False, default=config['canlab2024']['path'],
+#    parser.add_argument('--atlas', type=str, required=False, default=config['canlab2024']['path'],
+    parser.add_argument('--atlas', type=str, required=True, 
                         help='cifti dlabels file to use to define parcells. Should be in fsLR 32k space, matching the HCP data')
     parser.add_argument('--nperms', type=int, required=False, default=5000,
                         help='Number of spatial permutations to compute')
     parser.add_argument('--seed', type=int, required=False, default=5900,
                         help='Seed for the random number generator for reproducible results')
-
+    
+    args = parser.parse_args()
     
     parcellation = images.dlabel_to_gifti(args.atlas)
 
-    LR = ni.load(hcp_utils_path.joinpath('hcp_utils/data/S1200.L.sphere.32k_fs_LR.surf.gii')
-    nvertsL = LR.agg_data()[0].shape[0]
+    surfL = ni.load(files('hcp_utils').joinpath('data/S1200.L.sphere.32k_fs_LR.surf.gii'))
+    nvertsL = surfL.agg_data()[0].shape[0]
+    
+    surfR = ni.load(files('hcp_utils').joinpath('data/S1200.R.sphere.32k_fs_LR.surf.gii'))
+    nvertsR = surfR.agg_data()[0].shape[0]
 
     for author, model, space, res in NEUROMAPS:
         annot = datasets.fetch_annotation(source=author, desc=model)
 
         if 'hill2010' in author:
             annot = transforms.fslr_to_fslr(annot, '32k', hemi='R')
-            full_data = np.full(64984, np.nan)
+            full_data = np.full(nvertsL + nvertsR, np.nan)
             full_data[nvertsL:] = annot[0].agg_data()
             annot = full_data
         elif space == 'fsLR':
+            # in case data is in 164k rather than 32k space
             annot = transforms.fslr_to_fslr(annot, '32k')
         elif 'fsaverage' in space:
             annot = transforms.fsaverage_to_fslr(annot, '32k')

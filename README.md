@@ -3,6 +3,23 @@ This repo contains code for "Common representations underlie idiosyncratic neura
 
 # Setup
 
+From the same level of this directory as this README file, invoke the following 
+to compile rdm_similarty and install python packages
+
+```
+make
+pip install -r requirements.txt
+pip install .
+```
+
+You will also need to install/aquire the additional non-python dependencies below. In 
+particular, neuromaps (installed by requirements.txt) expects wb_command to be on your
+system path,
+
+```
+PATH=$PATH:<connectome_workbench_binary_directory>
+```
+
 ### Dependencies
 
 Matlab:
@@ -10,9 +27,6 @@ Matlab:
 * cifti matlab libraries: https://github.com/Washington-University/cifti-matlab
 * spm12: https://www.fil.ion.ucl.ac.uk/spm/docs/installation/
 * Neuroimaging Pattern Masks: https://github.com/canlab/Neuroimaging_Pattern_Masks/
-
-Python:
-* nipype_workbench_ext: https://github.com/bogpetre/nipype_workbench_ext
 
 Binaries:
 * connectome workbench: https://www.humanconnectome.org/software/get-connectome-workbench
@@ -36,18 +50,24 @@ distribute the source files. We've provided an assembly script which will automa
 this process for you. After downloading the above dependencies add the matlab
 dependencies to your path. Add all subdirectories for all repos except spm12,
 
+```
 addpath(genpath(<repoPath>))
 addpath(<spm12_path>)
+```
 
 Now in matlab invoke,
 
+```
 atl = load_atlas('canlab2024_coarse_fsl6_2mm');
 create_CANLab2024_CIFTI_subctx('MNI152NLin6Asym','coarse',2,atl);
+```
 
 Now navigate to wherever you installed Neuroimaging_Pattern_masks and invoke the following
 bash script,
 
+```
 Atlases_and_parcellations/2024_CANLab_atlas/src/create_CANLab2024_atlas_cifti.sh
+```
 
 If this is not possible for you for whatever reason you can instead use openCANLab2024,
 which differs in some brainstem nuclei that aren't critical in this projection. You can

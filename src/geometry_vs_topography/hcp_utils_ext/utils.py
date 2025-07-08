@@ -5,9 +5,6 @@ import nibabel as ni
 import sklearn as sk
 from warnings import warn
 
-package_directory = '/dartfs-hpc/rc/home/m/f0042vm/software/hcp_utils'
-if package_directory not in sys.path:
-    sys.path.insert(0, package_directory)
 import hcp_utils as hcp
 
 def uncortex_data(data):

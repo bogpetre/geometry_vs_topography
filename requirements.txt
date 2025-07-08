@@ -1,1 +1,4 @@
-https://github.com/bogpetre/nipype_workbench_ext
+neuromaps
+nipype
+git+https://git@github.com/bogpetre/nipype_workbench_ext.git
+git+https://git@github.com/rmldj/hcp-utils.git
