@@ -3,6 +3,6 @@
 *.mat
 *.asv
 config.json
-rdm_similarity
+bin/
 build/*
 *.egg-info
