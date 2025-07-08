@@ -11,3 +11,8 @@ authors = [{ name = "Bogdan Petre", email = 'f0042vm@dartmouth.edu'}, { name = "
 
 [project.entry-points."console_scripts"]
 pairwise_parcel_op = 'geometry_vs_topography.pairwise_parcel_op:main'
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+

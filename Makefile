@@ -1,7 +1,7 @@
 # Makefile for compiling rdm_similarity.cpp
 
 # Output binary name
-TARGET = rdm_similarity
+TARGET = bin/rdm_similarity
 
 # Compiler and flags
 CXX = g++
@@ -16,12 +16,13 @@ LIB_PATH = ${CONDA_PREFIX}/lib
 LDFLAGS = -L${LIB_PATH} -lblas
 
 # Source file
-SRC = rdm_similarity.cpp
+SRC = src/rdm_similarity/rdm_similarity.cpp
 
 # Build target
 all: $(TARGET)
 
 $(TARGET): $(SRC)
+	mkdir -p bin
 	$(CXX) $(CXXFLAGS) -I$(EIGEN_INC) -I$(JSON_INC) $(SRC) -o $(TARGET) ${LDFLAGS}
 
 # Clean target
