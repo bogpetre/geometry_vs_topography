@@ -33,7 +33,7 @@ roi_labels = {atlas_labels.name};
 
 atlas_cii = get_cifti_data(config.canlab2024.path);
 
-subj_pair_id = 82;
+subj_pair_id = config.exemplary_dyad;
 
 %% import atlas in cifti space
 cmap = zeros(length(atlas_labels),3);

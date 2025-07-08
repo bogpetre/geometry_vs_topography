@@ -5,6 +5,7 @@ config = jsondecode(fileread('../../config.json'));
 addpath(config.matlab_libraries.spm12);
 addpath(genpath(config.matlab_libraries.cifti_matlab));
 addpath(genpath(fullfile(config.matlab_libraries.canlabCore, 'CanlabCore')));
+addpath(genpath(fullfile(config.matlab_libraries.npm)));
 
 addpath('../../matlab_libraries');
 addpath('../../resources/neuromaps');

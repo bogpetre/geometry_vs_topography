@@ -11,8 +11,21 @@ Matlab:
 * spm12: https://www.fil.ion.ucl.ac.uk/spm/docs/installation/
 * Neuroimaging Pattern Masks: https://github.com/canlab/Neuroimaging_Pattern_Masks/
 
+Python:
+* nipype_workbench_ext: https://github.com/bogpetre/nipype_workbench_ext
+
 Binaries:
 * connectome workbench: https://www.humanconnectome.org/software/get-connectome-workbench
+
+Data:
+* HCP data: s3://hcp-openaccess/
+* HCP restricted data (only for heritability analysis): https://www.humanconnectome.org/study/hcp-young-adult/document/restricted-data-usage
+
+Note, the use of HCP restricted data prohibits us from sharing specific subject ids. This 
+prevents us from identifying the exemplary subjects we use for illustrative purposes in the
+manuscript. This information was shared with HCP though and is available to users who agree
+to the restricted data usage agreement. Once the key is obtained the appropriate subject
+dyad can be assigned in the config.json file and figure 1 can be regenerated.
 
 ### canlab2024
 
