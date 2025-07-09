@@ -74,7 +74,7 @@ v = SPMCommand().version
 
 from nipype_workbench_ext import cifti as wb_cifti
 
-from aligntools.nipype import workflows as aligntools_wf # for dual regression workflow
+from geometry_vs_topography.nipype import workflows as aligntools_wf # for dual regression workflow
 
 # the following libraries are needed for confound correction
 from nipype.interfaces.freesurfer import Binarize
