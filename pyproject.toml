@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{ name = "Bogdan Petre", email = 'f0042vm@dartmouth.edu'}, { name = "Martin A. Lindquist", email = 'mlindqui@jhsph.edu'}, { name = "Tor D. Wager", email = 'Tor.D.Wager@dartmouth.edu'}]
 
 [project.entry-points."console_scripts"]
-pairwise_parcel_op = 'geometry_vs_topography.pairwise_parcel_op:main'
+pairwise_parcel_op = 'geometry_vs_topography.pairwise_parcel_op:__main__'
 
 [tool.setuptools]
 package-dir = {"" = "src"}

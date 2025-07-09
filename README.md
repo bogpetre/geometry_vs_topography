@@ -1,7 +1,7 @@
 # Geometry vs Topography
 This repo contains code for "Common representations underlie idiosyncratic neural topographies"
 
-# Setup
+## Setup
 
 From the same level of this directory as this README file, invoke the following 
 to compile rdm_similarty and install python packages
@@ -92,3 +92,13 @@ Atlases_and_parcellations/2024_CANLab_atlas/openCANLab2024_MNI152NLin6Asym_coars
 
 Update config.json such that the canlab2024 variable points to openCanlab2024 instead of 
 CANLab2024
+
+## Usage
+
+Scripts to reproduce first level analysis are available in scripts/. 
+* hcp_glm_msmall_grayord_spm.py: fits firstlevel models and estimates geometires using task data
+* hcp_dual_regression_msmall_grayord_spm.py: estimates individualized ICA networks and geometries.
+Once run topographic similarity measures and geometric similarity measures can be
+computed using pairwise_parcel_op for cosine similarity measures and 
+rdm_similarity for efficient and scalable computation of geometric similarities
+from the derivatives of the above analyses (example scripts forthcoming)
