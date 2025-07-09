@@ -1,7 +1,14 @@
+
+config = jsondecode(fileread('../../config.json'));
+
+addpath(config.matlab_libraries.spm12);
+addpath(genpath(config.matlab_libraries.cifti_matlab));
+addpath(genpath(fullfile(config.matlab_libraries.canlabCore, 'CanlabCore')));
+
 %% load RDMs, whitening matrices and metadata
 
 % these input files are all output from the main nipype pipelines that run first level GLMs and RSA on HCP data
-d1_all = readmatrix('/mnt/external/MyDocuments/canlab/hcp/stats/hcp_glm_msmall_grayord_spm/results/100307/all_tasks/rsa/crossnobis/crossnobis_distance.csv');
+d1_all = readmatrix('../../derivatives/hcp_glm_msmall_grayord_spm/results/100307/all_tasks/rsa/crossnobis/crossnobis_distance.csv');
 d2_all = readmatrix('/mnt/external/MyDocuments/canlab/hcp/stats/hcp_glm_msmall_grayord_spm/results/992673/all_tasks/rsa/crossnobis/crossnobis_distance.csv');
 fid = fopen('/mnt/external/MyDocuments/canlab/hcp/stats/hcp_glm_msmall_grayord_spm/results/100307/all_tasks/rsa/crossnobis/whitening_matrix_out.bin','r');
 V1_all = reshape(fread(fid,'float32'), 253*254/2, 518);
