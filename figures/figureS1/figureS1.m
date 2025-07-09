@@ -5,6 +5,7 @@ config = jsondecode(fileread('../../config.json'));
 addpath(config.matlab_libraries.spm12);
 addpath(genpath(config.matlab_libraries.cifti_matlab));
 addpath(genpath(fullfile(config.matlab_libraries.canlabCore, 'CanlabCore')));
+addpath(genpath(fullfile(config.matlab_libraries.npm)));
 
 addpath('../../matlab_libraries');
 addpath('../../resources/neuromaps');
@@ -19,27 +20,37 @@ dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
 %% import atlas in cifti space and get region names
-atlas_cii = cifti_read(config.canlab2024.path);
+atlas_cii = get_cifti_data('../../resources/Gordon_333Cort.32k.dlabel.nii');
+n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
+
+n_roi_ctx = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right])) - 1;
+n_roi_lctx = length(unique([atlas_cii.cortex_left]))-1;
+
+
+atlas_cii = cifti_read('../../resources/Gordon_333Cort.32k.dlabel.nii');
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
 roi_labels = {atlas_labels.name}; 
 
-atlas_cii = get_cifti_data(config.canlab2024.path);
-n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
-
 %% import between subject similarity measures for unrelated individuals
 sid = readtable('../../resources/paired_sid.csv', 'ReadVariableNames',false);
+
+task_labels = [1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7];
+
+% multiplying by this vector will balances conditions across tasks
+balanced_mean_op = [1/7*repmat(1/2,1,10), 1/7*repmat(1/5,1,5), 1/7*repmat(1/8,1,8)];
 
 tsnr = zeros(height(sid), n_roi);
 wi_cosim = nan(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        tsnr1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/cifti_average_parcellated.txt',sid.Var1(s)));
-        tsnr2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/cifti_average_parcellated.txt',sid.Var2(s)));
+        tsnr1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/tsnr.csv',sid.Var1(s)));
+        tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim(s,:) = mean(mean(cat(3,wi_cosim1, wi_cosim2),3));
+        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/all_tasks/standardized_contrasts/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/all_tasks/standardized_contrasts/standardized_similarity.csv',sid.Var2(s)),'FileType','text');
+        comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
+        wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
         warning('Could not import pair %d', s);
     end
@@ -48,18 +59,23 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/standardized_betas/cosine/%d_v_%d_wuc.tsv',sid.Var1(s), sid.Var2(s)),...
+        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/standardized_betas/cosine/%d_v_%d_wuc.tsv',sid.Var1(s), sid.Var2(s)),...
             'FileType','text','Delimiter',','));
     catch
         warning('Could not import pair %d', s);
     end
 end
+%{
+for s = 1:height(sid)
+    nan_regions = imag(wuc_md(s,:)) ~= 0;
+    wuc_md(s, nan_regions) = nan;
+end
+%}
 
 cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        cosim(s,:) = mean(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/standardized_betas/cosine/%d_v_%d_cosim.tsv',sid.Var1(s), sid.Var2(s)),...
-            'FileType','text'),1);
+        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/standardized_betas/cosine/%d_v_%d_cosim.tsv', sid.Var1(s), sid.Var2(s)), '\t');
     catch
         warning('Could not import pair %d', s);
     end
@@ -77,18 +93,19 @@ confounds = {tsnr, wi_cosim};
 
 %% plot topographic and geometric similarities
 
+
 B = mean(cosim(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
-T = {'Between subject topographic similarity',['(RSN Spatial cos\theta, ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
-plot_to_brain(B, good_rois, cmaprange, T, fs+2);
+T = {'Between subject topographic similarity',['(Task Spatial cos\theta, ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
+plot_to_brain(B, good_rois, cmaprange, T, fs+2, atlas_cii);
 exportgraphics(gcf,'panels/topographic_similarity.png','ContentType','image','Resolution',300);
 
-B = nanmean(wuc_md(:,good_rois));
+B = mean(wuc_md(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
-T = {'Between subject geometric similarity',['(RSN WUC, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
-plot_to_brain(B, good_rois, cmaprange, T, fs+2);
+T = {'Between subject geometric similarity',['(Task WUC, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
+plot_to_brain(B, good_rois, cmaprange, T, fs+2, atlas_cii);
 exportgraphics(gcf,'panels/geometric_similarity.png','ContentType','image','Resolution',300);
 
 %% compute similarity of geometry and topography
@@ -117,6 +134,7 @@ mdl = fitlmematrix([zwuc(:), ztsnr(:), zwi_cosim(:), roi_ind], ...
 disp('Dependence of topography on geometry, brainwide:')
 disp(STATS)
 
+
 %% Plot contrast of relative similarities
 [cosim_ctx, zwuc] = deal(nan(size(wuc_md)));
 
@@ -133,9 +151,10 @@ end
 B = nanmean(d(:,good_rois),1);
 cmaprange = prctile(B,[2.5,97.5]);
 
-T = {'Difference in relative geometric similarity','and relative topographic similarity',['(RSN: WUC_{std} - cos\theta_{std}, ',sprintf('N = %d)',size(d,1))]};
-plot_to_brain(B, good_rois, cmaprange, T, fs+1);
+T = {'Difference in relative geometric similarity','and relative topographic similarity',['(Task: WUC_{std} - cos\theta_{std}, ',sprintf('N = %d)',size(d,1))]};
+plot_to_brain(B, good_rois, cmaprange, T, fs+1, atlas_cii);
 exportgraphics(gcf,'panels/relative_dif_wuc_cosim.png','ContentType','image','Resolution',300);
+
 
 %% estimate neuromap associations
 
@@ -160,7 +179,7 @@ maps = [{'abagen', 'genepc1','GenePC1','(-)','(+)'};...
     {'raichle', 'cbf', 'CBF1','low','high'};...
     {'satterthwaite2014', 'meancbf', 'CBF2','low','high'}];
 
-mapvals = dir('../../resources/neuromaps/canlab2024_parcel_vals/');
+mapvals = dir('../../resources/neuromaps/gordon_parcel_vals/');
 mapvals(1:2) = []; % remove '.' and '..' refs
 
 keep = zeros(length(mapvals),1);
@@ -170,7 +189,7 @@ end
 keep(keep==0) = [];
 mapvals = mapvals(keep);
 
-vals = zeros(358, length(mapvals));
+vals = zeros(n_roi_ctx, length(mapvals));
 mapname = {};
 [wucD, wucDStd, cosimD, cosimDStd, ...
     wucb, wucp, wucstd, cosimb, cosimp, cosimstd] = deal(zeros(length(mapvals),1));
@@ -183,9 +202,9 @@ for i = 1:length(mapvals)
     vals(:,i) = csvread(fullfile(mapvals(i).folder, mapvals(i).name));
     
     these_good_rois = good_rois;
-    these_good_rois(these_good_rois > 358) = [];
+    these_good_rois(these_good_rois > n_roi_ctx) = [];
     if contains(mapname{i},{'hill2010'})
-        these_good_rois(these_good_rois < 180) = [];
+        these_good_rois(these_good_rois <= n_roi_lctx) = [];
     end
 
     fprintf('Evaluating %s\n', mapname{i})
@@ -380,11 +399,11 @@ for i = 1:length(atlas_labels)
 end
 
 good_rois_ctx = good_rois;
-good_rois_ctx(good_rois_ctx > 358) = [];
+good_rois_ctx(good_rois_ctx > n_roi_ctx) = [];
 
 wuc_md_ctx = wuc_md(:, good_rois_ctx);
 cosim_ctx = cosim(:, good_rois_ctx);
-good_grad_roi = vals(ismember(1:358, good_rois_ctx), map_ind);
+good_grad_roi = vals(ismember(1:n_roi_ctx, good_rois_ctx), map_ind);
 
 figure;
 clf
@@ -394,7 +413,7 @@ ax2 = subplot(1,2,2);
 hold on;
 for i = 1:size(wuc_md_ctx,2)
     color = cmap(good_rois_ctx(i),:);
-    if good_rois_ctx(i) < 358 
+    if good_rois_ctx(i) < n_roi_ctx 
         s1 = plot(ax2, good_grad_roi(i), mean(wuc_md_ctx(:,i)), '^', 'color', color);
         s2 = plot(ax1, good_grad_roi(i), mean(cosim_ctx(:,i)), 'o', 'color', color);
     else

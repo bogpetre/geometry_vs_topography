@@ -1,7 +1,32 @@
-# geometry_vs_topography
+# Geometry vs Topography
 This repo contains code for "Common representations underlie idiosyncratic neural topographies"
 
 # Setup
+
+From the same level of this directory as this README file, invoke the following 
+to compile rdm_similarty and install python packages
+
+```
+pip install -r requirements.txt
+pip install .
+make
+```
+
+If you get compilation problems due to missing libraries try,
+
+```
+conda install -c conda-forge libblas eigen lapack nlohmann_json
+```
+
+and then rerun make.
+
+You will also need to install/aquire the additional non-python dependencies below. In 
+particular, neuromaps (installed by requirements.txt) expects wb_command to be on your
+system path,
+
+```
+PATH=$PATH:<connectome_workbench_binary_directory>
+```
 
 ### Dependencies
 
@@ -11,8 +36,25 @@ Matlab:
 * spm12: https://www.fil.ion.ucl.ac.uk/spm/docs/installation/
 * Neuroimaging Pattern Masks: https://github.com/canlab/Neuroimaging_Pattern_Masks/
 
+C/C++:
+* libblas
+* eigen
+* lapack
+* nlohmann_json
+(conda install -c conda-forge libblas eigen lapack nlohmann_json)
+
 Binaries:
 * connectome workbench: https://www.humanconnectome.org/software/get-connectome-workbench
+
+Data:
+* HCP data: s3://hcp-openaccess/
+* HCP restricted data (only for heritability analysis): https://www.humanconnectome.org/study/hcp-young-adult/document/restricted-data-usage
+
+Note, the use of HCP restricted data prohibits us from sharing specific subject ids. This 
+prevents us from identifying the exemplary subjects we use for illustrative purposes in the
+manuscript. This information was shared with HCP though and is available to users who agree
+to the restricted data usage agreement. Once the key is obtained the appropriate subject
+dyad can be assigned in the config.json file and figure 1 can be regenerated.
 
 ### canlab2024
 
@@ -23,18 +65,24 @@ distribute the source files. We've provided an assembly script which will automa
 this process for you. After downloading the above dependencies add the matlab
 dependencies to your path. Add all subdirectories for all repos except spm12,
 
+```
 addpath(genpath(<repoPath>))
 addpath(<spm12_path>)
+```
 
 Now in matlab invoke,
 
+```
 atl = load_atlas('canlab2024_coarse_fsl6_2mm');
 create_CANLab2024_CIFTI_subctx('MNI152NLin6Asym','coarse',2,atl);
+```
 
 Now navigate to wherever you installed Neuroimaging_Pattern_masks and invoke the following
 bash script,
 
+```
 Atlases_and_parcellations/2024_CANLab_atlas/src/create_CANLab2024_atlas_cifti.sh
+```
 
 If this is not possible for you for whatever reason you can instead use openCANLab2024,
 which differs in some brainstem nuclei that aren't critical in this projection. You can

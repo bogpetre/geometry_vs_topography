@@ -5,7 +5,8 @@
   "matlab_libraries": {
     "cifti_matlab": "/home/bogdan/.matlab/cifti-matlab",
     "spm12": "/home/bogdan/.matlab/spm/spm12/",
-    "canlabCore": "/home/bogdan/.matlab/canlab/CanlabCore"
+    "canlabCore": "/home/bogdan/.matlab/canlab/CanlabCore",
+    "npm": "/home/bogdan/.matlab/canlab/Neuroimaging_Pattern_Masks"
   },
   "matlab_base_fontsize": 12,
   "matlab_disp_scheme": {
@@ -15,5 +16,10 @@
   },
   "canlab2024": {
     "path": "/home/bogdan/.matlab/canlab/Neuroimaging_Pattern_Masks/Atlases_and_parcellations/2024_CANLab_atlas/CANLab2024_MNI152NLin6Asym_coarse_2mm.dlabel.nii"
-  }
+  },
+  "hcp_participant_data": {
+    "restricted": "/home/bogdan/MyDocuments/canlab/hcp_hyperalignment/docs/RESTRICTED_bogpetre_9_12_2023_9_35_28.csv",
+    "unrestricted": "/home/bogdan/MyDocuments/canlab/hcp_hyperalignment/docs/unrestricted_bogpetre_9_14_2023_8_25_4.csv"
+  },
+  "exemplary_dyad": 1
 }

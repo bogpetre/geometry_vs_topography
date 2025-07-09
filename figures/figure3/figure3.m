@@ -5,6 +5,7 @@ config = jsondecode(fileread('../../config.json'));
 addpath(config.matlab_libraries.spm12);
 addpath(genpath(config.matlab_libraries.cifti_matlab));
 addpath(genpath(fullfile(config.matlab_libraries.canlabCore, 'CanlabCore')));
+addpath(genpath(fullfile(config.matlab_libraries.npm)));
 
 addpath('../../matlab_libraries');
 addpath('../../resources/neuromaps');
@@ -131,12 +132,13 @@ exportgraphics(gcf,'panels/geometric_similarity.png','ContentType','image','Reso
 
 %% compute similarity of geometry and topography
 % We use these statistics in the main text of the results
-sid_ind = repmat(1:size(wuc_md,1)',1,n_roi);
-roi_ind = kron(helmertCoding(1:n_roi),ones(size(wuc_md,1),1));
-zwuc = zscore(wuc_md,[],2);
-cosim_ctx = zscore(cosim,[],2);
-ztsnr = zscore(tsnr,[],2);
-zwi_cosim = zscore(wi_cosim,[],2);
+sid_ind = repmat(1:size(wuc_md,1)',1,length(good_rois));
+roi_ind = kron(helmertCoding(1:length(good_rois)),ones(size(wuc_md,1),1));
+nanzscore = @(x1)((x1 - nanmean(x1,2))./nanstd(x1,0,2));
+zwuc = nanzscore(wuc_md(:,good_rois));
+cosim_ctx = nanzscore(cosim(:,good_rois));
+ztsnr = nanzscore(tsnr(:,good_rois));
+zwi_cosim = nanzscore(wi_cosim(:,good_rois));
 
 % model (within participant) standardized effect of wuc on cosim while
 % controlling for test-retest reliability (wi_cosim), tSNR, and fixed ROI
@@ -488,7 +490,7 @@ sgtitle({'Transmodal representations are similar','but implemented more idiosync
 
 % add ROI legend
 a1 = axes();
-a1.Position = [0.285,0.475,0.2,0.2];
+a1.Position = [0.33,0.56,0.15,0.15];
 a1.Visible = 'off';
 
 overlay = canlab_get_underlay_image;

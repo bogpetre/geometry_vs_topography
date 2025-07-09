@@ -1,1 +1,6 @@
-https://github.com/Washington-University/cifti-matlab
+eigen
+nlohmann_json
+neuromaps
+nipype
+git+https://git@github.com/bogpetre/nipype_workbench_ext.git
+git+https://git@github.com/rmldj/hcp-utils.git

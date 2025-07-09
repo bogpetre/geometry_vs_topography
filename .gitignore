@@ -3,3 +3,6 @@
 *.mat
 *.asv
 config.json
+bin/
+build/*
+*.egg-info

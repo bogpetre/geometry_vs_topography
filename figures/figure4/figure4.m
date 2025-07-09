@@ -5,6 +5,7 @@ config = jsondecode(fileread('../../config.json'));
 addpath(config.matlab_libraries.spm12);
 addpath(genpath(config.matlab_libraries.cifti_matlab));
 addpath(genpath(fullfile(config.matlab_libraries.canlabCore, 'CanlabCore')));
+addpath(genpath(fullfile(config.matlab_libraries.npm)));
 
 addpath('../../matlab_libraries');
 addpath('../../resources/neuromaps');
@@ -206,12 +207,13 @@ for i = 1:length(mapvals)
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    [Bb(i), Bb_CI(i,:)] = association_map_test(topo, rdm, map_val, {confounds{1}(:,good_rois), confounds{2}(:,good_rois)});
+    [Bb(i), Bb_CI(i,:)] = association_map_test(topo, rdm, map_val, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
     
-    obs_val = assocB_corr(these_good_rois)';
+    %obs_val = assocB_corr(these_good_rois)';
 
     % this is a fixed effects analysis using a spatial permutation test
-    [~, Bp(i), ~] = neuromaps_corr(obs_val, map_val, perm_map);
+    %[~, Bp(i), ~] = neuromaps_corr(obs_val, map_val, perm_map);
+    [~, Bp(i)] = neuromaps_corr3(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
 end
 
 
