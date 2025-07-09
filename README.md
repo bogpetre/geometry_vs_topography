@@ -102,3 +102,6 @@ Once run topographic similarity measures and geometric similarity measures can b
 computed using pairwise_parcel_op for cosine similarity measures and 
 rdm_similarity for efficient and scalable computation of geometric similarities
 from the derivatives of the above analyses (example scripts forthcoming)
+
+Once the above scripts have prepared geometric and topographic similarity
+measures figures can be regenerated using matlab scripts found in figures/
