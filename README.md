@@ -7,10 +7,18 @@ From the same level of this directory as this README file, invoke the following
 to compile rdm_similarty and install python packages
 
 ```
-make
 pip install -r requirements.txt
 pip install .
+make
 ```
+
+If you get compilation problems due to missing libraries try,
+
+```
+conda install -c conda-forge libblas eigen lapack nlohmann_json
+```
+
+and then rerun make.
 
 You will also need to install/aquire the additional non-python dependencies below. In 
 particular, neuromaps (installed by requirements.txt) expects wb_command to be on your
@@ -27,6 +35,13 @@ Matlab:
 * cifti matlab libraries: https://github.com/Washington-University/cifti-matlab
 * spm12: https://www.fil.ion.ucl.ac.uk/spm/docs/installation/
 * Neuroimaging Pattern Masks: https://github.com/canlab/Neuroimaging_Pattern_Masks/
+
+C/C++:
+* libblas
+* eigen
+* lapack
+* nlohmann_json
+(conda install -c conda-forge libblas eigen lapack nlohmann_json)
 
 Binaries:
 * connectome workbench: https://www.humanconnectome.org/software/get-connectome-workbench

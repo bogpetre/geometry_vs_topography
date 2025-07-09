@@ -1,3 +1,5 @@
+eigen
+nlohmann_json
 neuromaps
 nipype
 git+https://git@github.com/bogpetre/nipype_workbench_ext.git

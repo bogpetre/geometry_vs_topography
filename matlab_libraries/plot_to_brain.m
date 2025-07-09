@@ -1,7 +1,11 @@
-function fig = plot_to_brain(data, roi_ind, cmaprange, title, fs)
+function fig = plot_to_brain(data, roi_ind, cmaprange, title, fs, varargin)
 
-atlas_cii = cifti_read(which('CANLab2024_MNI152NLin6Asym_coarse_2mm.dlabel.nii'));
-atlas_nii = load_atlas('canlab2024');
+if nargin == 5
+    atlas_cii = cifti_read(which('CANLab2024_MNI152NLin6Asym_coarse_2mm.dlabel.nii'));
+    %atlas_nii = load_atlas('canlab2024');
+else
+    atlas_cii = varargin{1};
+atlas_nii = fmri_data(extract_vol_from_cifti(atlas_cii));
 
 B = zeros(1,518);
 B(roi_ind) = data;
@@ -64,7 +68,7 @@ for i = 1:length(uniq_rois)
         ref_val.dat(ref.dat == this_roi) = real(B(this_roi));
     end
 end
-o3 = ref_val.montage(o3,'hcp grayordinates subcortex','cmaprange',cmaprange,'colormap',cm);
+o3 = ref_val.montage(o3,'hcp grayordinates subcortex','cmaprange',cmaprange,'colormap',cm,'overlay',which('fsl6_hcp_template.nii.gz'));
 try, delete(o3.activation_maps{1}.legendhandle); end
 
 t0.Position(4) = 0.73;
