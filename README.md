@@ -21,12 +21,16 @@ conda install -c conda-forge libblas eigen lapack nlohmann_json
 and then rerun make.
 
 You will also need to install/aquire the additional non-python dependencies below. In 
-particular, neuromaps (installed by requirements.txt) expects wb_command to be on your
-system path,
+particular, neuromaps (installed by requirements.txt) and the nipype pipelines in
+scripts/ expect wb_command (Dependences: connectome workbench) to be on your system 
+path,
 
 ```
 PATH=$PATH:<connectome_workbench_binary_directory>
 ```
+
+Finally, copy config_template.json to config.json and update the paths within to
+point to the location of your copy of the necessary dependencies (below).
 
 ### Dependencies
 
@@ -86,7 +90,7 @@ Atlases_and_parcellations/2024_CANLab_atlas/src/create_CANLab2024_atlas_cifti.sh
 
 If this is not possible for you for whatever reason you can instead use openCANLab2024,
 which differs in some brainstem nuclei that aren't critical in this projection. You can
-find that here:
+find that in the Neuroimaging Pattern Masks repo under:
 
 Atlases_and_parcellations/2024_CANLab_atlas/openCANLab2024_MNI152NLin6Asym_coarse_2mm.dlabel.nii
 
