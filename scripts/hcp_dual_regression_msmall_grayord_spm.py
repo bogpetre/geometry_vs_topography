@@ -1359,11 +1359,11 @@ if __name__ == '__main__':
                         help='Parcellation to use for RSA. RDMs are computed for each parcel and spatial whitening is done within parcels')
     parser.add_argument('--rsn_template', required=True,
                         help='HCP Group ICA to dual regress onto subject data. Use nonstandard_template option if not using HCP RSNs.')
-    parser.add_argument('--nonstandard_template', required=False,
+    parser.add_argument('--nonstandard_template', required=False, action='store_true', default=False,
                         help='Substitutes the specified rsn_template template for low-dimensional RSN templates used to compute \
                             alignment maps. Low-d HCP templates are used by default which are only appropriate when the main rsn_template \
                             is also derived from ICA run on the same sample.')
-    parser.add_argument('--data_dir', type=str, required=False, action='store_true', default=False,
+    parser.add_argument('--data_dir', type=str, required=False,
                         help='Path to HCP data directory immediately above subject folders, e.g. HCP1200')
     parser.add_argument('--hcp_resources_dir', type=str, required=False, default=os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/'),
                         help='Path to HCP Resources directory. This should contain the GroupAvg/HCP_PTN1200 subfolders.')
