@@ -1,5 +1,4 @@
-
-### RDM similarity estimation
+# RDM similarity estimation
 
 The program in this folder implements an efficient algorithm for computing RDM similarites
 across a brain parcellation. It assumes you have RDMs for each of many regions, and that for
