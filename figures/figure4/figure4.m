@@ -93,15 +93,6 @@ confounds = {tsnr, wi_cosim};
 topo = atanh(cosim(:, good_rois));
 rdm = atanh(wuc_md(:, good_rois));
 
-% model region specific intercepts by just centering regions
-topo_mu = nanmean(topo);
-topo_sd = nanstd(topo);
-ztopo = (topo - topo_mu)./topo_sd;
-
-rdm_mu = nanmean(rdm);
-rdm_sd = nanstd(rdm);
-zrdm = (rdm - rdm_mu)./rdm_sd;
-
 [n,p] = size(topo);
 
 rois = repmat((1:p), n, 1);
@@ -125,22 +116,6 @@ cmaprange(1) = eps;
 
 T = {'Dependence of topographic','on geometric similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
 plot_to_brain(assocB, 1:length(assocB), cmaprange, T, fs+2);
-
-%% estimate tSNR and test-retest reliability corrected associations
-confounds_ = {tsnr(:,good_rois), atanh(wi_cosim(:,good_rois))};
-for i = 1:length(confounds)
-    % deal with confounds
-    confounds_{i} = (confounds_{i} - mean(confounds_{i}(:,1:358),2))./std(confounds_{i}(1:358),[],2);
-    confounds_{i} = confounds_{i}(:);
-    X = [X, confounds_{i}(isgood).*helmertCoding(sid)];
-end
-
-B0 = (X'*X)\X'*Y;
-
-X = [mean(tsnr(:,good_rois))', mean(atanh(wi_cosim(:,good_rois)))', ones(length(good_rois),1)];
-X(:,1:2) = X(:,1:2) - mean(X(1:358,1:2)); % center at mean cortical tSNR and test-retest reliability
-bb = (X'*X)\X'*B0(1:p);
-assocB_corr = assocB(good_rois)' - X*bb + bb(end);
 
 %% estimate neuromap associations
 
@@ -177,7 +152,7 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[Bb, Bp, Bstd] = deal(zeros(length(mapvals),1));
+[Bb, Bp, cohensf2] = deal(zeros(length(mapvals),1));
 [Bb_CI] = deal(zeros(length(mapvals),2));
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
@@ -207,12 +182,27 @@ for i = 1:length(mapvals)
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    [Bb(i), Bp(i), Bb_CI(i,:)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    [Bb(i), Bb_CI(i,:), Bp(i), cohensf2(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
 end
 
 
 
 %% plot association scatterplots
+abr_mapname = maps(:,3);
+
+disp('Effects (betas):')
+bb_str = {};
+for i = 1:length(Bb)
+    bb_str{i} = sprintf('%0.3f±%0.3f',Bb(i), mean([Bb_CI(i,2) - Bb(i), Bb(i) - Bb_CI(i,1)],2));
+end
+disp(table(bb_str', ...
+    'VariableNames', {'neuromap_modulation'}))
+
+disp('Cohens f^2:');
+disp(table(cohensf2(:), ...
+    'VariableNames',{'neuromap_modulation'},...
+    'RowNames', abr_mapname));
+
 cmap = zeros(length(atlas_labels),3);
 for i = 1:length(atlas_labels)
     cmap(i,:) = atlas_labels(i).rgba(1:3);
@@ -379,7 +369,7 @@ end
 Bp(Bp == 0) = 0.99/nperms;
 sig = holm_sidak(Bp, 0.05);
 if any(sig)
-    x = sign(Bb(sig)).*(pos_err(sig) + abs(Bb(sig)) + xl(2) * 0.1);
+    x = sign(Bb(sig)).*(pos_err(sig) + abs(Bb(sig)) + xl(2) * 0.2);
     text(x, find(sig),'*','HorizontalAlignment','center');
 end
 xline(0, 'color', [0.5,0.5,0.5]);

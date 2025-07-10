@@ -1,4 +1,4 @@
-function [B, p, varargout] = neuromaps_corr(DV, IV, obs_map, perm_map, varargin)
+function [B, CI, p, cohensf2] = neuromaps_corr(DV, IV, obs_map, perm_map, varargin)
     assert(all(size(IV) == size(DV)));
 
     [n,p] = size(IV);
@@ -61,6 +61,8 @@ function [B, p, varargout] = neuromaps_corr(DV, IV, obs_map, perm_map, varargin)
     C = sum(intx.^2, 1);        % (1 x n_perms)
     d = intx' * Yg;             % (n_perms x 1)
 
+    X = [Xf, IV.*obs_map];
+    TSS = sum((Yg - mean(Yg)).^2);
     parfor i = 1:size(intx,2)
         % parallelization only increases speed a bit since the code below
         % parallelizes pretty well at the level of the linalg libraries.
@@ -80,27 +82,33 @@ function [B, p, varargout] = neuromaps_corr(DV, IV, obs_map, perm_map, varargin)
         
         beta = M \ rhs;  % solve (k+1 x k+1) system
         perm(i) = beta(end);
+        r2_perm(i) = 1 - sum((Yg - X*beta).^2)./TSS;
     end
 
-    if nargout > 1
-        X = [Xf, IV.*obs_map];
-        m = fitlm(X,DV,'Intercept',false);
-        CI = m.coefCI;
-        B = m.Coefficients.Estimate;
-        varargout{1} = CI(end,:);
-    else
-        intx = IV.*obs_map;
-        B = Xf' * intx;
-        c = sum(intx.^2,1);
-        d = intx' * Yg;
-    
-        M = [A, B; B', c];
-        rhs = [b; d];
-    
-        b = M \ rhs;
-        B = b(end);
-        B = (X'*X)\X'*Y;
-    end
-    B = B(end);
+
+    intx = IV.*obs_map;
+    B = Xf' * intx;
+    c = sum(intx.^2,1);
+    d = intx' * Yg;
+
+    M = [A, B; B', c];
+    rhs = [b; d];
+
+    beta = M \ rhs;
+
+    B = beta(end);
+    CI = prctile(perm,[2.5,97.5]) + B;
     p = sum(abs(perm - mean(perm)) >= abs(B - mean(perm)))/length(perm);
+    
+    R2_full = 1 - sum((Yg - X*beta).^2)/TSS;
+
+    % get reduced model to compute effect size
+    %beta_reduced = A \ b;
+    %R2_reduced = 1 - sum((Yg - Xf*beta_reduced).^2)./TSS;
+
+    % compute Cohen's f^2
+    %cohensf2 = (R2_full - R2_reduced)/(1-R2_full);
+    cohensf2 = (R2_full - mean(r2_perm))/(1-mean(r2_perm));
+    
+    %cohensf2 = (B - mean(perm))/std(perm);
 end
