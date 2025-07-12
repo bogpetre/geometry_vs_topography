@@ -54,6 +54,10 @@ def run_single_map(author, model, space, res, nperm, seed, parcellater, outdir):
     if nperm:
         annot = nulls.alexander_bloch(annot, n_perm=nperm, seed=seed, atlas='fsLR', density='32k')
         annot_regions = np.array([parcellater.transform(map, 'fsLR') for map in annot.T]).T
+
+        # if the medial wall completely subsumes a parcel then its value will be 0.0. We need to make these nans
+        # so that we can ommit them from permutation tests
+        rotated[rotated == 0.0] = np.nan
     else:
         annot_regions = parcellater.transform(annot, 'fsLR')
     
