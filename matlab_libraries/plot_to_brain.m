@@ -5,6 +5,7 @@ if nargin == 5
     %atlas_nii = load_atlas('canlab2024');
 else
     atlas_cii = varargin{1};
+end
 atlas_nii = fmri_data(extract_vol_from_cifti(atlas_cii));
 
 B = zeros(1,518);
