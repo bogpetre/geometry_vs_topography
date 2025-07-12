@@ -579,6 +579,7 @@ datasink.inputs.regexp_substitutions = [
     (r'_1\.','_RL.'),
     (r'_(\w*)beta2cifti0', r'ses-1/\1beta'),
     (r'_(\w*)beta2cifti1', r'ses-2/\1beta'),
+    (r'cifti_average_parcellated.txt',r'tsnr.csv'),
 ]
 
 
