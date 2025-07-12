@@ -33,8 +33,8 @@ tsnr = zeros(height(sid), n_roi);
 wi_cosim = nan(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        tsnr1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/cifti_average_parcellated.txt',sid.Var1(s)));
-        tsnr2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/cifti_average_parcellated.txt',sid.Var2(s)));
+        tsnr1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var1(s)));
+        tsnr2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
         wi_cosim1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
