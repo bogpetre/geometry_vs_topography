@@ -168,6 +168,7 @@ for i = 1:length(mapvals)
     fprintf('Evaluating %s\n', mapname{i})
 
     randgrad = csvread(fullfile('../../resources/neuromaps/canlab2024_permuted_annotations',mapvals(i).name));
+    randgrad(randgrad == 0) = nan; % medial wall
 
     % eval B wuc ~ rdm
     map_val = vals(these_good_rois, i);
@@ -177,12 +178,13 @@ for i = 1:length(mapvals)
     map_sd = std(map_val);
     
     map_val = (map_val - map_mu)./map_sd;
-    perm_map = (perm_map - map_mu)./map_sd;
+    %perm_map = (perm_map - map_mu)./map_sd;
+    perm_map = (perm_map - nanmean(perm_map))./map_sd;
     
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    [Bb(i), Bb_CI(i,:), Bp(i), cohensf2(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    [Bb(i), Bb_CI(i,:), Bp(i), cohensD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
 end
 
 
@@ -198,8 +200,8 @@ end
 disp(table(bb_str', ...
     'VariableNames', {'neuromap_modulation'}))
 
-disp('Cohens f^2:');
-disp(table(cohensf2(:), ...
+disp('Cohens D:');
+disp(table(cohensD(:), ...
     'VariableNames',{'neuromap_modulation'},...
     'RowNames', abr_mapname));
 
@@ -302,6 +304,7 @@ nexttile()
 [~,I] = sort(Bp, 'ascend');
 Bp(Bp == 0) = 0.99/(0.99+nperms);
 [sig,pthresh] = holm_sidak(Bp, 0.05);
+%{
 I = I(ismember(I,find(Bp <= pthresh)));
 if length(I) > 0
     map_ind = I(1);
@@ -310,6 +313,8 @@ end
 if length(I) == 0 || Bp(10) == Bp(map_ind)
     map_ind = 10;
 end
+%}
+map_ind = 10;
 
 % has more significant subjects than holm-sidak threshold
 good_grad_roi = vals(ismember(1:358, good_rois), map_ind);
@@ -344,7 +349,7 @@ hold on;
 
 pos_err = Bb_CI(:,2) - Bb;
 neg_err = Bb - Bb_CI(:,1);
-errorbar(Bb, 1:length(mapname), neg_err, pos_err, '.', 'horizontal', 'capsize', 0,'color',dc_color_light)
+errorbar(Bb, 1:length(mapname), neg_err, pos_err, '.', 'horizontal', 'capsize', 0,'color',dc_color_light, 'linewidth',2)
 plot(Bb,1:length(mapname), 'h','MarkerFaceColor',dc_color_light,'color', dc_color,'MarkerFaceColor',dc_color_light);
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', abr_mapname,'FontSize',fs-1, 'YDir', 'rev','YGrid','on');
