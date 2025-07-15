@@ -11,6 +11,7 @@ authors = [{ name = "Bogdan Petre", email = 'f0042vm@dartmouth.edu'}, { name = "
 
 [project.entry-points."console_scripts"]
 pairwise_parcel_op = 'geometry_vs_topography.pairwise_parcel_op:__main__'
+est_clf_perf_within_participant = 'geometry_vs_topography.nearestcentroidclf:__main__'
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -40,6 +40,8 @@ import nipype.pipeline.engine as pe  # pypeline engine
 import nipype.interfaces.utility as util  # utility
 import nipype.algorithms.modelgen as model  # model generation
 
+from geometry_vs_topography.nipype.nearestcentroidclf import NearestCentroidClf
+
 # this next block enables multithreading in matlab, which nipype disables by default,
 # but massively increases speed of matrix math. Most of our matlab commands are also 
 # called after all iterables have converged, so even if with a multithreaded nipype
@@ -695,6 +697,39 @@ whiteningwf.connect([
     (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('whitened_betas', 'cifti')]),    
 ])
 
+########################################
+# Nearest centroid classifier workflow #
+########################################
+
+def init_clfwf(name='clf')
+    wf = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'cifti', 'atlas']),
+        name='inputspec')
+
+    clf = pe.Node(
+        interface=NearestCentroidClf()
+        name='clf')
+
+    outputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'clf_perf_csv']),
+        name='outputspec')
+
+    wf.connect([
+        (inputnode, clf, [('cifti', 'cifti'),
+                          ('atlas', 'atlas')]),
+
+        (clf, outputnode, [('out_file', 'clf_perf_csv')]),
+    ])
+
+    return wf
+
+stdclfwf = init_clfwf(name='stdclf')
+whclfwf = init_clfwf(name='whclf')
+
 ################################################################
 # Combine preproc, first level and spatial whitening workflows #
 ################################################################
@@ -720,6 +755,9 @@ subjectlevel.connect([
     (modelfit, whiteningwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file'),
                              ('joinruns.run_info', 'inputspec.run_info'),
                             ]),
+
+    (whiteningwf, stdclfwf, [('mergestandardizedcontrastsacrosstasks.out_file', 'inputspec.cifti')]),
+    (whiteningwf, whclfwf, [('mergewhitenedcontrastsacrosstasks.out_file', 'inputspec.cifti')]),
     
     # save desired outputs
     (modelfit, datasink, [('mergecontrastsacrosstasks.out_file', 'results.all_tasks.contrasts'),
@@ -736,7 +774,10 @@ subjectlevel.connect([
     
     (whiteningwf, datasink, [('mergestandardizedcontrastsacrosstasks.out_file', 'results.all_tasks.standardized_contrasts'),
                              ('mergewhitenedcontrastsacrosstasks.out_file', 'results.all_tasks.whitened_contrasts'),
-                            ])
+                            ]),
+
+    (stdclfwf, datasink, [('clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),
+    (whclfwf, datasink, [('clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf')]),
 ])
 
 
@@ -790,6 +831,8 @@ if __name__ == '__main__':
     datasink.inputs.base_directory = os.path.abspath(args.out)
     
     subjectlevel.inputs.whitening.inputspec.atlas = args.atlas
+    subjectlevel.inputs.stdclf.inputspec.atlas = args.atlas
+    subjectlevel.inputs.whclf.inputspec.atlas = args.atlas
 
     subjectlevel.write_graph()
     if args.n_cpus and args.n_cpus > 1:
