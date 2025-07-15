@@ -23,7 +23,7 @@ from ..hcp_utils_ext.utils import load_parcellation
 from ..neartscentroidclf.model import extract_region_data, get_img_data, get_clf_mat
 
 
-class nearestCentroidClfInputSpec(BaseInterfaceInputSpec):
+class NearestCentroidClfInputSpec(BaseInterfaceInputSpec):
     cifti=File(
         desc="4D CIFTI or NIFTI files containing to-be-classified data",
         exists=True,
@@ -50,15 +50,15 @@ class nearestCentroidClfInputSpec(BaseInterfaceInputSpec):
              independently and outputted as a separate row of the output csv file.")
 
 
-class nearestCentroidClfOutputSpec(TraitedSpec):
+class NearestCentroidClfOutputSpec(TraitedSpec):
     out_file=File(
         desc="Output CSV file.",
         exists=True)
 
 
-class nearestCentroidClf(BaseInterface):
-    input_spec=nearestCentroidClfInputSpec
-    output_spec=nearestCentroidClfOutputSpec
+class NearestCentroidClf(BaseInterface):
+    input_spec=NearestCentroidClfInputSpec
+    output_spec=NearestCentroidClfOutputSpec
 
     def _run_interface(self, runtime):
         parcellation = load_parcellation(self.inputs.atlas)
