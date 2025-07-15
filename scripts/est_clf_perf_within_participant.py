@@ -123,7 +123,7 @@ def main():
                             help='Groups to use for k-Fold CV. If not specified LR/RL strings from cifti volume labels are used.')                            
     parser.add_argument('--atlas', type=str, required=True,
                         help='cifti dlabels file to use to define parcels. Each parcel is evaluated \
-                            independently ad outputted as a separate row of the output csv file.')
+                            independently and outputted as a separate row of the output csv file.')
     parser.add_argument('--out', type=str, required=True, help='Output csv file.')
 
     args = parser.parse_args()
