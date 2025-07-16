@@ -79,8 +79,6 @@ function [B, CI, p, effectsize, perm_var, jk_var, nu] = neuromaps_corr(DV, IV, o
     C = sum(intx.^2, 1);        % (1 x n_perms)
     d = intx' * Yg;             % (n_perms x 1)
 
-    %X = [Xf, IV.*obs_map];
-    %TSS = sum((Yg - mean(Yg)).^2);
     parfor i = 1:m
         % parallelization only increases speed a bit since the code below
         % parallelizes pretty well at the level of the linalg libraries.
@@ -100,9 +98,8 @@ function [B, CI, p, effectsize, perm_var, jk_var, nu] = neuromaps_corr(DV, IV, o
         
         beta = M \ rhs;  % solve (k+1 x k+1) system
         perm(i) = beta(end);
-        %R2_perm(i) = 1 - sum((Yg - X*beta).^2)./TSS;
     end
-
+    perm_var = var(perm);
 
     intx = IV.*obs_map;
     B = Xf' * intx;
@@ -116,19 +113,18 @@ function [B, CI, p, effectsize, perm_var, jk_var, nu] = neuromaps_corr(DV, IV, o
 
     B = beta(end);
 
-    perm_var = var(perm);
-    se = perm_var + jk_var;
-
-    CI = icdf('norm', [0.025, 0.975], 0, sqrt(jk_var)) + B;
-
-    z = B/sqrt(se);
     
     % compute df of se using Welch-Satterthaite approximation
-    nu = (perm_var + jk_var)^2 ./ (jk_var^2/(n-1) + perm_var^2/(m-1));
+    %nu = (perm_var + jk_var)^2 ./ (jk_var^2/(n-1) + perm_var^2/(m-1));
+    nu = n -1;
+    se = sqrt(perm_var + jk_var);
+    t = B/se;
 
-    p = 2*tcdf(-abs(z), nu);
+    %CI = icdf('norm', [0.025, 0.975], 0, sqrt(jk_var)) + B;
+    CI = sqrt(jk_var)*icdf('t', [0.025, 0.975], nu) + B;
+    p = 2*tcdf(-abs(t), nu);
         
-    effectsize = B / sqrt(var(perm) + n*jk_var);
+    effectsize = B / sqrt(perm_var + n*jk_var);
 end
 
 function B_jk = neuromaps_corr_jk(DV, IV, obs_map, varargin)

@@ -1,10 +1,50 @@
-function [B, B_95_range, bootstat, Bstd, Bstd_95_range, bootstat_std, cohenD, cohenDStd] = neuromaps_corr_fx(obs_val, obs_map, varargin)
+function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_fx(obs_val, obs_map, perm_map, varargin)
+    [p, n] = size(obs_val);
+    [p_perm, m] = size(perm_map);
+    [p_map, n_map] = size(obs_map);
+
+    assert(p == p_perm & p == p_map, 'obs_val, obs_map and perm_map must all have the same number of features (rows).');
+    assert(n_map == 1, 'obs_map must be a column vector');
+
+    B_perm = zeros(m,1);
+    parfor i = 1:m
+        subj_spin_betas = get_mean_B(obs_val, perm_map(:,i), varargin{:});
+        B_perm(i) = mean(subj_spin_betas(:,1));
+    end
+    perm_var = var(B_perm);
+    
+    subj_B = get_mean_B(obs_val, obs_map, varargin{:});
+    B = mean(subj_B(:,1));
+
+    % we could just use sampling_var = var(subj_B(:,1))/n, but for 
+    % consistency with coupling analysis let's do the trivial jackknife 
+    % estimate of the standard error of B.
+    jk = nan(size(subj_B,1),1);
+    for i = 1:size(subj_B,1)
+        ind = 1:size(subj_B,1);
+        ind(i) = [];
+        jk(i) = mean(subj_B(ind,1));
+    end
+    sampling_var = (n-1)/n*sum((jk - mean(jk)).^2);
+
+    %nu = (perm_var + sampling_var)^2 ./ (sampling_var^2/(n-1) + perm_var^2/(m-1));
+    nu = n-1;
+    se = sqrt(perm_var + sampling_var);
+    t = B/se;
+
+    CI = sqrt(sampling_var)*icdf('t', [0.025, 0.975], nu) + B;
+    p = 2*tcdf(-abs(t), nu);
+
+    effectsize = B / sqrt(perm_var + n*sampling_var);
+end
+
+function B = get_mean_B(obs_val, obs_map, varargin)
     design_vars = 2;
     if nargin > 2
         design_vars = design_vars + size(varargin{1},2);
     end
     
-    Bb0 = zeros(size(obs_val,2),design_vars);
+    B = zeros(size(obs_val,2),design_vars);
     for j = 1:size(obs_val,2)
         X = [obs_map, ones(size(obs_map,1),1)];
         if ~isempty(varargin)
@@ -19,34 +59,6 @@ function [B, B_95_range, bootstat, Bstd, Bstd_95_range, bootstat_std, cohenD, co
         Y = Y(good_roi);
         X = X(good_roi,:);
 
-        Bb0(j,:) = ((X'*X)\X'*Y(:))';
+        B(j,:) = ((X'*X)\X'*Y(:))';
     end
-    B = nanmean(Bb0(:,1),1);
-    cohenD = B./nanstd(Bb0(:,1));
-    B_95_range = prctile(Bb0(:,1),[2.5,97.5],1)';
-    [~,bootstat] = bootci(50000, {@mean, Bb0(:,1)}, 'type', 'bca');
-    %p = (sum(abs(perm - mean(perm)) >= abs(B - mean(perm))) + 1)/(length(perm) + 1);
-
-    Bstd0 = zeros(size(obs_val,2),design_vars-1);
-    for j = 1:size(obs_val,2)
-        X = (obs_map - nanmean(obs_map)) / nanstd(obs_map);
-        if ~isempty(varargin)
-            for i = 1:length(varargin{1})
-                % deal with confounds
-                X = [X, zscore(varargin{1}{i}(:,j))];
-            end
-        end
-        Y = (obs_val(:,j) - nanmean(obs_val(:,j))) / nanstd(obs_val(:,j));
-
-        good_roi = ~isnan(Y) & ~any(isnan(X),2);
-        Y = Y(good_roi);
-        X = X(good_roi,:);
-
-        Bstd0(j,:) = ((X'*X)\X'*Y(:))';
-    end
-    Bstd = nanmean(Bstd0(:,1));
-    cohenDStd = Bstd./nanstd(Bstd0(:,1));
-
-    Bstd_95_range = prctile(Bstd0(:,1), [2.5, 97.5], 1)';
-    [~,bootstat_std] = bootci(50000, {@mean, Bstd0(:,1)}, 'type', 'bca');
 end

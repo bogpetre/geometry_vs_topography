@@ -1,40 +1,93 @@
-function [B, B_95_range, bootstat, Bstd, Bstd_95_range, bootstat_std, cohensD, cohensDStd] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, obs_map, varargin)
-    design_vars = 2 + 2*size(obs_map,2);
+function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, obs_map, perm_map, varargin)
+    assert(size(obs_val1,1) == size(obs_val2,1))
+    
+    [p, n] = size(obs_val1);
+    [p_, n_] = size(obs_val2);
+    [p_perm, m] = size(perm_map);
+    [p_map, n_map] = size(obs_map);
+
+    assert(p == p_perm & p == p_map & p == p_, ...
+        'obs_val1, obs_val2, obs_map and perm_map must all have the same number of features (rows).');
+    assert(n == n_, 'observed maps must have the same number of dyads')
+    assert(n_map == 1, 'obs_map must be a column vector');
+
+    subj_B = get_mean_B(obs_val1, obs_val2, obs_map, varargin{:});
+    B = mean(subj_B);
+
+    B_perm = zeros(m,size(B,2));
+    parfor i = 1:m
+        % impute nan values
+        subj_spin_betas = get_mean_B(obs_val1, obs_val2, perm_map(:,i), varargin{:});
+        B_perm(i,:) = mean(subj_spin_betas);
+    end
+    perm_var = var(B_perm);
+    perm_var(:,3:end) = 0;
+
+    jk = nan(size(subj_B));
+    for i = 1:size(subj_B,1)
+        ind = 1:size(subj_B,1);
+        ind(i) = [];
+        jk(i,:) = mean(subj_B(ind,:));
+    end
+    sampling_var = (n-1)/n*sum((jk - mean(jk)).^2);
+    
+    %{
+    % Adjust for covariance (minor adjustment, very slow)
+    jk_null = nan(size(subj_B));
+    for i = 1:size(subj_B,1)
+        ind = 1:size(subj_B,1);
+        ind(i) = [];
+        this_B_perm = zeros(1000,size(B,2));
+        parfor j = 1:1000
+            % impute nan values
+            confounds = cell(1,length(varargin));
+            if ~isempty(varargin)
+                for k = 1:length(varargin{1})
+                    confounds{k} = varargin{1}{k}(:,ind);
+                end
+            end
+            subj_spin_betas = get_mean_B(obs_val1(:,ind), obs_val2(:,ind), perm_map(:,j), confounds);
+            this_B_perm(j,:) = mean(subj_spin_betas);
+        end
+        jk_null(i,:) = mean(this_B_perm);
+    end
+    sampling_perm_cov = (n-1)/n*sum((jk - mean(jk)).*(jk_null - mean(jk_null)));
+    sampling_perm_cov(3:end) = 0;
+    perm_var = perm_var - sampling_perm_cov;
+    sampling_var = sampling_var - sampling_perm_cov;
+    %}
+
+    se = sqrt(perm_var + sampling_var);
+    %nu = (perm_var + sampling_var).^2 ./ (sampling_var.^2/(n-1) + perm_var.^2/(n-1));
+    nu = n-1;
+    t = B./se;
+
+    CI = zeros(size(B,2),2);
+    p = nan(size(B,2),1);
+    for i = 1:length(B)
+        CI(i,:) = sqrt(sampling_var(i))*icdf('t', [0.025, 0.975], nu) + B(i);
+        if i < 3
+            % assuming we haven't done a spin test on confounds
+            p(i) = 2*tcdf(-abs(t(i)), nu);
+        end
+    end
+
+    effectsize = B ./ sqrt(perm_var + n*sampling_var);
+    effectsize(3:end) = nan;
+end
+
+
+function B = get_mean_B(obs_val1, obs_val2, obs_map, varargin)
+    design_vars = 2*size(obs_map,2);
     if nargin > 3
         design_vars = design_vars + 2*size(varargin{1},2);
     end
-
-    assert(size(obs_val1,1) == size(obs_val2,1))
+    
     valMain = [0.5*ones(size(obs_val1,1),1); -0.5*ones(size(obs_val2,1),1)];
     
-    Bb0 = zeros(size(obs_val1,2),design_vars);
     xMain = [obs_map; obs_map];
-    for j = 1:size(obs_val1,2)
-        X = [xMain, valMain, xMain.*valMain, ones(size(xMain,1),1)];
-        if ~isempty(varargin)
-            for k = 1:length(varargin{1})
-                % deal with confounds
-                this_cfd = [varargin{1}{k}(:,j); varargin{1}{k}(:,j)];
-                this_cfd = this_cfd - nanmean(this_cfd);
-                this_cfd = [this_cfd, this_cfd.*valMain]; % let confounds have different effects on different metrics
-                X = [X, this_cfd];
-            end
-        end
-        Y = [obs_val1(:,j); obs_val2(:,j)];
-
-        good_roi = ~isnan(Y) & ~any(isnan(X),2);
-        Y = Y(good_roi);
-        X = X(good_roi,:);
-
-        Bb0(j,:) = ((X'*X)\X'*Y(:))';
-    end
-    B = nanmean(Bb0,1);
-    B_95_range = prctile(Bb0, [2.5, 97.5], 1)';
-    [~,bootstat] = bootci(50000, {@mean, Bb0}, 'type', 'bca');
-    cohensD = nanmean(Bb0)./nanstd(Bb0);
-    %p = sum(abs(perm - mean(perm)) >= abs(B - mean(perm)))/length(perm);
-
-    Bstd0 = zeros(size(obs_val1,2),design_vars-2);
+    
+    B = zeros(size(obs_val1,2),design_vars);
     for j = 1:size(obs_val1,2)
         %X = [zscore(xMain), zscore(xMain).*valMain];
         X = xMain;
@@ -52,30 +105,20 @@ function [B, B_95_range, bootstat, Bstd, Bstd_95_range, bootstat_std, cohensD, c
         Y = [zscore(Y(good_roi(1:size(obs_val1,1)))); ...
             zscore(Y(good_roi(size(obs_val1,1)+1:end)))];
         % The top half of X is identical to the bottom half, so we don't
-        % need to separate zscoring like we do for Y. Note, that we're
+        % need to separate centering like we do for Y. Note, that we're
         % also adding interaction effects for confounds here, which allows
         % for the confound effects to vary by similarity metric.
-        X = [zscore(X(good_roi,:)), zscore(X(good_roi,:)).*valMain(good_roi,:)];
+        X = X(good_roi,:);
+        X = X - mean(X);
+        X = [X, X.*valMain(good_roi,:)];
 
-        Bstd0(j,:) = ((X'*X)\X'*Y(:))';
+
+
+        B(j,:) = ((X'*X)\X'*Y(:))';
     end
-    % In our non-standardized OLS we interleve interactions and main
-    % effects, but due to the nan-check for zscoring above we have all main
-    % effects first followed by all interaction effects. Let's correct this
-    % for consistency
-    p = size(Bstd0,2);
-    resort_order = reshape(1:p,p/2,2)';
-    Bstd0 = Bstd0(:,resort_order(:));
+    % reshape to be [main1, int1, main2, int2, etc.]
+    ind = reshape(1:design_vars,design_vars/2,2)';
+    ind = ind(:);
 
-    % main effect and intercept are both zero because we z-score each
-    % observed map (our Y) individually so they're mean 0 and have no
-    % difference in magnitude. We're just testing if one map is more
-    % correlated with neuromaps of interest than the other.
-    Bstd = [nanmean(Bstd0(:,1:size(obs_map,2)),1), 0, nanmean(Bstd0(:,size(obs_map,2)+1:end),1), 0];
-    cohensDStd = nanmean(Bstd0)./nanstd(Bstd0);
-    cohensDStd = [cohensDStd(1:size(obs_map,2)), 0, cohensDStd(size(obs_map,2)+1:end), 0];
-
-    Bstd_95_range = prctile(Bstd0, [2.5,97.5], 1)';
-    [~,bootstat_std0] = bootci(50000, {@mean, Bstd0}, 'type', 'bca');
-    bootstat_std = [bootstat_std0(:,1:size(obs_map,2)), zeros(size(bootstat_std0,1),1), bootstat_std0(:,size(obs_map,2)+1:end), zeros(size(bootstat_std0,1),1)];
+    B = B(:,ind);
 end
