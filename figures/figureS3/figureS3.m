@@ -19,6 +19,8 @@ close(f)
 dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
+noise='whitened';
+
 %% import atlas in cifti space and get region names
 atlas_cii = get_cifti_data('../../resources/Gordon_333Cort.32k.dlabel.nii');
 n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
@@ -47,8 +49,8 @@ for s = 1:height(sid)
         tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/all_tasks/standardized_contrasts/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/all_tasks/standardized_contrasts/standardized_similarity.csv',sid.Var2(s)),'FileType','text');
+        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
         comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
         wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
@@ -59,7 +61,7 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/standardized_betas/cosine/%d_v_%d_wuc.tsv',sid.Var1(s), sid.Var2(s)),...
+        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
             'FileType','text','Delimiter',','));
     catch
         warning('Could not import pair %d', s);
@@ -75,7 +77,7 @@ end
 cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/standardized_betas/cosine/%d_v_%d_cosim.tsv', sid.Var1(s), sid.Var2(s)), '\t');
+        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
     catch
         warning('Could not import pair %d', s);
     end
@@ -99,14 +101,14 @@ cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
 T = {'Between subject topographic similarity',['(Task Spatial cos\theta, ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2, atlas_cii);
-exportgraphics(gcf,'panels/topographic_similarity.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/topographic_similarity.png',noise),'ContentType','image','Resolution',300);
 
 B = mean(wuc_md(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
 T = {'Between subject geometric similarity',['(Task WUC, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2, atlas_cii);
-exportgraphics(gcf,'panels/geometric_similarity.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/geometric_similarity.png',noise),'ContentType','image','Resolution',300);
 
 %% compute similarity of geometry and topography
 % We use these statistics in the main text of the results
@@ -153,7 +155,7 @@ cmaprange = prctile(B,[2.5,97.5]);
 
 T = {'Difference in relative geometric similarity','and relative topographic similarity',['(Task: WUC_{std} - cos\theta_{std}, ',sprintf('N = %d)',size(d,1))]};
 plot_to_brain(B, good_rois, cmaprange, T, fs+1, atlas_cii);
-exportgraphics(gcf,'panels/relative_dif_wuc_cosim.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/relative_dif_wuc_cosim.png',noise),'ContentType','image','Resolution',300);
 
 
 %% estimate neuromap associations
@@ -191,11 +193,10 @@ mapvals = mapvals(keep);
 
 vals = zeros(n_roi_ctx, length(mapvals));
 mapname = {};
-[wucD, wucDStd, cosimD, cosimDStd, ...
-    wucb, wucp, wucstd, cosimb, cosimp, cosimstd] = deal(zeros(length(mapvals),1));
-[wucb_CI, wucstd_CI, cosim_CI, cosimstd_CI] = deal(zeros(length(mapvals),2));
-[mainInt, mainStd, mainD, mainDStd] = deal(zeros(length(mapvals),8));
-[mainInt_CI, mainStd_CI] = deal(zeros(length(mapvals),8,2));
+[wucb, wucp, wucD, cosimb, cosimp, cosimD] = deal(zeros(length(mapvals),1));
+[wucb_CI, cosim_CI] = deal(zeros(length(mapvals),2));
+[mainStd, mainStdP, mainDStd] = deal(zeros(length(mapvals),6));
+mainStd_CI = zeros(length(mapvals),6,2);
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
 
@@ -209,12 +210,17 @@ for i = 1:length(mapvals)
 
     fprintf('Evaluating %s\n', mapname{i})
 
+    randgrad = csvread(fullfile('../../resources/neuromaps/canlab2024_permuted_annotations',mapvals(i).name));
+    randgrad(randgrad == 0) = nan; % medial wall
+
     map_val = vals(these_good_rois, i);
+    perm_map = randgrad(these_good_rois,:);
 
     map_mu = mean(map_val);
     map_sd = std(map_val);
     
     map_val = (map_val - map_mu)./map_sd;
+    perm_map = (perm_map - nanmean(perm_map))./map_sd;
     
     n_tests = size(vals,2);
     sidak_95CI = [(1-0.95^(1/n_tests))/2,1-(1-0.95^(1/n_tests))/2];
@@ -226,25 +232,20 @@ for i = 1:length(mapvals)
 
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), ~, bootstat, wucstd(i), ~, bootstat_std, wucD(i), wucDStd(i)] = neuromaps_corr_fx(obs_val, ...
-        map_val, confounds_good_rois);
-    wucb_CI(i,:) = prctile(bootstat, 100*sidak_95CI);
-    wucstd_CI(i,:) = prctile(bootstat_std, 100*sidak_95CI);
+    [wucb(i), wucb_CI(i,:), wucp(i) wucD(i)] = neuromaps_corr_fx(obs_val, ...
+        map_val, perm_map, confounds_good_rois);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), ~, bootstat, cosimstd(i), ~, bootstat_std, cosimD(i), cosimDStd(i)] = neuromaps_corr_fx(obs_val, ...
-        map_val, confounds_good_rois);
-    cosim_CI(i,:) = prctile(bootstat, 100*sidak_95CI);
-    cosimstd_CI(i,:) = prctile(bootstat_std, 100*sidak_95CI);
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i), sampling_var, perm_var, nu] = neuromaps_corr_fx(obs_val, ...
+        map_val, perm_map, confounds_good_rois);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainInt(i,:), mainInt_CI(i,:,:), bootstat, mainStd(i,:), ~, bootstat_std, mainD(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
-        map_val, confounds_good_rois);
-    mainInt_CI(i,:,:) = prctile(bootstat, 100*sidak_95CI)';
-    mainStd_CI(i,:,:) = prctile(bootstat_std, 100*sidak_95CI)';
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:), ...
+        sampling_var, perm_var, nu] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+        map_val, perm_map, confounds_good_rois);
 end
 
 
@@ -264,13 +265,13 @@ for i = 1:length(wucb)
 end
 int_str = {};
 for i = 1:length(wucb)
-    int_str{i} = sprintf('%0.3f±%0.3f',mainStd(i,3), mean([mainStd_CI(i,3,2) - mainStd(i,3), mainStd(i,3) - mainStd_CI(i,3,1)],2));
+    int_str{i} = sprintf('%0.3f±%0.3f',mainStd(i,2), mean([mainStd_CI(i,2,2) - mainStd(i,2), mainStd(i,2) - mainStd_CI(i,2,1)],2));
 end
 disp(table(cosimb_str', wucb_str', int_str', ...
     'VariableNames', {'Topo', 'Geo', 'zGeo-zTopo'}))
 
 disp('Cohens Ds:');
-disp(table(cosimD(:), wucD(:), mainDStd(:,3), ...
+disp(table(cosimD(:), wucD(:), mainDStd(:,2), ...
     'VariableNames',{'cosim', 'wuc', 'zGeo-zTopo'},...
     'RowNames', abr_mapname));
 
@@ -284,7 +285,8 @@ cla
 hold on;
 pos_err = cosim_CI(:,2) - cosimb;
 neg_err = cosimb - cosim_CI(:,1);
-errorbar(cosimb, 1:length(cosimb), neg_err, pos_err, '.', 'horizontal', 'capsize', 0, 'color', dc_color_light)
+errorbar(cosimb, 1:length(cosimb), neg_err, pos_err, '.', 'horizontal', ...
+    'capsize', 0, 'color', dc_color_light, 'linewidth', 2)
 plot(cosimb, 1:length(cosimb),'o','MarkerFaceColor',dc_color_light,'color', dc_color);
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', abr_mapname,'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
@@ -305,8 +307,9 @@ for i = 1:length(maps)
     annot{i,2} = text(buffer*xl(2)*0.95,i,maps{i,5},'FontSize',fs-4,'HorizontalAlignment','right');
 end
 
-sig = cosim_CI(:,1).*cosim_CI(:,2) > 0;
-if any(sig)
+pthresh = FDR(cosimp,0.05);
+if any(pthresh)
+    sig = cosimp <= pthresh;
     x = sign(cosimb(sig)).*(pos_err(sig) + abs(cosimb(sig)) + xl(2) * 0.2);
     text(x, find(sig),'*','HorizontalAlignment','center');
 end
@@ -317,7 +320,8 @@ cla
 hold on;
 pos_err = wucb_CI(:,2) - wucb;
 neg_err = wucb - wucb_CI(:,1);
-errorbar(wucb, 1:length(wucb), neg_err, pos_err, '.', 'horizontal', 'capsize', 0, 'color', dc_color_light)
+errorbar(wucb, 1:length(wucb), neg_err, pos_err, '.', 'horizontal', ...
+    'capsize', 0, 'color', dc_color_light, 'linewidth', 2)
 plot(wucb, 1:length(wucb), '^','MarkerFaceColor',dc_color_light,'color', dc_color);
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', [],'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
@@ -338,8 +342,9 @@ for i = 1:length(maps)
     annot{i,2} = text(buffer*xl(2)*0.95,i,maps{i,5},'FontSize',fs-4,'HorizontalAlignment','right');
 end
 
-sig = wucb_CI(:,1).*wucb_CI(:,2) > 0;
-if any(sig)
+pthresh = FDR(wucp,0.05);
+if any(pthresh)
+    sig = wucp <= pthresh;
     x = sign(wucb(sig)).*(pos_err(sig) + abs(wucb(sig)) + xl(2) * 0.15);
     text(x, find(sig),'*','HorizontalAlignment','center','VerticalAlignment','middle');
 end
@@ -348,10 +353,11 @@ xline(0, 'color', [0.5,0.5,0.5]);
 ax3 = nexttile();
 cla
 hold on;
-pos_err = mainStd_CI(:,3,2) - mainStd(:,3);
-neg_err = mainStd(:,3,1) - mainStd_CI(:,3,1);
-errorbar(mainStd(:,3), 1:size(mainStd,1), neg_err, pos_err, '.', 'horizontal', 'capsize', 0, 'color', dc_color_light)
-plot(mainStd(:,3),1:size(mainStd,1),'s','MarkerFaceColor',dc_color_light,'color', dc_color);
+pos_err = mainStd_CI(:,2,2) - mainStd(:,2);
+neg_err = mainStd(:,2,1) - mainStd_CI(:,2,1);
+errorbar(mainStd(:,2), 1:size(mainStd,1), neg_err, pos_err, '.', 'horizontal', ...
+    'capsize', 0, 'color', dc_color_light, 'linewidth', 2)
+plot(mainStd(:,2),1:size(mainStd,1),'s','MarkerFaceColor',dc_color_light,'color', dc_color);
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', [],'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
@@ -359,7 +365,7 @@ ylim([0.5,length(mapname)+0.5])
 title('zGeo - zTopo','fontweight','normal', 'fontsize',fs);
 xlabel('Mean \Delta\beta_{std}', 'fontsize',fs)
 box off
-xl = max(max(abs(squeeze(mainStd_CI(:,3,:)))))'.*[-1,1];
+xl = max(max(abs(squeeze(mainStd_CI(:,2,:)))))'.*[-1,1];
 xlim([buffer*xl(1), xl(2)*buffer])
 yl = ylim;
 annot = cell(length(maps),2);
@@ -372,9 +378,11 @@ for i = 1:length(maps)
     annot{i,2} = text(buffer*xl(2)*0.95,i,maps{i,5},'FontSize',fs-4,'HorizontalAlignment','right');
 end
 
-sig = mainStd_CI(:,3,1).*mainStd_CI(:,3,2) > 0;
-if any(sig)
-    x = sign(mainStd(sig,3)).*(pos_err(sig) + abs(mainStd(sig,3)) + xl(2) * 0.25);
+%sig = mainStd_CI(:,3,1).*mainStd_CI(:,3,2) > 0;
+pthresh = FDR(mainStdP(:,2),0.05);
+if any(pthresh)
+    sig = mainStdP(:,2) <= pthresh;
+    x = sign(mainStd(sig,2)).*(pos_err(sig) + abs(mainStd(sig,2)) + xl(2) * 0.25);
     text(x, find(sig),'*','HorizontalAlignment','center');
 end
 xline(0, 'color', [0.5,0.5,0.5]);
@@ -385,7 +393,7 @@ set(gcf,'Position', [pos(1:2), 600,285]);
 
 sgtitle({'Specific factors are associated with','flexible implementation of shared representations'},'fontweight','bold','fontsize',fs+1)
 
-exportgraphics(gcf,'panels/gradient_barplots_nostd.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/gradient_barplots_nostd.png',noise),'ContentType','image','Resolution',300);
 
 
 
@@ -422,10 +430,12 @@ for i = 1:size(wuc_md_ctx,2)
 end
 xl = [min(good_grad_roi), max(good_grad_roi)];
 yl = [min([ylim(ax2),ylim(ax1)]), max([ylim(ax2),ylim(ax1)])];
-xlim(ax2,xl);
-ylim(ax2,yl);
 xlim(ax1,xl);
-ylim(ax1,yl);
+xlim(ax2,xl);
+if strcmp(noise,'standardized')
+    ylim(ax1,yl);
+    ylim(ax2,yl);
+end
 set(ax2, 'YGrid', 'on', 'box', 'off', 'fontsize', fs,...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0)
 ylabel(ax2,{'Mean regional','geometric similarity', '(WUC of RDMs)'});
@@ -482,4 +492,4 @@ file_ind = find(contains({maps.name}, this_map{1}{1}) & contains({maps.name}, th
 grayord_surf_L = gifti(fullfile(maps(file_ind).folder, maps(file_ind).name));
 plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 
-exportgraphics(gcf,'panels/margulies_01.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/margulies_01.png',noise),'ContentType','image','Resolution',300);

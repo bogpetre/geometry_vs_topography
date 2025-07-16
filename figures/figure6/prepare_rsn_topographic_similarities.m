@@ -10,6 +10,7 @@ n_subj = height(tbl0);
 
 data_root = '../../derivatives/restingstate/hcp25/';
 
+noise='whitened';
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -17,7 +18,6 @@ roi_labels = {atlas_labels.name};
 
 atlas_cii = get_cifti_data(config.canlab2024.path);
 n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
-
 
 %% compute exhaustive cosine similarities of task topographies
 
@@ -34,8 +34,8 @@ rsn_good_topo = true(1,n_subj);
 parfor i = 1:height(tbl0)
     try
         contrast_file = dir([data_root, '/results/', ...
-                sprintf('%d/standardized_betas/cifti_math_results.dscalar.nii', ...
-                tbl0.Subject(i))]);
+                sprintf('%d/%s_betas/cifti_math_results.dscalar.nii', ...
+                tbl0.Subject(i), noise)]);
 
         these_contrasts = get_cifti_data(fullfile(contrast_file.folder, contrast_file.name));
         
@@ -86,4 +86,4 @@ end
 
 clear topos
 
-save('rsn_topographic_similarities.mat','rsn_roi_topo','rsn_good_topo','-v7.3');
+save(sprintf('rsn_topographic_similarities_%s.mat',noise),'rsn_roi_topo','rsn_good_topo','-v7.3');

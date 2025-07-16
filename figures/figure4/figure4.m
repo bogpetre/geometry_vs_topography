@@ -19,6 +19,7 @@ close(f)
 dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
+noise = 'whitened';
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -43,8 +44,8 @@ for s = 1:height(sid)
         tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/standardized_betas/standardized_similarity.csv',sid.Var2(s)),'FileType','text');
+        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
         comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
         wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
@@ -55,7 +56,7 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/standardized_betas/cosine/%d_v_%d_wuc.tsv',sid.Var1(s), sid.Var2(s)),...
+        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
             'FileType','text','Delimiter',','));
     catch
         warning('Could not import pair %d', s);
@@ -71,7 +72,7 @@ end
 cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/standardized_betas/cosine/%d_v_%d_cosim.tsv', sid.Var1(s), sid.Var2(s)), '\t');
+        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
     catch
         warning('Could not import pair %d', s);
     end
@@ -116,6 +117,7 @@ cmaprange(1) = eps;
 
 T = {'Dependence of topographic','on geometric similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
 plot_to_brain(assocB, 1:length(assocB), cmaprange, T, fs+2);
+exportgraphics(gcf,sprintf('panels_%s/association_map.png',noise),'ContentType','image','Resolution',300);
 
 %% estimate neuromap associations
 
@@ -178,7 +180,6 @@ for i = 1:length(mapvals)
     map_sd = std(map_val);
     
     map_val = (map_val - map_mu)./map_sd;
-    %perm_map = (perm_map - map_mu)./map_sd;
     perm_map = (perm_map - nanmean(perm_map))./map_sd;
     
     topo = atanh(cosim(:,these_good_rois));
@@ -288,7 +289,7 @@ leg1.Position(2) = -0.02;
 
 sgtitle({'Topography is an inconsistent','measure of geometry'},'FontWeight','bold','fontsize',fs+2)
 
-exportgraphics(gcf,'panels/scatterplots.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/scatterplots.png',noise),'ContentType','image','Resolution',300);
 
 %% plot association 2nd level regression and barplots
 abr_mapname = maps(:,3);
@@ -302,8 +303,7 @@ t2 = tiledlayout(1,2,'TileSpacing','compact');
 
 nexttile()
 [~,I] = sort(Bp, 'ascend');
-Bp(Bp == 0) = 0.99/(0.99+nperms);
-[sig,pthresh] = holm_sidak(Bp, 0.05);
+sig = Bp <= FDR(Bp, 0.05);
 %{
 I = I(ismember(I,find(Bp <= pthresh)));
 if length(I) > 0
@@ -371,8 +371,7 @@ for i = 1:length(maps)
     annot{i,2} = text(buffer*xl(2)*0.95,i,maps{i,5},'FontSize',fs-3,'HorizontalAlignment','right');
 end
 
-Bp(Bp == 0) = 0.99/nperms;
-sig = holm_sidak(Bp, 0.05);
+sig = Bp <= FDR(Bp, 0.05);
 if any(sig)
     x = sign(Bb(sig)).*(pos_err(sig) + abs(Bb(sig)) + xl(2) * 0.2);
     text(x, find(sig),'*','HorizontalAlignment','center');
@@ -411,4 +410,4 @@ plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 sgtitle({'Topographic similarity only indicates','geometric similarity in unimodal areas'},'FontWeight','Bold','fontsize',fs+2)
 
 
-exportgraphics(gcf,'panels/second_level_associations.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/second_level_associations.png',noise),'ContentType','image','Resolution',300);

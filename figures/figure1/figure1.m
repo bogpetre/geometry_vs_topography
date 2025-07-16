@@ -25,6 +25,8 @@ fs=config.matlab_disp_scheme.fontsize;
 dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
+noise = 'whitened';
+
 %% import atlas and get region names
 
 atlas_cii = cifti_read(config.canlab2024.path);
@@ -75,8 +77,8 @@ clf_resort = [2,1,3,4,6,5,8,7,10,9,12,15,14,11,13,20,18,21,16,17,22,23,19];
 tasks = [1,4:5];
 cond = ismember(task_labels, tasks);
 
-topo1 = get_cifti_data(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/standardized_contrasts/merged_cifti.dscalar.nii', sid.Var1(subj_pair_id)));
-topo2 = get_cifti_data(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/standardized_contrasts/merged_cifti.dscalar.nii', sid.Var2(subj_pair_id)));
+topo1 = get_cifti_data(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/merged_cifti.dscalar.nii', sid.Var1(subj_pair_id), noise));
+topo2 = get_cifti_data(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/merged_cifti.dscalar.nii', sid.Var2(subj_pair_id), noise));
 
 uni_mask = atlas_cii.cortex_left == uni;
 
@@ -534,14 +536,18 @@ proj2_trans = mtopo2_trans(cond,:)*v2;
 
 rdm_root = '../../derivatives/hcp_glm_msmall_grayord_spm/results/';
 
-standardized1_ = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var1(subj_pair_id)));
-standardized2_ = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var2(subj_pair_id)));
+if strcmp(noise,'standardized')
+    standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var1(subj_pair_id)));
+    standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var2(subj_pair_id)));
+elseif strcmp(noise,'whitened')
+    standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var1(subj_pair_id)));
+    standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var2(subj_pair_id)));
+else
+    error('Did not understand noise model choice "%s"',noise)
+end
 
-standardized1 = standardized1_;
-standardized2 = standardized2_;
-
-conf_mats1 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/standardized_contrasts/binary_clf_perf.csv', sid.Var1(subj_pair_id)),'ReadRowNames',true,'ReadVariableNames',true);
-conf_mats2 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/standardized_contrasts/binary_clf_perf.csv',sid.Var2(subj_pair_id)),'ReadRowNames',true,'ReadVariableNames',true);
+conf_mats1 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', sid.Var1(subj_pair_id),noise),'ReadRowNames',true,'ReadVariableNames',true);
+conf_mats2 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv',sid.Var2(subj_pair_id),noise),'ReadRowNames',true,'ReadVariableNames',true);
 
 uni_rdm1 = squareform(standardized1(:, uni));
 uni_rdm2 = squareform(standardized2(:, uni));
@@ -598,7 +604,11 @@ axis square;
 set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
     'XTickLabelRotation',90,'FontSize',fs-2);
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks,'FontSize',fs-2);
-title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant A'},'FontWeight','normal','fontsize',fs)
+if strcmp(noise ,'whitened')
+    title({'Response Dissimilarity', '(Crossnobis Dist)', 'Participant A'},'FontWeight','normal','fontsize',fs)
+elseif strcmp(noise, 'standardized')
+    title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant A'},'FontWeight','normal','fontsize',fs)
+end
 
 nexttile(uni_rdm_tile);
 imagesc(uni_rdm2(rdm_ind,rdm_ind));
@@ -782,7 +792,12 @@ h = lsline;
 set(h,'color', dc_color, 'LineWidth',3);
 ylim([0.4,1.1]);
 ylabel({'Clf Perf', '(Bal. Acc.)'},'fontsize',fs)
-xlabel({'t-distance'},'fontsize',fs)
+switch noise
+    case 'whitened'
+        xlabel({'Crossnobis dist'},'fontsize',fs)
+    case 'standardized'
+        xlabel({'t-distance'},'fontsize',fs)
+end
 box off;
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
 set(gca,'fontsize',fs)
@@ -801,7 +816,12 @@ h = lsline;
 set(h,'color', dc_color, 'LineWidth',3);
 ylim([0.4,1.1]);
 ylabel({'Clf Perf', '(Bal. Acc.)'},'fontsize',fs)
-xlabel({'t-distance'},'fontsize',fs)
+switch noise
+    case 'whitened'
+        xlabel({'Crossnobis dist'},'fontsize',fs)
+    case 'standardized'
+        xlabel({'t-distance'},'fontsize',fs)
+end
 box off;
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
 set(gca,'fontsize',fs)
@@ -833,7 +853,12 @@ axis square;
 set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
     'XTickLabelRotation',90,'FontSize',fs-2);
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks);
-title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant A'},'FontWeight','normal','fontsize',fs)
+switch noise
+    case 'whitened'
+        title({'Response Dissimilarity', '(Crossnobis Dist)', 'Participant A'},'FontWeight','normal','fontsize',fs)
+    case 'standardized'
+        title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant A'},'FontWeight','normal','fontsize',fs)
+end
 
 nexttile(trans_rdm_tile);
 imagesc(trans_rdm2(rdm_ind,rdm_ind));
@@ -842,7 +867,12 @@ axis square
 set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
     'XTickLabelRotation',90,'FontSize',fs-2);
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks);
-title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+switch noise
+    case 'whitened'
+        title({'Response Dissimilarity', '(Crossnobis Dist)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+    case 'standardized'
+        title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+end
 
 
 ax1 = nexttile(trans_rdm_tile);
@@ -1019,7 +1049,12 @@ h = lsline;
 set(h,'color', dc_color, 'LineWidth',3);
 ylim([0.4,1.1]);
 ylabel({'Clf Perf', '(Bal. Acc.)'},'fontsize',fs)
-xlabel({'t-distance'},'fontsize',fs)
+switch noise
+    case 'whitened'
+        xlabel('crossnobis dist', 'fontsize', fs);
+    case 'standardized'
+        xlabel({'t-distance'},'fontsize',fs)
+end
 box off;
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
 set(gca,'fontsize',fs)
@@ -1038,7 +1073,12 @@ h = lsline;
 set(h,'color', dc_color, 'LineWidth',3);
 ylim([0.4,1.1]);
 ylabel({'Clf Perf', '(Bal. Acc.)'},'fontsize',fs)
-xlabel({'t-distance'},'fontsize',fs)
+switch noise
+    case 'whitened'
+        xlabel('crossnobis dist', 'fontsize', fs);
+    case 'standardized'
+        xlabel({'t-distance'},'fontsize',fs)
+end
 xl = xlim;
 xlim([xl(1),xl(2)*1.1])
 box off;

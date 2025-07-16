@@ -10,6 +10,8 @@ n_subj = height(tbl0);
 
 data_root = '../../derivatives/hcp_glm_msmall_grayord_spm/';
 
+noise = 'whitened';
+
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -34,8 +36,8 @@ good_topo = true(1,n_subj);
 parfor i = 1:height(tbl0)
     try
         contrast_file = dir([data_root, '/results/', ...
-                sprintf('%d/all_tasks/standardized_contrasts/merged_cifti.dscalar.nii', ...
-                tbl0.Subject(i))]);
+                sprintf('%d/all_tasks/%s_contrasts/merged_cifti.dscalar.nii', ...
+                tbl0.Subject(i), noise)]);
 
         these_contrasts = get_cifti_data(fullfile(contrast_file.folder, contrast_file.name));
         
@@ -88,4 +90,4 @@ end
 
 clear topos
 
-save('task_topographic_similarities.mat','roi_topo','good_topo','-v7.3');
+save(sprintf('task_topographic_similarities_%s.mat', noise),'roi_topo','good_topo','-v7.3');

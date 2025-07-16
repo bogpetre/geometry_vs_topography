@@ -33,6 +33,7 @@ perm = 5000;
 data_root = '../../derivatives/hcp_glm_msmall_grayord_spm/';
 rsn_root = '../../derivatives/restingstate/hcp25/';
 
+noise='standardized';
 %% ACE model design
 ACE = [1,1,0,0,1;...
     0.5,1,0,0,1;...
@@ -132,9 +133,9 @@ dz_sr = dz_sr & ~eye(height(restricted));
 
 
 %% load exhaustive cosine similarities and goemetric similarities of tasks
-load('task_topographic_similarities.mat','roi_topo','good_topo');
+load(sprintf('task_topographic_similarities_%s.mat', noise),'roi_topo','good_topo');
 
-geom_bsc = dir(fullfile(data_root,'bsc_all/standardized_betas/cosine/*v_all.tsv'));
+geom_bsc = dir(fullfile(data_root,sprintf('bsc_all/%s_betas/cosine/*v_all.tsv',noise)));
 roi_geom0 = zeros(length(geom_bsc),length(geom_bsc),518);
 for i = 1:length(geom_bsc)
     csv = readmatrix(fullfile(geom_bsc(i).folder, geom_bsc(i).name),'FileType','text');
@@ -370,9 +371,9 @@ geom_B =
 
 
 %% load exhaustive cosine similarities and goemetric similarities of RSNs
-load('rsn_topographic_similarities.mat','rsn_roi_topo','rsn_good_topo');
+load(sprintf('rsn_topographic_similarities_%s.mat',noise),'rsn_roi_topo','rsn_good_topo');
 
-geom_bsc = dir(fullfile(rsn_root,'bsc_all/standardized_betas/cosine/*v_all.tsv'));
+geom_bsc = dir(fullfile(rsn_root,sprintf('bsc_all/%s_betas/cosine/*v_all.tsv',noise)));
 roi_geom_rsn0 = zeros(length(geom_bsc),length(geom_bsc),518);
 for i = 1:length(geom_bsc)
     csv = readmatrix(fullfile(geom_bsc(i).folder, geom_bsc(i).name),'FileType','text');
