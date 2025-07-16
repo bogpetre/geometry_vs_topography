@@ -79,7 +79,7 @@ def get_clf_mat(model, cv, scorer,
     'parcellation' specified by region_ind. The lower triangle of the confusion 
     matrix is returned.
     '''
-        
+
     # extract region and evaluate model
     scores = {parcellation.labels[key]: [] for key in parcellation.labels}
 
@@ -105,7 +105,7 @@ def get_clf_mat(model, cv, scorer,
                 else:
                     these_groups = [groups[j] for j in cond_ind]
                     this_score = cross_val_score(model, this_X, this_y, cv=cv, groups=these_groups)
-                
+
                 scores[this_label].append(np.mean(this_score))
 
     return scores, y_set

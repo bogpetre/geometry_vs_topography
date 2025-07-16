@@ -13,14 +13,16 @@ from nipype.interfaces.base import (
     traits,
     File,
     Str,
-    Bool,
     TraitedSpec,
     isdefined
 )
-from traits.api import List
+from traits.api import (
+    List,
+    Bool
+)
 
 from ..hcp_utils_ext.utils import load_parcellation
-from ..neartscentroidclf.model import extract_region_data, get_img_data, get_clf_mat
+from ..nearestcentroidclf.model import extract_region_data, get_img_data, get_clf_mat
 
 
 class NearestCentroidClfInputSpec(BaseInterfaceInputSpec):
@@ -94,7 +96,7 @@ class NearestCentroidClf(BaseInterface):
         import os
 
         if name == 'out_file':
-            return os.path.join(os.getcwd(), 'clf_perf.csv')
+            return os.path.join(os.getcwd(), 'binary_clf_performance.csv')
 
     def _list_outputs(self):
         outputs = self.output_spec().get()

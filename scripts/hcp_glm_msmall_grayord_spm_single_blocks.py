@@ -701,7 +701,7 @@ whiteningwf.connect([
 # Nearest centroid classifier workflow #
 ########################################
 
-def init_clfwf(name='clf')
+def init_clfwf(name='clf'):
     wf = pe.Workflow(name=name)
 
     inputnode = pe.Node(
@@ -710,7 +710,7 @@ def init_clfwf(name='clf')
         name='inputspec')
 
     clf = pe.Node(
-        interface=NearestCentroidClf()
+        interface=NearestCentroidClf(),
         name='clf')
 
     outputnode = pe.Node(
@@ -776,8 +776,8 @@ subjectlevel.connect([
                              ('mergewhitenedcontrastsacrosstasks.out_file', 'results.all_tasks.whitened_contrasts'),
                             ]),
 
-    (stdclfwf, datasink, [('clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),
-    (whclfwf, datasink, [('clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf')]),
+    (stdclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),
+    (whclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf')]),
 ])
 
 
@@ -829,7 +829,7 @@ if __name__ == '__main__':
     }
 
     datasink.inputs.base_directory = os.path.abspath(args.out)
-    
+
     subjectlevel.inputs.whitening.inputspec.atlas = args.atlas
     subjectlevel.inputs.stdclf.inputspec.atlas = args.atlas
     subjectlevel.inputs.whclf.inputspec.atlas = args.atlas
