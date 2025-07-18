@@ -33,7 +33,7 @@ perm = 5000;
 data_root = '../../derivatives/hcp_glm_msmall_grayord_spm/';
 rsn_root = '../../derivatives/restingstate/hcp25/';
 
-noise='standardized';
+noise='whitened';
 %% ACE model design
 ACE = [1,1,0,0,1;...
     0.5,1,0,0,1;...
