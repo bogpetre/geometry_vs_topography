@@ -19,7 +19,7 @@ close(f)
 dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
-noise='standardized';
+noise='whitened';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
@@ -276,14 +276,14 @@ for i = 1:length(mapvals)
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i), sampling_var, perm_var, nu] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i), sampling_var, perm_var] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
     [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:), ...
-        sampling_var, perm_var, nu] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+        sampling_var, perm_var] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map, confounds_good_rois);
 end
 
@@ -347,8 +347,9 @@ for i = 1:length(maps)
 end
 
 %sig = cosim_CI(:,1).*cosim_CI(:,2) > 0;
-sig = cosimp <= FDR(cosimp, 0.05);
-if any(sig)
+pthresh = FDR(cosimp, 0.05);
+if any(pthresh)
+    sig = cosimp <= pthresh;
     x = sign(cosimb(sig)).*(pos_err(sig) + abs(cosimb(sig)) + xl(2) * 0.2);
     text(x, find(sig),'*','HorizontalAlignment','center');
 end
@@ -382,8 +383,9 @@ for i = 1:length(maps)
 end
 
 %sig = wucb_CI(:,1).*wucb_CI(:,2) > 0;
-sig = wucp <= FDR(wucp, 0.05);
-if any(sig)
+pthresh = FDR(wucp, 0.05);
+if any(pthresh)
+    sig = wucp <= pthresh;
     x = sign(wucb(sig)).*(pos_err(sig) + abs(wucb(sig)) + xl(2) * 0.15);
     text(x, find(sig),'*','HorizontalAlignment','center','VerticalAlignment','middle');
 end
@@ -418,8 +420,9 @@ for i = 1:length(maps)
 end
 
 %sig = mainStd_CI(:,3,1).*mainStd_CI(:,3,2) > 0;
-sig = mainStdP(:,2) <= FDR(mainStdP(:,2),0.05);
-if any(sig)
+pthresh = FDR(mainStdP(:,2),0.05);
+if any(pthresh)
+    sig = mainStdP(:,2) <= pthresh;
     x = sign(mainStd(sig,2)).*(pos_err(sig) + abs(mainStd(sig,2)) + xl(2) * 0.25);
     text(x, find(sig),'*','HorizontalAlignment','center');
 end

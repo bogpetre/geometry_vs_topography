@@ -30,7 +30,7 @@ function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_fx(
     se = sqrt(perm_var + sampling_var);
     z = B/se;
 
-    CI = sqrt(sampling_var)*icdf('norm', [0.025, 0.975], B, se);
+    CI = icdf('norm', [0.025, 0.975], B, se);
     p = 2*normcdf(-abs(z));
 
     effectsize = B / sqrt(perm_var + n*sampling_var);

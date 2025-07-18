@@ -63,10 +63,18 @@ function [B, CI, p, effectsize, sampling_var, perm_var] = neuromaps_corr_interac
     CI = zeros(size(B,2),2);
     p = nan(size(B,2),1);
     for i = 1:length(B)
-        CI(i,:) = sqrt(sampling_var(i))*icdf('norm', [0.025, 0.975], B(i), se(i));
+        CI(i,:) = icdf('norm', [0.025, 0.975], B(i), se(i));
         if i < 3
             % assuming we haven't done a spin test on confounds
             p(i) = 2*normcdf(-abs(z(i)));
+
+            p_naive = (sum(abs(B_perm(:,i)) > abs(B(i)))+1)./(length(B_perm(:,i))+1);
+            if p_naive > p(i) && sum(abs(B_perm(:,i)) > abs(B(i))) > 0
+                warning(['Parametric approximation of joint sampling and null ' ...
+                    'distribution is producing a more significant p-value (%0.6f) ' ...
+                    'than the nonparametric null distribution (%0.6f) for beta%d. ' ...
+                    'This is suss.'],p(i), p_naive, i);
+            end
         end
     end
 

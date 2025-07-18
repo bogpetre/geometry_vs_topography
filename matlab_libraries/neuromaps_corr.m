@@ -122,7 +122,7 @@ function [B, CI, p, effectsize, perm_var, jk_var, nu] = neuromaps_corr(DV, IV, o
 
     p_naive = (sum(abs(perm) > abs(B))+1)/(length(perm)+1);
 
-    if(p_naive > p)
+    if p_naive > p && sum(abs(perm) > abs(B)) > 0
         warning('Parametric approximation of joint sampling and null distribution is producing a more significant p-value (%0.6f) than the nonparametric null distribution (%0.6f). This is suss.',p, p_naive);
     end
         
