@@ -1,4 +1,4 @@
-function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, obs_map, perm_map, varargin)
+function [B, CI, p, effectsize, sampling_var, perm_var] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, obs_map, perm_map, varargin)
     assert(size(obs_val1,1) == size(obs_val2,1))
     
     [p, n] = size(obs_val1);
@@ -58,17 +58,15 @@ function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_int
     %}
 
     se = sqrt(perm_var + sampling_var);
-    %nu = (perm_var + sampling_var).^2 ./ (sampling_var.^2/(n-1) + perm_var.^2/(n-1));
-    nu = n-1;
-    t = B./se;
+    z = B./se;
 
     CI = zeros(size(B,2),2);
     p = nan(size(B,2),1);
     for i = 1:length(B)
-        CI(i,:) = sqrt(sampling_var(i))*icdf('t', [0.025, 0.975], nu) + B(i);
+        CI(i,:) = sqrt(sampling_var(i))*icdf('norm', [0.025, 0.975], B(i), se(i));
         if i < 3
             % assuming we haven't done a spin test on confounds
-            p(i) = 2*tcdf(-abs(t(i)), nu);
+            p(i) = 2*normcdf(-abs(z(i)));
         end
     end
 
@@ -111,8 +109,6 @@ function B = get_mean_B(obs_val1, obs_val2, obs_map, varargin)
         X = X(good_roi,:);
         X = X - mean(X);
         X = [X, X.*valMain(good_roi,:)];
-
-
 
         B(j,:) = ((X'*X)\X'*Y(:))';
     end

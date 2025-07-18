@@ -20,20 +20,18 @@ function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_fx(
     % consistency with coupling analysis let's do the trivial jackknife 
     % estimate of the standard error of B.
     jk = nan(size(subj_B,1),1);
-    for i = 1:size(subj_B,1)
+    parfor i = 1:size(subj_B,1)
         ind = 1:size(subj_B,1);
         ind(i) = [];
         jk(i) = mean(subj_B(ind,1));
     end
     sampling_var = (n-1)/n*sum((jk - mean(jk)).^2);
 
-    %nu = (perm_var + sampling_var)^2 ./ (sampling_var^2/(n-1) + perm_var^2/(m-1));
-    nu = n-1;
     se = sqrt(perm_var + sampling_var);
-    t = B/se;
+    z = B/se;
 
-    CI = sqrt(sampling_var)*icdf('t', [0.025, 0.975], nu) + B;
-    p = 2*tcdf(-abs(t), nu);
+    CI = sqrt(sampling_var)*icdf('norm', [0.025, 0.975], B, se);
+    p = 2*normcdf(-abs(z));
 
     effectsize = B / sqrt(perm_var + n*sampling_var);
 end
