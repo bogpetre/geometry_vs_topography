@@ -6,7 +6,9 @@
     "cifti_matlab": "/home/bogdan/.matlab/cifti-matlab",
     "spm12": "/home/bogdan/.matlab/spm/spm12/",
     "canlabCore": "/home/bogdan/.matlab/canlab/CanlabCore",
-    "npm": "/home/bogdan/.matlab/canlab/Neuroimaging_Pattern_Masks"
+    "npm": "/home/bogdan/.matlab/canlab/Neuroimaging_Pattern_Masks",
+    "rsatoolbox": "/dartfs-hpc/rc/home/m/f0042vm/software/rsatoolbox_matlab",
+    "custom": "matlab_libraries"
   },
   "matlab_base_fontsize": 12,
   "matlab_disp_scheme": {

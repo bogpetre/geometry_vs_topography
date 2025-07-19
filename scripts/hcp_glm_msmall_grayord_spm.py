@@ -33,6 +33,7 @@ import os  # system functions
 import sys
 import argparse
 import numpy as np
+import json
 
 import nipype.interfaces.io as nio  # Data i/o
 import nipype.interfaces.fsl as fsl  # fsl
@@ -52,16 +53,6 @@ logging.update_logging(config)     # keeps Nipype’s logger in sy
 
 import nipype.interfaces.matlab as mlab
 mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
-mlab.MatlabCommand.set_default_paths(['/dartfs-hpc/rc/home/m/f0042vm/software/spm12',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/rsatoolbox_matlab',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/CanlabCore/diagnostics/',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/CanlabCore/Visualization_functions',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/CanlabCore/OptimizeDesign11/core_functions/',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/CanlabCore/Statistics_tools/',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/CanlabCore/Data_processing_tools/',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/CanlabCore/Misc_utilities/',
-                                      '/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/libraries/matlab',
-                                      '/dartfs-hpc/rc/home/m/f0042vm/software/covShrinkage'])
 
 # Without this hack this script tends to hang when run over SLURM on NSF filesystems
 from nipype.interfaces.spm import SPMCommand
@@ -1582,8 +1573,25 @@ if __name__ == '__main__':
                         help='cifti dlabels file to use to define RSA parcells')
     parser.add_argument('--data', type=str, required=False,
                         help='Path to HCP data directory immediately above subject folders, e.g. HCP1200')
+    parser.add_argument('--config', type=str, required=True, default=os.path.abspath('../config.json'),
+                        help='Path to json file containing local environment paths')
 
     args = parser.parse_args()
+
+    with open(args.config) as f:
+        config = json.load(f)
+
+    mlab.MatlabCommand.set_default_paths([config['matlab_libraries']['spm12'],
+                                          config['matlab_libraries']['rsatoolbox'],
+                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/diagnostics/'),
+                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Visualization_functions'),
+                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/OptimizeDesign11/core_functions/'),
+                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Statistics_tools/'),
+                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Data_processing_tools/'),
+                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Misc_utilities/'),
+                                          os.path.join(os.path.dirname(os.path.abspath(args.config)),
+                                                       config['matlab_libraries']['custom'])])
+
 
     if args.data is not None:
         datasource.inputs.base_directory = args.data
