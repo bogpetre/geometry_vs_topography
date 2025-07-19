@@ -49,6 +49,7 @@ C/C++:
 
 Binaries:
 * connectome workbench: https://www.humanconnectome.org/software/get-connectome-workbench
+* FSL: https://fsl.fmrib.ox.ac.uk/fsl/docs/#/install/index
 
 Data:
 * HCP data: s3://hcp-openaccess/
