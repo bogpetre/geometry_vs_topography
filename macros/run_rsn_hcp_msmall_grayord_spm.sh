@@ -21,7 +21,8 @@ hostname
 source /optnfs/common/miniconda3/etc/profile.d/conda.sh
 conda activate env39
 
-# Make sure matlab is available. This makes it available on the Dartmouth HPC
+# Make sure matlab and freesurfer are available on the system path. 
+# This makes them available on the Dartmouth HPC
 module load freesurfer/7.4.1
 module load matlab
 

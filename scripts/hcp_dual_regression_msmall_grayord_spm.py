@@ -548,7 +548,7 @@ def pickfirstdeep(files):
 # Compute tSNR #
 # ############ #
 
-tsnrwf = workflows.init_tsnr()
+tsnrwf = workflows.init_tsnr(session_source="sessionsource")
 
 # ######################### #
 # Dual Regression Worfklows #
