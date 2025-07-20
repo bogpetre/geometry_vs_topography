@@ -11,6 +11,75 @@ from . import dual_regression as dual_reg
 from warnings import warn
 
 
+def init_tsnr(name='tsnr'):
+    # this function produces an interface that can take one or more cifti input files,
+    # computes tSNR for each, averages them acros inputs, estimates the mean tSNR
+    # for each parcel specified by an input atlas, converts these to a csv file
+    # of parcel tSNRs and returns that. It's designed to work equally with a 
+    # scenario where tasks are spread across multiple scans or when tasks are in
+    # a single scan.
+    wf = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        interface=util.IdentityInterface(
+            fields=['in_files','atlas']),
+        name='inputspec')
+
+    joinWithinTask = pe.JoinNode(
+        interface=util.IdentityInterface(
+            fields=['in_file']),
+        joinsource='directionsource',
+        joinfield=['in_file'],
+        name='joinwithintask')
+
+    joinWithinSubject = pe.JoinNode(
+        interface=util.IdentityInterface(
+            fields=['in_file']),
+        joinsource='tasksource',
+        joinfield=['in_file'],
+        name='joinwithinsubject')
+
+    ciftiTSNR = pe.MapNode(
+        interface=wb_cifti.Reduce(
+            operation="TSNR"),
+        iterfield=['in_file'],
+        name='ciftitsnr')
+
+    ciftiAverage = pe.Node(
+        interface=wb_cifti.Average(),
+        name='ciftiaverage')
+
+    ciftiParcellate = pe.Node(
+        interface=wb_cifti.Parcellate(),
+        name='ciftiparcellate')
+
+    ciftiToText = pe.Node(
+        interface=wb_cifti.CiftiConvertText(),
+        name='ciftiToText')
+
+    outputspec = pe.Node(
+        interface=util.IdentityInterface(
+            fields=['out_file']),
+        name='outputspec')
+    
+    wf.connect([
+        (inputnode, joinWithinTask, [('in_files', 'in_file')]),
+        (joinWithinTask, joinWithinSubject, [('in_file', 'in_file')]),
+        (joinWithinSubject, ciftiTSNR, [(('in_file', mergelists), 'in_file')]),
+        
+        (ciftiTSNR, ciftiAverage, [('out_file', 'in_vars')]),
+        
+        (inputnode, ciftiParcellate, [('atlas', 'parcellation')]),
+        (ciftiAverage, ciftiParcellate, [('out_file', 'in_file')]),
+
+        (ciftiParcellate, ciftiToText, [('out_file', 'in_file')]),
+
+        (ciftiToText, outputspec, [('out_file', 'out_file')])
+    ])
+
+    return wf
+
+
 def init_hcp_dual_regression_wf(name='dualregressionwf', iterations=2, 
     surface_kernel=14, volume_kernel=14, zscorets=False, zscoremap=False):
     '''
