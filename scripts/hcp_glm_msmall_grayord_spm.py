@@ -63,6 +63,8 @@ v = SPMCommand().version
 from geometry_vs_topography.glm.preproc import preproc_surf_hcp
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
 from geometry_vs_topography.nipype.rsa import SpatialWhitening
+# tsnr
+from geometry_vs_topography.nipype import workflows as workflows
 
 # compute VIFs from SPM.mat using canlabCore tools
 from geometry_vs_topography.nipype.glm import VIFs, betaToTstat
@@ -624,76 +626,7 @@ datasink.inputs.regexp_substitutions = [
 # Compute tSNR #
 # ############ #
 
-def init_tsnr(name='tsnr'):
-    # this function produces an interface that can take one or more cifti input files,
-    # computes tSNR for each, averages them acros inputs, estimates the mean tSNR
-    # for each parcel specified by an input atlas, converts these to a csv file
-    # of parcel tSNRs and returns that. It's designed to work equally with a 
-    # scenario where tasks are spread across multiple scans or when tasks are in
-    # a single scan.
-    wf = pe.Workflow(name=name)
-
-    inputnode = pe.Node(
-        interface=util.IdentityInterface(
-            fields=['in_files','atlas']),
-        name='inputspec')
-
-    joinWithinTask = pe.JoinNode(
-        interface=util.IdentityInterface(
-            fields=['in_file']),
-        joinsource='directionsource',
-        joinfield=['in_file'],
-        name='joinwithintask')
-
-    joinWithinSubject = pe.JoinNode(
-        interface=util.IdentityInterface(
-            fields=['in_file']),
-        joinsource='tasksource',
-        joinfield=['in_file'],
-        name='joinwithinsubject')
-
-    ciftiTSNR = pe.MapNode(
-        interface=wb_cifti.Reduce(
-            operation="TSNR"),
-        iterfield=['in_file'],
-        name='ciftitsnr')
-
-    ciftiAverage = pe.Node(
-        interface=wb_cifti.Average(),
-        name='ciftiaverage')
-
-    ciftiParcellate = pe.Node(
-        interface=wb_cifti.Parcellate(),
-        name='ciftiparcellate')
-
-    ciftiToText = pe.Node(
-        interface=wb_cifti.CiftiConvertText(),
-        name='ciftiToText')
-
-    outputspec = pe.Node(
-        interface=util.IdentityInterface(
-            fields=['out_file']),
-        name='outputspec')
-    
-    wf.connect([
-        (inputnode, joinWithinTask, [('in_files', 'in_file')]),
-        (joinWithinTask, joinWithinSubject, [('in_file', 'in_file')]),
-        (joinWithinSubject, ciftiTSNR, [(('in_file', mergelists), 'in_file')]),
-        
-        (ciftiTSNR, ciftiAverage, [('out_file', 'in_vars')]),
-        
-        (inputnode, ciftiParcellate, [('atlas', 'parcellation')]),
-        (ciftiAverage, ciftiParcellate, [('out_file', 'in_file')]),
-
-        (ciftiParcellate, ciftiToText, [('out_file', 'in_file')]),
-
-        (ciftiToText, outputspec, [('out_file', 'out_file')])
-    ])
-
-    return wf
-
-tsnrwf = init_tsnr()
-
+tsnrwf = workflows.init_tsnr()
 
 # ###################### #
 # Preprocessing Workflow #

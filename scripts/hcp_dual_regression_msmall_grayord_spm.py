@@ -73,7 +73,7 @@ v = SPMCommand().version
 
 from nipype_workbench_ext import cifti as wb_cifti
 
-from geometry_vs_topography.nipype import workflows as aligntools_wf # for dual regression workflow
+from geometry_vs_topography.nipype import workflows as workflows # for dual regression workflow
 
 # the following libraries are needed for confound correction
 from nipype.interfaces.freesurfer import Binarize
@@ -441,7 +441,6 @@ datasink.inputs.regexp_substitutions = [
 # Preprocessing Workflow #
 # ###################### #
 
-
 # build workflow
 
 getConfoundsWf = pe.Workflow(name='getconfoundswf')
@@ -540,85 +539,13 @@ def mergelists(lists):
 # Compute tSNR #
 # ############ #
 
-def init_tsnr(name='tsnr'):
-    # this function produces an interface that can take one or more cifti input files,
-    # computes tSNR for each, averages them acros inputs, estimates the mean tSNR
-    # for each parcel specified by an input atlas, converts these to a csv file
-    # of parcel tSNRs and returns that. It's designed to work equally with a 
-    # scenario where tasks are spread across multiple scans or when tasks are in
-    # a single scan.
-    wf = pe.Workflow(name=name)
-
-    inputnode = pe.Node(
-        interface=util.IdentityInterface(
-            fields=['in_files','atlas']),
-        name='inputspec')
-
-    joinWithinBlock = pe.JoinNode(
-        interface=util.IdentityInterface(
-            fields=['in_file']),
-        joinsource='directionsource',
-        joinfield=['in_file'],
-        name='joinwithinblock')
-
-    joinWithinSubject = pe.JoinNode(
-        interface=util.IdentityInterface(
-            fields=['in_file']),
-        joinsource='sessionsource',
-        joinfield=['in_file'],
-        name='joinwithinsubject')
-
-    ciftiTSNR = pe.MapNode(
-        interface=wb_cifti.Reduce(
-            operation="TSNR"),
-        iterfield=['in_file'],
-        name='ciftitsnr')
-
-    ciftiAverage = pe.Node(
-        interface=wb_cifti.Average(),
-        name='ciftiaverage')
-
-    ciftiParcellate = pe.Node(
-        interface=wb_cifti.Parcellate(),
-        name='ciftiparcellate')
-
-    ciftiToText = pe.Node(
-        interface=wb_cifti.CiftiConvertText(),
-        name='ciftiToText')
-
-    outputspec = pe.Node(
-        interface=util.IdentityInterface(
-            fields=['out_file']),
-        name='outputspec')
-    
-    wf.connect([
-        (inputnode, joinWithinBlock, [('in_files', 'in_file')]),
-        (joinWithinBlock, joinWithinSubject, [('in_file', 'in_file')]),
-        (joinWithinSubject, ciftiTSNR, [(('in_file', mergelists), 'in_file')]),
-        
-        (ciftiTSNR, ciftiAverage, [('out_file', 'in_vars')]),
-        
-        (inputnode, ciftiParcellate, [('atlas', 'parcellation')]),
-        (ciftiAverage, ciftiParcellate, [('out_file', 'in_file')]),
-
-        (ciftiParcellate, ciftiToText, [('out_file', 'in_file')]),
-
-        (ciftiToText, outputspec, [('out_file', 'out_file')])
-    ])
-
-    return wf
-
-tsnrwf = init_tsnr()
+tsnrwf = workflows.init_tsnr()
 
 # ######################### #
 # Dual Regression Worfklows #
 # ###########################
 
-dualRegWf = aligntools_wf.init_hcp_dual_regression_wf(iterations=6)
-
-# these are used for estimating subject-to-group alignment quality
-#dualRegWf.inputs.inputspec.group_ICAs_low_d = [os.path.join(data_dir,'HCP_Resources/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d15.ica/melodic_IC.dscalar.nii'),
-#                                               os.path.join(data_dir,'HCP_Resources/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d25.ica/melodic_IC.dscalar.nii')]
+dualRegWf = workflows.init_hcp_dual_regression_wf(iterations=6)
 
 # ########################### #
 # run level modeling workflow #
