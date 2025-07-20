@@ -109,6 +109,7 @@ in macros/. It should be simple to adapt these to other job scheduling systems l
 Without an HPC environment it's not practical to run these analyses (figures 3-5 took 2-3 months
 worth of CPU hours to produce, figure 6 took much longer). You can however run a single pair of
 participants on a PC in a day or so to help understand the underlying processes if that's desired.
+Pick a pair from resources/paired_sid.csv if that's the case.
 
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
