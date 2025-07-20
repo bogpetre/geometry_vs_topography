@@ -720,22 +720,34 @@ yl8 = ylim;
 
 sgtitle({'Environmental and Genetic Effects'},'FontSize',16,'FontWeight','BOLD');
 
-set(ax1, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-set(ax2, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-set(ax3, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-set(ax4, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-
-set(ax5, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-set(ax6, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-set(ax7, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-set(ax8, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-
+switch noise
+    case 'standardized'
+        set(ax1, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        set(ax2, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        set(ax3, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        set(ax4, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        
+        set(ax5, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        set(ax6, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        set(ax7, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+        set(ax8, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
+    case 'whitened'
+        set(ax1, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
+        set(ax2, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
+        set(ax3, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
+        set(ax4, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
+        
+        set(ax5, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
+        set(ax6, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
+        set(ax7, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
+        set(ax8, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
+end
 
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),450,650])
 
-export_fig(f1,'panels/family_clusters.png','-transparent','-r300');
-export_fig(f2,'panels/ACE_absolute.png','-transparent','-r300');
+export_fig(f1,sprintf('panels_%s/family_clusters.png',noise),'-transparent','-r300');
+export_fig(f2,sprintf('panels_%s/ACE_absolute.png',noise),'-transparent','-r300');
 
 %% Plot relative heritabilities and contrasts
 figure(100);
@@ -847,4 +859,4 @@ sgtitle({'Contrasts of','Relative Effects'},'FontWeight','bold','fontsize',fonts
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),305,650])
 
-export_fig(gcf,'panels/ACE_proportional.png','-transparent','-r300');
+export_fig(gcf,sprintf('panels_%s/ACE_proportional.png',noise),'-transparent','-r300');

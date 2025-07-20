@@ -237,14 +237,14 @@ for i = 1:length(mapvals)
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i), sampling_var, perm_var, nu] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i), sampling_var, perm_var] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
     [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:), ...
-        sampling_var, perm_var, nu] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+        sampling_var, perm_var] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map, confounds_good_rois);
 end
 
