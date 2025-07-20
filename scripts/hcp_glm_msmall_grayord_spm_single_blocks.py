@@ -74,7 +74,7 @@ from nipype_workbench_ext import metric as wb_metric
 from nipype_workbench_ext import misc as wb_misc
 
 # top level HCP AWS directory
-data_dir = os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/')
+#data_dir = os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/')
 
 # temporal filter and TR length in seconds
 hp_cutoff = 200
@@ -126,7 +126,7 @@ datasource = pe.Node(
                    'surf_right', 'shape_right', 
                    'seg', 'motion']),
     name='datasource')
-datasource.inputs.base_directory = os.path.join(data_dir, 'HCP1200/')
+#datasource.inputs.base_directory = os.path.join(data_dir, 'HCP1200/')
 datasource.inputs.template='*'
 datasource.inputs.field_template={'func_vol': '%s/MNINonLinear/Results/tfMRI_%s_%s/tfMRI_%s_%s.nii.gz', # this isn't actually used but is useful if you modify this script to correct for confounds
                             'func_surf': '%s/MNINonLinear/Results/tfMRI_%s_%s/tfMRI_%s_%s_Atlas_MSMAll.dtseries.nii',
@@ -188,7 +188,7 @@ preproc = preproc_surf_hcp(hp_cutoff, TR)
 # task specific event configuration
 
 def runinfo(subject_id, task, direction, data_dir):
-    from glm.designs import block_events
+    from geometry_vs_topography.glm.designs import block_events
     from nipype.interfaces.base import Bunch
     from copy import deepcopy
 
@@ -723,6 +723,11 @@ if __name__ == '__main__':
     if args.data is not None:
         datasource.inputs.base_directory = args.data
         subjectlevel.inputs.modelfit.runinfo_node.data_dir = args.data
+    else:
+        datasource.inputs.base_directory = config['hcp_participant_data']['S1200_imaging']
+        subjectlevel.inputs.modelfit.runinfo_node.data_dir = config['hcp_participant_data']['S1200_imaging']
+
+    import pdb; pdb.set_trace()
 
     infosource.iterables = [('subject_id', args.subject_ids)]
     tasksource.iterables = [('task', args.tasks)]

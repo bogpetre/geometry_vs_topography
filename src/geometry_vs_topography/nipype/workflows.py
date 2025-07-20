@@ -10,6 +10,11 @@ from . import dual_regression as dual_reg
 
 from warnings import warn
 
+def mergelists(lists):
+    if isinstance(lists[0],list):
+        return sum(lists,[])
+    else:
+        return lists
 
 def init_tsnr(name='tsnr'):
     # this function produces an interface that can take one or more cifti input files,

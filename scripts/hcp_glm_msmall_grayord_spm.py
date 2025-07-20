@@ -47,12 +47,34 @@ import nipype.algorithms.modelgen as model  # model generation
 # called after all iterables have converged, so even if with a multithreaded nipype
 # workflow this still shouldn't lead to any oversubscription.
 from nipype import config, logging
-cfg = dict(execution={'single_thread_matlab': False})
+cfg = dict(execution={
+        'single_thread_matlab': False,
+        'remove_unnecessary_outputs': False})
 config.update_config(cfg)          # must be called before you create nodes
 logging.update_logging(config)     # keeps Nipype’s logger in sy
 
 import nipype.interfaces.matlab as mlab
 mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
+
+# load the necessary config file paths for matlab
+early_parser = argparse.ArgumentParser()
+early_parser.add_argument('--config', type=str, required=True)
+args, _ = early_parser.parse_known_args()
+
+with open(args.config) as f:
+    config = json.load(f)
+
+mlab.MatlabCommand.set_default_paths([config['matlab_libraries']['spm12'],
+                                      config['matlab_libraries']['rsatoolbox'],
+                                      os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/diagnostics/'),
+                                      os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Visualization_functions'),
+                                      os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/OptimizeDesign11/core_functions/'),
+                                      os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Statistics_tools/'),
+                                      os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Data_processing_tools/'),
+                                      os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Misc_utilities/'),
+                                      os.path.join(os.path.dirname(os.path.abspath(args.config)),
+                                                   config['matlab_libraries']['custom'])])
+
 
 # Without this hack this script tends to hang when run over SLURM on NSF filesystems
 from nipype.interfaces.spm import SPMCommand
@@ -75,7 +97,7 @@ from nipype_workbench_ext import metric as wb_metric
 from nipype_workbench_ext import misc as wb_misc
 
 # top level HCP AWS directory
-data_dir = os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/')
+#data_dir = os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/')
 
 # temporal filter and TR length in seconds
 hp_cutoff = 200
@@ -121,7 +143,7 @@ class MultiTaskRDMInputSpec(BaseInterfaceInputSpec):
         usedefault=True,
         desc="spatial normalization method to use")
         
-    normmode = traits.Enum('runwise', 'overall',
+    normmode = traits.Enum('runwise', 'partwise', 'overall',
         usedefault=True,
         desc="spatial normalization mode to use")
 
@@ -132,6 +154,10 @@ class MultiTaskRDMInputSpec(BaseInterfaceInputSpec):
         estimates to compute similarity measures (e.g. WUC), but individual 'whitened' RDMs \
         can also be compared directly if you're comfortable assuming that the two RDMs \
         being compared have similar covariance structure.")
+
+    precision = traits.Enum('single','double',
+        usedefault=True,
+        desc="datatype precision to use when saving whitening matrix")
 
 class MultiTaskRDMOutputSpec(TraitedSpec):
     rdm = File(exists=True)
@@ -192,6 +218,7 @@ class MultiTaskRDM(BaseInterface):
                  save_whitening_matrix=int(bool(self.inputs.save_whitening_matrix)),
                  whitening_matrix_out=whitening_matrix,
                  whitening_matrix_json=whitening_matrix_metadata,
+                 precision=self.inputs.precision,
                  names_out='betanames.csv')
 
         # I don't know how to pass a list into the string Template, so instead
@@ -205,6 +232,7 @@ class MultiTaskRDM(BaseInterface):
                 normmethod = '$normmethod';
                 normmode = '$normmode';
                 save_whitening_matrix = $save_whitening_matrix;
+                precision='$precision';
 
 
                 % import atlas
@@ -305,14 +333,24 @@ class MultiTaskRDM(BaseInterface):
                     whitened_rdm(:,i) = whitened_d;
                     if save_whitening_matrix
                         tril_ind = tril(true(size(V)));
-                        fwrite(fid_whitening, single(V(tril_ind)), 'float32');
+                        switch precision
+                            case 'single'
+                                fwrite(fid_whitening, single(V(tril_ind)), 'float32');
+                            case 'double'
+                                fwrite(fid_whitening, single(V(tril_ind)), 'float64');
+                        end
                     end
                 end
 
                 if save_whitening_matrix, 
                     fclose(fid_whitening); 
 
-                    meta.format = 'float32';
+                    switch precision
+                        case 'single'
+                            meta.format = 'float32';
+                        case 'double'
+                            meta.format = 'float64';
+                    end
                     meta.shape = int32([ncon, ncon]);
                     meta.n_regions = size(rdm, 2);
                     meta.storage = 'lower_triangle';
@@ -385,6 +423,11 @@ class multiTaskWithinSimilarityInputSpec(BaseInterfaceInputSpec):
         usedefault=True,
         desc = "Use nonlinear shrinkage for p > 50, n > 50.")
 
+    normmode = traits.Enum('runwise', 'partwise', 'overall',
+        usedefault=True,
+        desc="spatial normalization mode to use")
+
+
 class multiTaskWithinSimilarityOutputSpec(TraitedSpec):
     similarity = File(exists=True)
 
@@ -419,6 +462,7 @@ class multiTaskWithinSimilarity(BaseInterface):
 
         d = dict(atlas=self.inputs.atlas,
                  normmethod=self.inputs.normmethod,
+                 normmode=self.inputs.normmode
                  shrinkage=self.inputs.shrinkage,
                  target=self.inputs.target,
                  nonlinearshrink=int(bool(self.inputs.nonlinearshrink)),
@@ -434,6 +478,7 @@ class multiTaskWithinSimilarity(BaseInterface):
             """ spm_mat_files = textread('spm_mat_files.csv','%s\\n');
                 atlas_path = '$atlas';
                 normmethod = '$normmethod';
+                normmode = '$normmode';
                 shrinkage = str2double('$shrinkage');
                 target = '$target';
                 nonlinearshrink = $nonlinearshrink;
@@ -513,8 +558,9 @@ class multiTaskWithinSimilarity(BaseInterface):
 
                     this_Y = Y(:,roi).*gSF; % mask and apply SPM global signal scaling;
                     this_Y = this_Y(:,var(this_Y) > 0);
-                    [similarity(:,i), names] = betweenSessionSimilarityMultiTask(this_Y, SPM, conditions(:), fun, 'normmethod', normmethod, ...
-                        'shrinkage', shrinkage, 'target', target,'nonlinearshrink',nonlinearshrink);
+                    [similarity(:,i), names] = betweenSessionSimilarityMultiTask(this_Y, SPM, conditions(:), fun, ...
+                        'normmethod', normmethod, 'normmode', normmode, ...
+                        'shrinkage', shrinkage, 'target', target, 'nonlinearshrink', nonlinearshrink);
                 end
 
                 csvwrite('$out', similarity);
@@ -567,7 +613,7 @@ datasource = pe.Node(
                    'surf_right', 'shape_right', 
                    'seg', 'motion']),
     name='datasource')
-datasource.inputs.base_directory = os.path.join(data_dir, 'HCP1200/')
+#datasource.inputs.base_directory = os.path.join(data_dir, 'HCP1200/')
 datasource.inputs.template='*'
 datasource.inputs.field_template={'func_vol': '%s/MNINonLinear/Results/tfMRI_%s_%s/tfMRI_%s_%s.nii.gz', # this isn't actually used but is useful if you modify this script to correct for confounds
                             'func_surf': '%s/MNINonLinear/Results/tfMRI_%s_%s/tfMRI_%s_%s_Atlas_MSMAll.dtseries.nii',
@@ -636,12 +682,12 @@ print("Building first-level wf:", time.ctime(), flush=True)
 
 # task specific event configuration
 
-def runinfo(subject_id, task, direction,data_dir):
-    from glm.designs import hcp_events
+def runinfo(subject_id, task, direction, data_dir):
+    from geometry_vs_topography.glm.designs import hcp_events
     from nipype.interfaces.base import Bunch
     from copy import deepcopy
 
-    names, onsets, dur = hcp_events(subject_id, task, direction)
+    names, onsets, dur = hcp_events(subject_id, task, direction, data_dir)
 
     output = Bunch(conditions=names,
                     onsets=deepcopy(onsets),
@@ -1412,21 +1458,12 @@ if __name__ == '__main__':
     with open(args.config) as f:
         config = json.load(f)
 
-    mlab.MatlabCommand.set_default_paths([config['matlab_libraries']['spm12'],
-                                          config['matlab_libraries']['rsatoolbox'],
-                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/diagnostics/'),
-                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Visualization_functions'),
-                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/OptimizeDesign11/core_functions/'),
-                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Statistics_tools/'),
-                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Data_processing_tools/'),
-                                          os.path.join(config['matlab_libraries']['canlabCore'],'CanlabCore/Misc_utilities/'),
-                                          os.path.join(os.path.dirname(os.path.abspath(args.config)),
-                                                       config['matlab_libraries']['custom'])])
-
-
     if args.data is not None:
         datasource.inputs.base_directory = args.data
         subjectlevel.inputs.modelfit.runinfo_node.data_dir = args.data
+    else:
+        datasource.inputs.base_directory = config['hcp_participant_data']['S1200_imaging']
+        subjectlevel.inputs.modelfit.runinfo_node.data_dir = config['hcp_participant_data']['S1200_imaging']
 
     print(f'Using {datasource.inputs.base_directory} as input directory')
 

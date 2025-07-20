@@ -10,7 +10,7 @@ from nipype.interfaces.base import BaseInterface, BaseInterfaceInputSpec, traits
 from traits.api import List
 
 from ..utils import cifti_utils
-from ..ica.dual_regression import model as dr
+from ..ica import model as dr
 
 
 class estimateAlignmentMapInputSpec(BaseInterfaceInputSpec):
