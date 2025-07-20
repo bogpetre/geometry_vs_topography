@@ -76,7 +76,7 @@ def init_hcp_dual_regression_wf(name='dualregressionwf', iterations=2,
     Example usage :
 
         import glob
-        from aligntools.nipype import workflows as aligntools_wf
+        from geometry_vs_topography.nipype import workflows as aligntools_wf
 
         HCP_ROOT = '/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP'
         SID1 = '100307'
