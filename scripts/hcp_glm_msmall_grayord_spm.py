@@ -59,20 +59,13 @@ from nipype.interfaces.spm import SPMCommand
 SPMCommand.version = "12.7777"  # any dummy version string
 v = SPMCommand().version
 
-package_directory = '/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/libraries/'
-if package_directory not in sys.path:
-    sys.path.insert(0, package_directory)
-
 # HCP style surface preprocessing
 from geometry_vs_topography.glm.preproc import preproc_surf_hcp
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
 from geometry_vs_topography.nipype.rsa import SpatialWhitening
 
 # compute VIFs from SPM.mat using canlabCore tools
-package_directory = '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/nipype/'
-if package_directory not in sys.path:
-    sys.path.insert(0, package_directory)
-from canlabCore.glm import VIFs
+from geometry_vs_topography.nipype.glm import VIFs
 
 # available at github.com/bogpetre/nipype_workbench_ext
 from nipype_workbench_ext import cifti as wb_cifti
