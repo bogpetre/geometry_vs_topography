@@ -243,3 +243,93 @@ class FMRIConcat(BaseInterface):
         outputs = self._outputs().get()
         outputs['spm_mat_file'] = os.path.abspath(self.spm_mat_file)
         return outputs
+
+
+# this code converts all SPM betas to t-stats
+class betaToTstatInputSpec(BaseInterfaceInputSpec):
+    spm_mat_file = File(
+        exists=True, 
+        mandatory=True, 
+        desc="Paths to SPM.mat file produce by EstimateModel"
+    )
+
+class betaToTstatOutputSpec(TraitedSpec):
+    tstats = List(File(exists=True))
+    
+    betanames = List()
+
+class betaToTstat(BaseInterface):
+
+    input_spec = betaToTstatInputSpec
+    output_spec = betaToTstatOutputSpec
+
+    def _run_interface(self, runtime):
+        import numpy as np
+        import re
+    
+        d = dict(spm_mat_file=self.inputs.spm_mat_file)
+
+        script = Template(
+            """ spm_mat_file = '$spm_mat_file';
+                wd = pwd;
+            
+                % import data
+                SPM = importdata(spm_mat_file);
+
+                cd(SPM.swd);
+                betas = cell(1,length(SPM.Vbeta));
+                for i = 1:length(SPM.Vbeta)
+                    this_beta = spm_read_vols(SPM.Vbeta(i));
+
+                    [x,y,z,t] = size(this_beta);
+                    betas{i} = reshape(this_beta, x*y*z, t);
+                end
+                betas = cat(2,betas{:});
+
+                resMS = spm_read_vols(SPM.VResMS);
+                    
+                [x,y,z,t] = size(resMS);
+                resMS = reshape(resMS, x*y*z, t);
+                cd(wd)
+
+                n_beta = size(SPM.xX.X,2);
+                for i = 1:n_beta
+                    c = zeros(n_beta,1);
+                    c(i) = 1;
+                    sd = sqrt(resMS).*sqrt(SPM.xX.Bcov(i,i));
+
+                    tstat = betas(:,i)./sd;
+                    
+                    tstat = reshape(tstat, x, y, z, 1);
+                    niftiwrite(tstat, sprintf('tstat_%d.nii',i));
+                    gzip(sprintf('tstat_%d.nii',i));
+                    delete(sprintf('tstat_%d.nii',i))
+                end
+                
+                betanames = SPM.xX.name(SPM.xX.iC)';
+                fid = fopen('betanames.csv','w+');
+                fprintf(fid,'%s\\n', SPM.xX.name{SPM.xX.iC});
+                fclose(fid);
+            """
+        ).substitute(d)
+
+        mlab = MatlabCommand(script=script, mfile=True)
+        result = mlab.run()
+
+        # get tstats sorted by index (up to 9999 tstats)
+        tstat_files =  [os.path.abspath(f) for f in os.listdir('.') if 'tstat_' in f and '.nii.gz' in f]
+        sort_ind = np.argsort(np.squeeze(['{0:04d}'.format(int(re.findall('.*?(\d+).nii.gz', f)[0])) 
+                                            for f in tstat_files]))
+        self.tstats = [tstat_files[i] for i in sort_ind]
+        
+        # loadtxt begins by splitting by line, so there won't be any newline characters.
+        # instead we specify a null character to avoid it defaulting to whitespace.
+        self.betanames = np.loadtxt('betanames.csv', delimiter='\0', dtype=str).tolist()
+
+        return result.runtime
+
+    def _list_outputs(self):
+        outputs = self._outputs().get()
+        outputs['tstats'] = self.tstats
+        outputs['betanames'] = self.betanames
+        return outputs
