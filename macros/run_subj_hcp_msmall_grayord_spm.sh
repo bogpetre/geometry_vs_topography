@@ -62,7 +62,7 @@ SCRATCH_DIR=$OUT_DIR/workdir/$SID1
 cleanup() {
     rm -rf $SCRATCH_DIR
 }
-trap cleanup EXIT
+#trap cleanup EXIT
 
 mkdir -p $SCRATCH_DIR
 
