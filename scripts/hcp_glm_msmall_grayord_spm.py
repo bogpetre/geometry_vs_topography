@@ -423,7 +423,7 @@ class multiTaskWithinSimilarityInputSpec(BaseInterfaceInputSpec):
         usedefault=True,
         desc = "Use nonlinear shrinkage for p > 50, n > 50.")
 
-    normmode = traits.Enum('runwise', 'partwise', 'overall',
+    normmode = traits.Enum('partwise', 'runwise', 'overall',
         usedefault=True,
         desc="spatial normalization mode to use")
 
@@ -462,7 +462,7 @@ class multiTaskWithinSimilarity(BaseInterface):
 
         d = dict(atlas=self.inputs.atlas,
                  normmethod=self.inputs.normmethod,
-                 normmode=self.inputs.normmode
+                 normmode=self.inputs.normmode,
                  shrinkage=self.inputs.shrinkage,
                  target=self.inputs.target,
                  nonlinearshrink=int(bool(self.inputs.nonlinearshrink)),
