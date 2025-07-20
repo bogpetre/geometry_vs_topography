@@ -104,10 +104,18 @@ Scripts to reproduce first level analysis are available in scripts/.
 * hcp_glm_msmall_grayord_spm.py: fits firstlevel models and estimates geometires using task data
 * hcp_dual_regression_msmall_grayord_spm.py: estimates individualized ICA networks and geometries.
 
+These need to be run iteratively over participants. Macros to do this on a SLURM HPC system are
+in macros/.
+
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
 rdm_similarity for efficient and scalable computation of geometric similarities
-from the derivatives of the above analyses (example scripts forthcoming).
+from the derivatives of the above analyses (example scripts forthcoming, also in macros/).
+
+You will also need to generate spin permuted neuromaps maps locally, since they're too big for 
+github. This can be done with scripts/get_parcellated_neuromap_vals.py, which is called by
+macros/prep_neuromap_data.sh
 
 Once the above scripts have prepared geometric and topographic similarity
-measures figures can be regenerated using matlab scripts found in figures/
+measures and you have your neuromaps ready figures from the paper can be regenerated using matlab 
+scripts found in figures/
