@@ -79,13 +79,9 @@ from nipype.interfaces.freesurfer import Binarize
 #import nipype.algorithms.rapidart as ra # idiosyncratic spikes/run break unbiased distances
 
 import sys
-
-package_directory = '/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/libraries/'
-if package_directory not in sys.path:
-    sys.path.insert(0, package_directory)
     
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
-from glm.rsa import SpatialWhitening, WithinSimilarity
+from geometry_vs_topography.nipype.rsa import SpatialWhitening, WithinSimilarity
 
 package_directory = '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/nipype/'
 if package_directory not in sys.path:
@@ -274,20 +270,6 @@ class RDM(BaseInterface):
                     con_ind = find(contains(SPM.xX.name(sess_ind),{'Task-','ICA'}) & ~contains(SPM.xX.name(sess_ind),'Cue'));
                     conditions(sess_ind(con_ind)) = 1:length(con_ind);
                 end
-
-                %{
-                numReg = size(X,2);
-                conditionVec = conditions;
-                numCond = max(conditionVec);
-                if (length(conditionVec)<numReg)
-                    conditionVec=[conditionVec;zeros(numReg-length(conditionVec),1)];
-                end
-                Z = rsa.util.indicatorMatrix('identity_p',conditionVec);
-                nonInterest = all(Z==0,2);   % Regressors not in the conditions
-                numNonInterest = sum(nonInterest);
-                Z(nonInterest,end+1:end+sum(numNonInterest))=eye(numNonInterest);
-                C = rsa.util.indicatorMatrix('allpairs',[1:numCond]);
-                %}
                 
                 numCond = max(conditions);
                 C = rsa.util.indicatorMatrix('allpairs',[1:numCond]);

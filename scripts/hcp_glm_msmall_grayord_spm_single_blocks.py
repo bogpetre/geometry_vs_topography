@@ -60,15 +60,10 @@ from nipype.interfaces.spm import SPMCommand
 SPMCommand.version = "12.7777"  # any dummy version string
 v = SPMCommand().version
 
-package_directory = '/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/libraries/'
-if package_directory not in sys.path:
-    sys.path.insert(0, package_directory)
-
 # HCP style surface preprocessing
-from glm.preproc import preproc_surf_hcp
-from glm.designs import select_trials
+from geometry_vs_topography.glm.preproc import preproc_surf_hcp
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
-from glm.rsa import SpatialWhitening
+from geometry_vs_topography.nipype.rsa import SpatialWhitening
 
 # compute VIFs from SPM.mat using canlabCore tools
 package_directory = '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/nipype/'
@@ -288,12 +283,12 @@ preproc = preproc_surf_hcp(hp_cutoff, TR)
 
 # task specific event configuration
 
-def runinfo(subject_id, task, direction):
+def runinfo(subject_id, task, direction, data_dir):
     from glm.designs import block_events
     from nipype.interfaces.base import Bunch
     from copy import deepcopy
 
-    names, onsets, dur = block_events(subject_id, task, direction)
+    names, onsets, dur = block_events(subject_id, task, direction, data_dir)
 
     output = Bunch(conditions=names,
                     onsets=deepcopy(onsets),
@@ -306,7 +301,7 @@ def runinfo(subject_id, task, direction):
 
     return output, names
 
-runinfo_node = pe.Node(util.Function(input_names=['subject_id', 'task', 'direction'],
+runinfo_node = pe.Node(util.Function(input_names=['subject_id', 'task', 'direction', 'data_dir'],
                                  output_names=['run_info','contrast_names'],
                                  function=runinfo),
                         name='runinfo_node')
@@ -823,6 +818,7 @@ if __name__ == '__main__':
 
     if args.data is not None:
         datasource.inputs.base_directory = args.data
+        subjectlevel.inputs.modelfit.runinfo_node.data_dir = args.data
 
     infosource.iterables = [('subject_id', args.subject_ids)]
     tasksource.iterables = [('task', args.tasks)]

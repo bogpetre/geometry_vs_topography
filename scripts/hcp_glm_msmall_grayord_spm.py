@@ -64,9 +64,9 @@ if package_directory not in sys.path:
     sys.path.insert(0, package_directory)
 
 # HCP style surface preprocessing
-from glm.preproc import preproc_surf_hcp
+from geometry_vs_topography.glm.preproc import preproc_surf_hcp
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
-from glm.rsa import SpatialWhitening
+from geometry_vs_topography.nipype.rsa import SpatialWhitening
 
 # compute VIFs from SPM.mat using canlabCore tools
 package_directory = '/dartfs-hpc/rc/home/m/f0042vm/software/canlab/CanlabCore/nipype/'
@@ -805,7 +805,7 @@ print("Building first-level wf:", time.ctime(), flush=True)
 
 # task specific event configuration
 
-def runinfo(subject_id, task, direction):
+def runinfo(subject_id, task, direction,data_dir):
     from glm.designs import hcp_events
     from nipype.interfaces.base import Bunch
     from copy import deepcopy
@@ -823,7 +823,7 @@ def runinfo(subject_id, task, direction):
 
     return output, names
 
-runinfo_node = pe.Node(util.Function(input_names=['subject_id', 'task', 'direction'],
+runinfo_node = pe.Node(util.Function(input_names=['subject_id', 'task', 'direction', 'data_dir'],
                                  output_names=['run_info','contrast_names'],
                                  function=runinfo),
                         name='runinfo_node')
@@ -1595,6 +1595,7 @@ if __name__ == '__main__':
 
     if args.data is not None:
         datasource.inputs.base_directory = args.data
+        subjectlevel.inputs.modelfit.runinfo_node.data_dir = args.data
 
     print(f'Using {datasource.inputs.base_directory} as input directory')
 
