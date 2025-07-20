@@ -107,7 +107,8 @@ Scripts to reproduce first level analysis are available in scripts/.
 These need to be run iteratively over participants. Macros to do this on a SLURM HPC system are
 in macros/. It should be simple to adapt these to other job scheduling systems like torque or SGE.
 Without an HPC environment it's not practical to run these analyses (figures 3-5 took 2-3 months
-worth of CPU hours to produce, figure 6 took much longer).
+worth of CPU hours to produce, figure 6 took much longer). You can however run a single pair of
+participants on a PC in a day or so to help understand the underlying processes if that's desired.
 
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
