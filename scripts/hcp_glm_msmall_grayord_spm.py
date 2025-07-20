@@ -104,12 +104,6 @@ def pickfirst(files):
     else:
 	    return files
 
-def mergelists(lists):
-    if isinstance(lists[0],list):
-        return sum(lists,[])
-    else:
-        return lists
-
 # this version of the RDM code interfaces with a modified version of
 # +rsa.+spm.distanceLDCraw, distanceLDCrawMultTask, which takes a list
 # of SPM files as input and treates them as block diagonal designs for
@@ -762,8 +756,8 @@ def select_betas_of_interest(beta_images, run_info):
     # subract them from the count before dividing
     beta_per_sess = (len(beta_images)-n_sess)/n_sess
     
-    filt_beta_images = [];
-    filt_beta_names = [];
+    filt_beta_images = []
+    filt_beta_names = []
     for i,info in enumerate(run_info):
         ind0 = int(beta_per_sess*i)
         beta_names = set(info.conditions)

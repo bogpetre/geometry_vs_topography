@@ -529,12 +529,6 @@ def pickfirstdeep(files):
     else:
 	    return files    
 
-def mergelists(lists):
-    if isinstance(lists[0],list):
-        return sum(lists,[])
-    else:
-        return lists
-
 # ############ #
 # Compute tSNR #
 # ############ #
@@ -552,7 +546,6 @@ dualRegWf = workflows.init_hcp_dual_regression_wf(iterations=6)
 # ########################### #
 
 # task specific event configuration
-
 
 def subjectinfo(ica_timeseries):
     import pandas as pd

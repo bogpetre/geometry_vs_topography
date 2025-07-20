@@ -102,9 +102,6 @@ def pickfirst(files):
         return files[0]
     else:
 	    return files
-      
-def mergelists(lst):
-    return sum(lst, [])
 
 
 # ########################## #
