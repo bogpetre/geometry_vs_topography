@@ -66,6 +66,19 @@ logging.update_logging(config)     # keeps Nipype’s logger in sy
 import nipype.interfaces.matlab as mlab
 mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
 
+# load the necessary config file paths for matlab
+early_parser = argparse.ArgumentParser()
+early_parser.add_argument('--config', type=str, required=True)
+args, _ = early_parser.parse_known_args()
+
+with open(args.config) as f:
+    config = json.load(f)
+
+mlab.MatlabCommand.set_default_paths([config['matlab_libraries']['spm12'],
+                                        config['matlab_libraries']['rsatoolbox'],
+                                        os.path.join(os.path.dirname(os.path.abspath(args.config)),
+                                                    config['matlab_libraries']['custom'])])
+
 # Without this hack this script tends to hang when run over SLURM on NSF filesystems
 from nipype.interfaces.spm import SPMCommand
 SPMCommand.version = "12.7777"  # any dummy version string
@@ -1149,12 +1162,6 @@ if __name__ == '__main__':
 
     with open(args.config) as f:
         config = json.load(f)
-
-    mlab.MatlabCommand.set_default_paths([config['matlab_libraries']['spm12'],
-                                          config['matlab_libraries']['rsatoolbox'],
-                                          os.path.join(os.path.dirname(os.path.abspath(args.config)),
-                                                       config['matlab_libraries']['custom'])])
-
 
     if args.data_dir is not None:
         datasourcefunc.inputs.base_directory = args.data_dir
