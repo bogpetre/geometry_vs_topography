@@ -5,7 +5,7 @@ be used directly, but in most cases are still general purpose enough that they n
 invoked in particular ways to regenerate the analyses of the accompanying study. macros/
 contains examples of the particular invocations needed.
 
-* get_parcellated_neuromap_vals.py - donwloads and parcellates neuromaps. Generates (spin) permuted maps if desired.
+* get_parcellated_neuromap_vals.py - downloads and parcellates neuromaps using a specified atlas (an HCP91k CIFTI dlabel file). Generates (spin) permuted maps if desired.
 * hcp_dual_regression_msmall_grayord_spm.py - Estimates topographies and geometries of RSNs for a specified HCP participant
 * hcp_glm_msmall_grayord_spm.py - Estimates topographies and geometries of task evoked responses for a specified HCP participant
 * hcp_glm_msmall_grayord_spm_single_blocks.py - Estimates single block contrasts for each task and estimates classification performance of binary classifiers for a specified HCP participant
