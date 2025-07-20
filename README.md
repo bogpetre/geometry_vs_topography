@@ -105,7 +105,9 @@ Scripts to reproduce first level analysis are available in scripts/.
 * hcp_dual_regression_msmall_grayord_spm.py: estimates individualized ICA networks and geometries.
 
 These need to be run iteratively over participants. Macros to do this on a SLURM HPC system are
-in macros/.
+in macros/. It should be simple to adapt these to other job scheduling systems like torque or SGE.
+Without an HPC environment it's not practical to run these analyses (figures 3-5 took 2-3 months
+worth of CPU hours to produce, figure 6 took much longer).
 
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
