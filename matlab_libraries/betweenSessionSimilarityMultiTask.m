@@ -1,4 +1,4 @@
-function [sim, names] = betweenSessionSimilarity(Y,SPM,conditionVec,fun,varargin)
+function [sim, names] = betweenSessionSimilarityMultiTask(Y,SPM,conditionVec,fun,varargin)
 % function sim=betweenSessionSimilarity(Y,SPM,fun,varargin)
 % Estimates beta coefficiencts and residuals from raw time series Y for
 % each k-fold partitioning of the data and computes similarity between 
@@ -34,6 +34,15 @@ function [sim, names] = betweenSessionSimilarity(Y,SPM,conditionVec,fun,varargin
 %                 shrinkage doesn't work well (Ledoit & Wolf 2021 Journal 
 %                 of Financial Econometrics) and we fall back to linear 
 %                 shrinkage.
+%   'normmode':   'runwise': Does the multivariate noise normalisation by
+%                     run. This is how SPM does temporal whitening. Treats
+%                     each session of each SPM.mat obj as a separate run.
+%                 'partwise': Does multivariate normalization jointly
+%                     across all runs in a partition. This is how SPM would
+%                     do univariate residual variance estimation if
+%                     sessions were concatenated across SPM.mat objects.
+%                 'overall': Does the multivariate noise normalisation overall
+%
 % OUTPUT:
 %   sim           matrix of similarity values, each column is a session,
 %                 each row is a task
@@ -44,6 +53,7 @@ function [sim, names] = betweenSessionSimilarity(Y,SPM,conditionVec,fun,varargin
 Opt.shrinkage = []; 
 Opt.target = [];
 Opt.nonlinearshrink = [];
+Opt.normmode = 'runwise';
 Opt = rsa.getUserOptions(varargin,Opt);
 if strcmp(Opt.normmethod, 'univariate')
     if strcmp(Opt.target,'diagonal')
@@ -77,7 +87,9 @@ Z(nonInterest,end+1:end+sum(numNonInterest))=eye(numNonInterest);
 
 %%% Get partions: For each run (1:K), find the time points (T) and regressors (K+Q) that belong to the run
 partT = nan(T,1);
-partQ = nan(numReg,1);
+partN = nan(numReg,1);
+partT = nan(T,1);
+partN = nan(numReg,1);
 numPart=length(SPM{1}.Sess);                                     %%% number of runs
 for i = 1:length(SPM)
     if numPart ~= length(SPM{i}.Sess)
@@ -90,10 +102,13 @@ for i=1:numPart
     for j = 1:length(SPM)
         partT(row_ind + SPM{j}.Sess(i).row,1)=i;
         partN(col_ind + SPM{j}.Sess(i).col,1)=i;
+        taskT(row_ind + SPM{j}.Sess(i).row,1)=j;
+        taskN(col_ind + SPM{j}.Sess(i).col,1)=j;
 
         % modified for compatability with concatenated multisession data
         intercept_ind = any((partT(row_ind + (1:size(SPM{j}.xX.X,1))) == i).*SPM{j}.xX.X(:,SPM{j}.xX.iB));
         partN(col_ind + SPM{j}.xX.iB(intercept_ind),1)=i;                                %%% Add intercepts
+        taskN(col_ind + SPM{j}.xX.iB(intercept_ind),1)=j;
 
         row_ind = row_ind + size(SPM{j}.xX.X,1);
         col_ind = col_ind + size(SPM{j}.xX.X,2);
@@ -119,54 +134,66 @@ for i = 1:length(SPM)
 end
 Bcov = blkdiag(Bcov{:});
 
-noMotion = ~contains(names,'Realign')'; % filter these from rescaling procedure since they can be on wildly different scales if using quadratics
+%noMotion = ~contains(names,'Realign')'; % filter these from rescaling procedure since they can be on wildly different scales if using quadratics
 
-% get session specific normalization factors (test)
-sqA = cell(1,numPart);
-for i=1:numPart
-    idxT = partT==i;
-    idxN = partN==i;
-    
-    df = 0;
-    for j = 1:length(SPM)
-        df = df + SPM{j}.xX.trRV/numPart;
-    end
+switch (Opt.normmode)
+    case 'runwise'
+        for i=1:numPart
+            for j = 1:length(SPM)
+                idxT = partT==i & taskT == j;
+                df = SPM{j}.xX.trRV/numPart;
+                scaling = sqrt(mean(diag(Bcov(conditionVec>0,conditionVec>0)))); % note scaling doesn't matter for many measures
+                if ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1 && df > 50 && size(res,2) > 50
+                    Sw_hat(:,:,i) = QIS(res(idxT,:)*scaling,round(df));
+                else                        
+                    [Sw_hat(:,:,i),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*scaling,df, ...
+                            'shrinkage', Opt.shrinkage, 'target', Opt.target);%%% regularize Sw_hat through optimal shrinkage
+                end
+                [V,L]=eig(Sw_hat(:,:,i));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
+                l=diag(L);
+                sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+                KWY(idxT,:)=KWY(idxT,:)*sq;
+            end
+        end
+    case 'partwise'
+        for i=1:numPart
+            idxT = partT==i;
+        
+            df = 0;
+            for j = 1:length(SPM)
+                df = df + SPM{j}.xX.trRV/numPart;
+            end
 
-    scaling = sqrt(mean(diag(Bcov(conditionVec(idxN)>0,conditionVec(idxN)>0)))); % note scaling doesn't matter for many measures
-    if ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1 && df > 50 && size(res,2) > 50
-        Sw_hat(:,:,i) = QIS(res(idxT,:)*scaling,round(df));
-    else                        
-        [Sw_hat(:,:,i),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*scaling,df, ...
-                'shrinkage', Opt.shrinkage, 'target', Opt.target);%%% regularize Sw_hat through optimal shrinkage
-    end
-    [V,L]=eig(Sw_hat(:,:,i));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
-    l=diag(L);
-    sqA{i} = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
-end;
-clear Sw_hat shrink
+            scaling = sqrt(mean(diag(Bcov(conditionVec>0,conditionVec>0)))); % note scaling doesn't matter for many measures
+            if ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1 && df > 50 && size(res,2) > 50
+                Sw_hat(:,:,i) = QIS(res(idxT,:)*scaling,round(df));
+            else                        
+                [Sw_hat(:,:,i),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*scaling,df, ...
+                        'shrinkage', Opt.shrinkage, 'target', Opt.target);%%% regularize Sw_hat through optimal shrinkage
+            end
+            [V,L]=eig(Sw_hat(:,:,i));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
+            l=diag(L);
+            sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+            KWY(idxT,:)=KWY(idxT,:)*sq;
+        end
+    case 'overall'
+        df = 0;
+        for j = 1:length(SPM)
+            df = df + SPM{j}.xX.trRV;
+        end
 
-% get session specific normalization factors (training)
-sqB = cell(1,numPart);
-for i=1:numPart
-    idxT = partT~=i;
-    idxN = partN~=i;
-    
-    df = 0;
-    for j = 1:length(SPM)
-        df = df + SPM{j}.xX.trRV/numPart;
-    end
-
-    scaling = sqrt(mean(diag(Bcov(conditionVec(idxN)>0,conditionVec(idxN)>0)))); % note scaling doesn't matter for many measures
-    if ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1 && df > 50 && size(res,2) > 50
-        Sw_hat(:,:,i) = QIS(res(idxT,:)*scaling,round(df));
-    else                        
-        [Sw_hat(:,:,i),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*scaling,df, ...
-                'shrinkage', Opt.shrinkage, 'target', Opt.target);%%% regularize Sw_hat through optimal shrinkage
-    end
-    [V,L]=eig(Sw_hat(:,:,i));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
-    l=diag(L);
-    sqB{i} = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
-end;
+        scaling = sqrt(mean(diag(Bcov(conditionVec>0,conditionVec>0)))); % note scaling doesn't matter for many measures
+        if ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1 && df > 50 && size(res,2) > 50
+            Sw_hat = QIS(res*scaling,round(df));
+        else                        
+            [Sw_hat,shrink]=rsa.stat.covdiag(res*scaling,df, ...
+                    'shrinkage', Opt.shrinkage, 'target', Opt.target);%%% regularize Sw_hat through optimal shrinkage
+        end
+        [V,L]=eig(Sw_hat);       % This is overall faster and numerical more stable than Sw_hat.^-1/2
+        l=diag(L);
+        sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+        KWY=KWY*sq;
+end
 
 
 % Estimate condition means within each
@@ -178,7 +205,7 @@ for i=1:numPart
     Za = Za(:,any(Za,1));
     Xa = X(indxT,indxN);
     Ma  = Xa*Za;
-    A(:,:,i)     = (Ma'*Ma)\(Ma'*(KWY(indxT,:)*sqA{i}));
+    A(:,:,i)     = (Ma'*Ma)\Ma'*KWY(indxT,:);
     
     % Get the betas based on the other runs 
     indxN = partN~=i;
@@ -187,7 +214,7 @@ for i=1:numPart
     Zb    = Zb(:,any(Zb,1));
     Xb    = X(indxT,indxN);
     Mb    = Xb*Zb;
-    B     = (Mb'*Mb)\Mb'*(KWY(indxT,:)*sqB{i});
+    B     = (Mb'*Mb)\Mb'*KWY(indxT,:);
     
     % Pick condition of interest
     interest = find(~nonInterest(partN==i));

@@ -23,6 +23,8 @@ function [d, Sig, names] = distanceLDCrawMultTask(Y,SPM,conditionVec,varargin)
 %                  conditions
 % OPTIONs:
 %   'normmode':    'runwise': Does the multivariate noise normalisation by run
+%                  'partwise': Does multivariate normalization jointly
+%                      across all runs in a partition.
 %                  'overall': Does the multivariate noise normalisation overall
 %   'normmethod':  'multivariate': The is the default using ledoit-wolf reg.
 %                  'univariate': Performing univariate noise normalisation (t-values)
@@ -146,19 +148,39 @@ switch (Opt.normmethod)
                         KWY(idxT,:)=KWY(idxT,:)*sq;
                     end
                 end;
-            case 'overall'
-                for j = 1:length(SPM)
-                    beta_ind = (i-1)*length(SPM)+j;
-                    idxT = taskT == j;
-                    idxN = taskN == j;
-                    %numFilt = size(SPM{j}.xX.K(1).X0,2);
-                    %[Sw_hat(:,:, beta_ind),shrink(i)]=rsa.stat.covdiag(res(idxT,:),SPM{j}.xX.trRV/(numPart*mean(diag(SPM{j}.xX.Bcov))));   %%% regularize Sw_hat through optimal shrinkage
-                    [Sw_hat(:,:, beta_ind),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*sqrt(mean(diag(Bcov(conditionVec>0,conditionVec>0)))),SPM{j}.xX.trRV/(numPart));   %%% regularize Sw_hat through optimal shrinkage
-                    [V,L]=eig(Sw_hat(:,:,beta_ind));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
+            case 'partwise'
+                % This is a novel invention for multi-scan protocols. Here
+                % we keep partitions independent, but we estimate variance
+                % jointly across multiple runs within a partition. This
+                % assumes homoskedasticity.
+                for i=1:numPart
+                    dof = 0;
+                    for j = 1:length(SPM)
+                        dof = dof + SPM{j}.xX.trRV/numPart;
+                    end
+
+                    idxT = partT==i;
+                    scaleFactor = sqrt(mean(diag(Bcov(conditionVec>0,conditionVec>0))));
+                    [Sw_hat(:,:, i),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*scaleFactor, dof);   %%% regularize Sw_hat through optimal shrinkage
+                    [V,L]=eig(Sw_hat(:,:,i));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
                     l=diag(L);
-                    sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+                    sq{j} = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
                     KWY(idxT,:)=KWY(idxT,:)*sq;
                 end
+            case 'overall'
+                dof = 0;
+                for j = 1:length(SPM)
+                    dof = dof + SPM{j}.xX.trRV;
+                end
+
+                %numFilt = size(SPM{j}.xX.K(1).X0,2);
+                %[Sw_hat(:,:, beta_ind),shrink(i)]=rsa.stat.covdiag(res(idxT,:),SPM{j}.xX.trRV/(numPart*mean(diag(SPM{j}.xX.Bcov))));   %%% regularize Sw_hat through optimal shrinkage
+                scaleFactor = sqrt(mean(diag(Bcov(conditionVec>0,conditionVec>0))));
+                [Sw_hat, shrink]=rsa.stat.covdiag(res*scaleFactor, dof);   %%% regularize Sw_hat through optimal shrinkage
+                [V,L]=eig(Sw_hat);       % This is overall faster and numerical more stable than Sw_hat.^-1/2
+                l=diag(L);
+                sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+                KWY=KWY*sq;
         end;
     case 'univariate'
         switch (Opt.normmode)
@@ -174,25 +196,37 @@ switch (Opt.normmethod)
                         idxN = partN==i & taskN == j;
                         numFilt = size(SPM{j}.xX.K(i).X0,2);
 
-                        effective_df = SPM{j}.xX.trRV/numPart;
-                        sigma = sum(res(idxT,:).^2)/effective_df;
+                        dof = SPM{j}.xX.trRV/numPart;
+                        sigma = sum(res(idxT,:).^2)/dof;
 
                         sq = 1./sqrt(sigma);
                         KWY(idxT,:)=KWY(idxT,:).*sq;
                     end
                 end;
-            case 'overall'
-                for j = 1:length(SPM)
-                    idxT = taskT == j;
-                    idxN = taskN == j;
-                    numFilt = size(SPM{j}.xX.K(1).X0,2);
+            case 'partwise'
+                for i=1:numPart
+                    dof = 0;
+                    for j = 1:length(SPM)
+                        dof = dof + SPM{j}.xX.trRV/numPart;
+                    end
+                    
+                    idxT = partT==i;
 
-                    effective_df = SPM{j}.xX.trRV;
-                    sigma = sum(res(idxT,:).^2)/effective_df;
+                    sigma = sum(res(idxT,:).^2)/dof;
 
                     sq = 1./sqrt(sigma);
                     KWY(idxT,:)=KWY(idxT,:).*sq;
+                end;
+            case 'overall'
+                dof = 0;
+                for j = 1:length(SPM)
+                    dof = dof + SPM{j}.xX.trRV;
                 end
+
+                sigma = sum(res.^2)/dof;
+
+                sq = 1./sqrt(sigma);
+                KWY=KWY.*sq;
         end;
     otherwise
         error('normmethod needs to be ''multivariate'', ''univariate'', or ''none''');
