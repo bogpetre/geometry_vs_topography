@@ -50,6 +50,7 @@ C/C++:
 Binaries:
 * connectome workbench: https://www.humanconnectome.org/software/get-connectome-workbench
 * FSL: https://fsl.fmrib.ox.ac.uk/fsl/docs/#/install/index
+* FreeSurer v7.4.1: https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall
 
 Data:
 * HCP data: s3://hcp-openaccess/
