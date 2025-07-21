@@ -14,11 +14,20 @@ from . import dual_regression as dual_reg
 
 from warnings import warn
 
+
+def pickfirst(files):
+    if isinstance(files, list):
+        return files[0]
+    else:
+	    return files
+
+
 def mergelists(lists):
     if isinstance(lists[0],list):
         return sum(lists,[])
     else:
         return lists
+
 
 def init_tsnr(name='tsnr', run_source="directionsource", session_source="tasksource"):
     # this function produces an interface that can take one or more cifti input files,
