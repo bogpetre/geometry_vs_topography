@@ -176,7 +176,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
     selectBetasOfInterest = pe.MapNode(util.Function(input_names=['beta_images', 'betanames_file'],
                                                     output_names=['beta_images', 'beta_names'],
                                                     function=select_betas_of_interest_by_name),
-                                        iterfield=['beta_names','betanames_file'],
+                                        iterfield=['beta_images','betanames_file'],
                                         name='selectbetasofinterest')
                                         
     mergebetas = pe.MapNode(
