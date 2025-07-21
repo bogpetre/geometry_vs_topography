@@ -84,7 +84,7 @@ v = SPMCommand().version
 # HCP style surface preprocessing
 from geometry_vs_topography.glm.preproc import preproc_surf_hcp
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
-from geometry_vs_topography.nipype.rsa import SpatialWhitening
+from geometry_vs_topography.nipype.rsa import SpatialWhiteningMultiTask
 
 # compute VIFs from SPM.mat using canlabCore tools
 from geometry_vs_topography.nipype.glm import VIFs, betaToTstat
