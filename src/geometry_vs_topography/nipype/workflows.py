@@ -174,13 +174,13 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
                                                     function=select_betas_of_interest_by_name),
                                         name='selectbetasofinterest')
                                         
-    mergebetas = pe.Node(
+    mergebetas = pe.MapNode(
         interface=fsl.Merge(
             dimension='t'),
         iterfield=['in_files'],
         name="mergebetas")
         
-    beta2cifti = pe.Node(
+    beta2cifti = pe.MapNode(
         interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
         iterfield=['nifti_in'],
         name='beta2cifti')
@@ -194,7 +194,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
                 
         return _makeSetNamesListSubjLevel(names)
 
-    addnames = pe.Node(
+    addnames = pe.MapNode(
         interface=wb_misc.SetMapNames(),
         iterfield=['in_file'],
         name="addnames")    
