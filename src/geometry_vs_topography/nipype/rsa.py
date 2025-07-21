@@ -5,7 +5,7 @@ from nipype.interfaces.base import (
     BaseInterfaceInputSpec,
     File,
 )
-from traits.api import List, Bool, Float, Enum
+from traits.api import List, Bool, Float, Enum, Either
 import os
 from string import Template
 
@@ -320,7 +320,7 @@ class WithinSimilarity(BaseInterface):
 
 
 class SpatialWhiteningMultiTaskInputSpec(BaseInterfaceInputSpec):
-    spm_mat_files = List(File(exists=True), 
+    spm_mat_files = Either(List(File(exists=True)), File(exists=True),
         mandatory=True, 
         desc="path to SPM file in main SPM directory (containing the betas)")
 
@@ -368,8 +368,7 @@ class SpatialWhiteningMultiTask(BaseInterface):
     def _run_interface(self, runtime):    
         import numpy as np
 
-        d = dict(spm_mat_files=self.inputs.spm_mat_files,
-                 atlas=self.inputs.atlas,
+        d = dict(atlas=self.inputs.atlas,
                  normmode=self.inputs.normmode,
                  shrinkage=self.inputs.shrinkage,
                  whitened_images='beta_whitened.nii',
@@ -377,7 +376,10 @@ class SpatialWhiteningMultiTask(BaseInterface):
 
         # I don't know how to pass a list into the string Template, so instead
         # I save these to a txt and reimport them.
-        paths = np.array(self.inputs.spm_mat_files)
+        if isinstance(self.inputs.spm_mat_files, list):
+            paths = np.array(self.inputs.spm_mat_files)
+        else:
+            paths = np.array([self.inputs.spm_mat_files])
         np.savetxt('spm_mat_files.csv', paths, fmt="%s", delimiter="\n")
 
         # This is your MATLAB code template
