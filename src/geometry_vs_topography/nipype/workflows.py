@@ -119,7 +119,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         name='jointaskbetas')
 
     # spatial standardize runwise
-    noiseNormalizeBetas = pe.MapNode(
+    noiseNormalizeBetas = pe.Node(
         interface=SpatialWhiteningMultiTask(
             normmode=normmode, 
             shrinkage=shrinkage),
