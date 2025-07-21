@@ -1053,21 +1053,21 @@ def makeSetNamesListSubjLevel(names):
 
 
 if normmode == 'legacy':
-    tasksource = None
+    source = None
 else:
-    tasksource = 'tasksource'
+    source = 'tasksource'
 
 # spatial normalize runwise
 stdwfl1 = workflows.init_spatial_whitening_wf(
-    name='stdwfl1', joinsource=tasksource, shrinkage=1.0, normmode=normmode1)
+    name='stdwfl1', joinsource=source, shrinkage=1.0, normmode=normmode1)
 
 whitenwfl1 = workflows.init_spatial_whitening_wf(
-    name='whitenwfl1', joinsource=tasksource, shrinkage=-1, normmode=normmode1)
+    name='whitenwfl1', joinsource=source, shrinkage=-1, normmode=normmode1)
 
 
 # spatial normalize overall
 stdwfl2 = workflows.init_spatial_whitening_wf(
-    name='stdwfl2', joinsource=tasksource, shrinkage=1.0, normmode=normmode3)
+    name='stdwfl2', joinsource=source, shrinkage=1.0, normmode=normmode3)
 
 estStdContrasts = pe.Node(
     interface=wb_cifti.Average(),
@@ -1078,7 +1078,7 @@ mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
 
 
 whitenwfl2 = workflows.init_spatial_whitening_wf(
-    name='whitenwfl2', joinsource=tasksource, shrinkage=-1, normmode=normmode3)
+    name='whitenwfl2', joinsource=source, shrinkage=-1, normmode=normmode3)
 
 estWhitenedContrasts = pe.Node(
     interface=wb_cifti.Average(),
