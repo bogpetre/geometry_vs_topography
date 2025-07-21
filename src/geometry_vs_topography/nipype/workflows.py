@@ -129,7 +129,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         
     splitbetas = pe.MapNode(
         interface=fsl.Split(dimension='t'),
-        iterfield=['splitbetas'],
+        iterfield=['in_file'],
         name="splitbetas")
 
     def select_betas_of_interest_by_name(beta_images, betanames_file):
