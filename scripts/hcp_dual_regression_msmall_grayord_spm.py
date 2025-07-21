@@ -59,7 +59,9 @@ import nipype.algorithms.rapidart as ra
 # called after all iterables have converged, so even if with a multithreaded nipype
 # workflow this still shouldn't lead to any oversubscription.
 from nipype import config, logging
-cfg = dict(execution={'single_thread_matlab': False})
+cfg = dict(execution={
+        'single_thread_matlab': False,
+        'remove_unnecessary_outputs': False})
 config.update_config(cfg)          # must be called before you create nodes
 logging.update_logging(config)     # keeps Nipype’s logger in sy
 
@@ -94,11 +96,11 @@ from nipype.interfaces.freesurfer import Binarize
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
 from geometry_vs_topography.nipype.rsa import SpatialWhitening, WithinSimilarity
 
-from geometry_vs_topography.nipype.rsa import NVols, FMRIConcat
+from geometry_vs_topography.nipype.glm import NVols, FMRIConcat
 
 fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
 
-data_dir = os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/HCP1200')
+#data_dir = os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/HCP1200')
 
 # cutoff in seconds
 hp_cutoff=200 # HCP default, already applied to *hp2000* data
@@ -402,7 +404,7 @@ datasourcefunc = pe.Node(
         infields=['subject_id', 'session', 'direction'], 
         outfields=['func', 'vol', 'motion']),
     name='datasourcefunc')
-datasourcefunc.inputs.base_directory = data_dir
+#datasourcefunc.inputs.base_directory = data_dir
 datasourcefunc.inputs.template='*'
 datasourcefunc.inputs.field_template={'func': '%s/MNINonLinear/Results/rfMRI_REST%s_%s/rfMRI_REST%s_%s_Atlas_MSMAll_hp2000_clean.dtseries.nii',
                             'vol': '%s/MNINonLinear/Results/rfMRI_REST%s_%s/rfMRI_REST%s_%s_hp2000_clean.nii.gz',
@@ -418,7 +420,7 @@ datasourceanat = pe.Node(
         infields=['subject_id'], 
         outfields=['surface_left', 'surface_right', 'roi_left', 'roi_right', 'seg']),
     name='datasourceanat')
-datasourceanat.inputs.base_directory = data_dir
+#datasourceanat.inputs.base_directory = data_dir
 datasourceanat.inputs.template='*'
 datasourceanat.inputs.field_template={'seg': '%s/MNINonLinear/aparc+aseg.nii.gz',
                             'surface_left': '%s/MNINonLinear/fsaverage_LR32k/%s.L.midthickness_MSMAll.32k_fs_LR.surf.gii',
@@ -547,7 +549,7 @@ def pickfirstdeep(files):
 # Compute tSNR #
 # ############ #
 
-tsnrwf = workflows.init_tsnr()
+tsnrwf = workflows.init_tsnr(session_source="sessionsource")
 
 # ######################### #
 # Dual Regression Worfklows #
@@ -1157,8 +1159,6 @@ if __name__ == '__main__':
                             is also derived from ICA run on the same sample.')
     parser.add_argument('--data_dir', type=str, required=False,
                         help='Path to HCP data directory immediately above subject folders, e.g. HCP1200')
-    parser.add_argument('--hcp_resources_dir', type=str, required=False, default=os.path.abspath('/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/'),
-                        help='Path to HCP Resources directory. This should contain the GroupAvg/HCP_PTN1200 subfolders.')
     parser.add_argument('--config', type=str, required=True, default=os.path.abspath('../config.json'),
                         help='Path to json file containing local environment paths')
 
@@ -1167,9 +1167,15 @@ if __name__ == '__main__':
     with open(args.config) as f:
         config = json.load(f)
 
+    hcp_resources_dir = config['hcp_participant_data']['HCP_Resources']
+
     if args.data_dir is not None:
         datasourcefunc.inputs.base_directory = args.data_dir
         datasourceanat.inputs.base_directory = args.data_dir
+    else:
+        datasourcefunc.inputs.base_directory = config['hcp_participant_data']['S1200_imaging']
+        datasourceanat.inputs.base_directory = config['hcp_participant_data']['S1200_imaging']
+
 
     subjectsource.iterables = [('subject_id', args.subject_ids)]
     sessionsource.iterables = [('session', [1,2])]
@@ -1193,8 +1199,8 @@ if __name__ == '__main__':
     if args.nonstandard_template:
         subjectlevel.inputs.dualregressionwf.inputspec.group_ICAs_low_d = [os.path.join(args.rsn_template)]
     else:
-        subjectlevel.inputs.dualregressionwf.inputspec.group_ICAs_low_d = [os.path.join(args.hcp_resources_dir,'HCP_Resources/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d15.ica/melodic_IC.dscalar.nii'),
-                                                   os.path.join(args.hcp_resources_dir,'HCP_Resources/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d25.ica/melodic_IC.dscalar.nii')]
+        subjectlevel.inputs.dualregressionwf.inputspec.group_ICAs_low_d = [os.path.join(hcp_resources_dir,'GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d15.ica/melodic_IC.dscalar.nii'),
+                                                   os.path.join(hcp_resources_dir,'GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d25.ica/melodic_IC.dscalar.nii')]
 
 
     subjectlevel.write_graph()

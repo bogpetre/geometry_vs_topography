@@ -16,7 +16,7 @@ def mergelists(lists):
     else:
         return lists
 
-def init_tsnr(name='tsnr'):
+def init_tsnr(name='tsnr', run_source="directionsource", session_source="tasksource"):
     # this function produces an interface that can take one or more cifti input files,
     # computes tSNR for each, averages them acros inputs, estimates the mean tSNR
     # for each parcel specified by an input atlas, converts these to a csv file
@@ -33,14 +33,14 @@ def init_tsnr(name='tsnr'):
     joinWithinTask = pe.JoinNode(
         interface=util.IdentityInterface(
             fields=['in_file']),
-        joinsource='directionsource',
+        joinsource=run_source,
         joinfield=['in_file'],
         name='joinwithintask')
 
     joinWithinSubject = pe.JoinNode(
         interface=util.IdentityInterface(
             fields=['in_file']),
-        joinsource='tasksource',
+        joinsource=session_source,
         joinfield=['in_file'],
         name='joinwithinsubject')
 

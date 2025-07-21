@@ -48,7 +48,9 @@ from geometry_vs_topography.nipype.nearestcentroidclf import NearestCentroidClf
 # called after all iterables have converged, so even if with a multithreaded nipype
 # workflow this still shouldn't lead to any oversubscription.
 from nipype import config, logging
-cfg = dict(execution={'single_thread_matlab': False})
+cfg = dict(execution={
+        'single_thread_matlab': False,
+        'remove_unnecessary_outputs': False})
 config.update_config(cfg)          # must be called before you create nodes
 logging.update_logging(config)     # keeps Nipype’s logger in sy
 
