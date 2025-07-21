@@ -447,7 +447,7 @@ class SpatialWhiteningMultiTask(BaseInterface):
                     newMap0(:,atlas == this_roi) = beta;
                 end
 
-                newMap = reshape(newMap0', x0, y0, z0, length(SPM.Vbeta));
+                newMap = reshape(newMap0', x0, y0, z0, numBeta);
                 newMap(isnan(newMap)) = 0;
 
                 nii_path = strrep(whitened_images,'.nii.gz','.nii');
