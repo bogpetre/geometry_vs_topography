@@ -4,8 +4,10 @@ import nipype.interfaces.utility as util
 import nipype.pipeline.engine as pe
 
 from nipype_workbench_ext import cifti as wb_cifti
+from nipype_workbench_ext import misc as wb_misc
 from nipype_workbench_ext import surface as wb_surface
 
+import nipype.interfaces.fsl as fsl  # fsl
 from .rsa import SpatialWhiteningMultiTask
 
 from . import dual_regression as dual_reg
