@@ -6,6 +6,8 @@ import nipype.pipeline.engine as pe
 from nipype_workbench_ext import cifti as wb_cifti
 from nipype_workbench_ext import surface as wb_surface
 
+from .rsa import SpatialWhiteningMultiTask
+
 from . import dual_regression as dual_reg
 
 from warnings import warn
@@ -80,6 +82,130 @@ def init_tsnr(name='tsnr', run_source="directionsource", session_source="tasksou
         (ciftiParcellate, ciftiToText, [('out_file', 'in_file')]),
 
         (ciftiToText, outputspec, [('out_file', 'out_file')])
+    ])
+
+    return wf
+
+
+def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinkage=-1, normmode='runwise'):
+
+    wf = pe.Workflow(name='whitening')
+
+    inputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'spm_mat_file','atlas']),
+        name='inputspec')
+
+    atlas2nifti = pe.Node(
+        interface=wb_cifti.CiftiConvertNifti(
+            smaller_dims=True),
+        iterfield=['cifti_in'],
+        name='atlas2nifti')
+        
+    joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
+            fields=['spm_mat_file']),
+        joinsource=joinsource,
+        joinfield=['spm_mat_file'],
+        name='jointaskbetas')
+
+    # spatial standardize runwise
+    noiseNormalizeBetas = pe.Node(
+        interface=SpatialWhiteningMultiTask(
+            normmode=normmode, 
+            shrinkage=shrinkage),
+        name="noisenormalizebetas")
+        
+    splitbetas = pe.Node(
+        interface=fsl.Split(dimension='t'),
+        name="splitbetas")
+
+    def select_betas_of_interest_by_name(beta_images, betanames_file):
+        # this assumes equal number of contrasts in each session
+        import numpy as np
+
+        beta_names = np.loadtxt(betanames_file, delimiter="\t", dtype='str')
+
+        filt_beta_images = []
+        filt_beta_names = []
+        for img, name in zip(beta_images, beta_names):
+            # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
+            # drop response and question periods since theyr'e also generic like the motor cue condition
+            isbad = False
+            for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question', 'constant']:
+                if bad_name in name:
+                    isbad = True
+            if isbad:
+                continue
+
+            # drop last trials of emotion task because they overrun the scan duration.
+            if 'Task-EMOTION' in name and '-05' in name:
+                continue
+
+            filt_beta_images.append(img)
+            filt_beta_names.append(name)
+
+        return filt_beta_images, filt_beta_names
+
+    selectBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'betanames_file'],
+                                                    output_names=['beta_images', 'beta_names'],
+                                                    function=select_betas_of_interest_by_name),
+                                        name='selectbetasofinterest')
+                                        
+    mergebetas = pe.Node(
+        interface=fsl.Merge(
+            dimension='t'),
+        iterfield=['in_files'],
+        name="mergebetas")
+        
+    beta2cifti = pe.Node(
+        interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
+        iterfield=['nifti_in'],
+        name='beta2cifti')
+
+    def makeSetNamesListSubjLevel(names):
+        def _makeSetNamesListSubjLevel(names):
+            if isinstance(names, list) and isinstance(names[0], list):
+                return _makeSetNamesListSubjLevel(names[0])
+            else:
+                return [(int(i+1), item) for i,item in enumerate(names)]
+                
+        return _makeSetNamesListSubjLevel(names)
+
+    addnames = pe.Node(
+        interface=wb_misc.SetMapNames(),
+        iterfield=['in_file'],
+        name="addnames")    
+
+    outputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'out_file']),
+        name='outputspec')
+
+
+    wf.connect([
+        (inputnode, atlas2nifti, [('atlas', 'cifti_in')]),
+        (inputnode, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file')]),
+        
+        # standardize runwise
+        (atlas2nifti, noiseNormalizeBetas, [(('out_file', pickfirst), 'atlas')]),
+        (joinTaskSPMs, noiseNormalizeBetas, [('spm_mat_file', 'spm_mat_files')]),
+        
+        # split std betas by session, merge and convert to LR and RL specific ciftis
+        (noiseNormalizeBetas, splitbetas, [('whitened_images', 'in_file')]),
+        (splitbetas, selectBetasOfInterest, [
+            ('out_files', 'beta_images')]),
+        (noiseNormalizeBetas, selectBetasOfInterest, [
+            ('betanames','betanames_file')]),
+            
+        (selectBetasOfInterest, mergebetas, [('beta_images', 'in_files')]),
+        (mergebetas, beta2cifti, [('merged_file', 'nifti_in')]),
+        (inputnode, beta2cifti, [(('atlas', pickfirst), 'cifti_template')]),
+        
+        # assign condition names to std betas
+        (selectBetasOfInterest, addnames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
+        (beta2cifti, addnames, [('out_file', 'in_file')]),
+
+        (addnames, outputnode, [('out_file', 'out_file')]),
     ])
 
     return wf
