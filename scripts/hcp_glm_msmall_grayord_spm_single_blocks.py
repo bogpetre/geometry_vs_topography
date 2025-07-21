@@ -735,8 +735,6 @@ if __name__ == '__main__':
         datasource.inputs.base_directory = config['hcp_participant_data']['S1200_imaging']
         subjectlevel.inputs.modelfit.runinfo_node.data_dir = config['hcp_participant_data']['S1200_imaging']
 
-    import pdb; pdb.set_trace()
-
     infosource.iterables = [('subject_id', args.subject_ids)]
     tasksource.iterables = [('task', args.tasks)]
     directionsource.iterables = [('direction', ['LR','RL'])]

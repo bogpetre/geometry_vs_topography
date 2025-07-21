@@ -132,7 +132,8 @@ class RDMInputSpec(BaseInterfaceInputSpec):
         usedefault=True,
         desc="spatial normalization method to use")
         
-    normmode = Enum('runwise', 'overall',
+    # Safest default is runwise, but setting to partwise for backwards compatibility
+    normmode = Enum('partwise', 'runwise', 'overall',
         usedefault=True,
         desc="spatial normalization mode to use")
 
@@ -883,7 +884,7 @@ modelFitWf.connect([
 # do RSA #
 ##########
 
-def init_betas(name='whitenbetas', normmethod='multivariate', normmode='runwise'):
+def init_betas(name='whitenbetas', normmethod='multivariate', normmode='partwise'):
     
     betaswf = pe.Workflow(name=name)
     
@@ -944,7 +945,7 @@ def init_betas(name='whitenbetas', normmethod='multivariate', normmode='runwise'
     return betaswf
 
 
-def init_rsawf(name='rsa',normmethod='multivariate', save_whitening_matrix=False):
+def init_rsawf(name='rsa', normmethod='multivariate', save_whitening_matrix=False):
 
     rsawf = pe.Workflow(name=name)
 
@@ -964,10 +965,11 @@ def init_rsawf(name='rsa',normmethod='multivariate', save_whitening_matrix=False
     rsa = pe.Node(
         interface=RDM(
             normmethod=normmethod,
+            normmode='partwise',
             save_whitening_matrix=save_whitening_matrix),
         name="rsa")
 
-    betas_l1 = init_betas(name='betas_l1', normmethod=normmethod, normmode='runwise')
+    betas_l1 = init_betas(name='betas_l1', normmethod=normmethod, normmode='partwise')
     
     betas_l2 = init_betas(name='betas_l2', normmethod=normmethod, normmode='overall')
 
@@ -983,7 +985,8 @@ def init_rsawf(name='rsa',normmethod='multivariate', save_whitening_matrix=False
 
     cosim = pe.Node(
         interface=WithinSimilarity(
-            normmethod=normmethod),
+            normmethod=normmethod,
+            normmode='partwise'),
         name='cosim')
 
     outputnode_rsa = pe.Node(

@@ -10,149 +10,6 @@ import os
 from string import Template
 
 
-class CrossnobisInputSpec(BaseInterfaceInputSpec):
-    spm_mat_file = File(exists=True, mandatory=True, 
-        desc="path to SPM file in main SPM directory (containing the betas)")
-
-    atlas = File(exists=True, mandatory=False,
-        desc="Path to an atlas in register with SPM betas")
-
-class CrossnobisOutputSpec(TraitedSpec):
-    crossnobis = File(exists=True)
-
-    whitened_crossnobis = File(exists=True)
-
-
-class Crossnobis(BaseInterface):
-    """
-    Uses the rsatoolbox to compute crossvalidated mahalanobis distances among
-    betas of interest. Optionally returns whitened crossnobis distances which
-    accounts for repeated measures dependencies among distances. You will need
-    spm12 and the rsatoolbox on your path, which can be obtained here:
-    https://github.com/rsagroup/rsatoolbox_matlab
-
-    Note that the atlas should be an indexed map in the same space as the one 
-    in which you're running spm. So if you're running SPM on surface data that's
-    been converted to nifti cubes, make sure you convert your atlas the same way too.
-    """
-
-    input_spec = CrossnobisInputSpec
-    output_spec = CrossnobisOutputSpec
-
-    def _run_interface(self, runtime):
-        d = dict(spm_mat_file=self.inputs.spm_mat_file,
-                 atlas=self.inputs.atlas,
-                 crossnobis_out='crossnobis.csv',
-                 whitened_crossnobis_out='whitened_crossnobis.csv')
-
-        script = Template(
-            """ spm_mat_file = '$spm_mat_file';
-                atlas_path = '$atlas';
-
-                % import atlas
-                atlas_hdr = spm_vol(atlas_path);
-                atlas_vols = spm_read_vols(atlas_hdr);
-                [x0, y0, z0, t0] = size(atlas_vols);
-                atlas = reshape(atlas_vols, x0*y0*z0, t0);
-
-                % import data (very slow, could be improved)
-                SPM = importdata(spm_mat_file);
-
-                filename = {};
-                for i = 1:size(SPM.xY.P,1)
-                    str = strsplit(SPM.xY.P(i,:),','); 
-                    filename{end+1} = str{1};
-                end
-                filename = unique(filename(:));
-                filename = cat(1,filename{:});
-
-                vols = cell(1,length(filename));
-                for i = 1:size(filename,1);
-                    vols{i} = niftiread(filename(i,:)); 
-                end
-                vols = cat(4,vols{:});
-
-                %{
-                for i = 1:size(SPM.xY.P,1)
-                    hdr(i) = spm_vol(SPM.xY.P(i,:)); 
-                end
-                vols = spm_read_vols(hdr);
-                %}
-                [x,y,z,t] = size(vols);
-
-                if x ~= x0 || y ~= y0 | z ~= z0
-                    error('Atlas and data dimensions are mismatched.');
-                end
-
-                Y = double(reshape(vols, x*y*z, t))';
-
-                % set up condition vectors
-                conditions = zeros(size(SPM.xX.X,2),1);
-                for i = 1:length(SPM.Sess)
-                    sess_ind = SPM.Sess(i).col;
-                    con_ind = find(~contains(SPM.xX.name(sess_ind), {'constant','Realign','Outlier'}));
-                    conditions(sess_ind(con_ind)) = con_ind;
-                end
-
-                X = SPM.xX.xKXs.X;
-                numReg = size(X,2);
-                conditionVec = conditions;
-                numCond = max(conditionVec);
-                if (length(conditionVec)<numReg)
-                    conditionVec=[conditionVec;zeros(numReg-length(conditionVec),1)];
-                end
-                Z = rsa.util.indicatorMatrix('identity_p',conditionVec);
-                nonInterest = all(Z==0,2);   % Regressors not in the conditions
-                numNonInterest = sum(nonInterest);
-                Z(nonInterest,end+1:end+sum(numNonInterest))=eye(numNonInterest);
-                C = rsa.util.indicatorMatrix('allpairs',[1:numCond]);
-                
-                % loop over unique atlas regions and compute distance vectors
-                uniq_rois = unique(atlas(:));
-                uniq_rois(uniq_rois == 0) = [];
-                [crossnobis, whitened_crossnobis] = deal(zeros(sum(unique(conditions)>0)*(sum(unique(conditions)>0)-1)/2, sum(unique(atlas(:))>0)));
-                for i = 1:length(uniq_rois)
-                    this_roi = uniq_rois(i);
-                    roi = any(this_roi == atlas, 2); % atlas might be overlapping searchlights across multiple volumes
-                    [d, Sig] = rsa.spm.distanceLDCraw(Y(:,roi),SPM,conditions(:));
-                
-                    V = (C*Sig*C').^2;
-                    whitened_d = d*(V^-0.5);
-
-                    crossnobis(:,i) = d;
-                    whitened_crossnobis(:,i) = whitened_d;
-                end
-
-                csvwrite('$crossnobis_out', crossnobis);
-                csvwrite('$whitened_crossnobis_out', whitened_crossnobis);
-            """
-        ).substitute(d)
-
-        # mfile = True  will create an .m file with your script and executed.
-        # Alternatively
-        # mfile can be set to False which will cause the matlab code to be
-        # passed
-        # as a commandline argument to the matlab executable
-        # (without creating any files).
-        # This, however, is less reliable and harder to debug
-        # (code will be reduced to
-        # a single line and stripped of any comments).
-        mlab = MatlabCommand(script=script, mfile=True)
-        result = mlab.run()
-
-        self.crossnobis_file = os.path.abspath(d['crossnobis_out'])
-        self.whitened_crossnobis_file = os.path.abspath(d['whitened_crossnobis_out'])
-
-        return result.runtime
-
-    def _list_outputs(self):
-        outputs = self._outputs().get()
-        outputs['crossnobis'] = os.path.abspath(self.crossnobis_file)
-        outputs['whitened_crossnobis'] = os.path.abspath(self.whitened_crossnobis_file)
-        return outputs
-
-
-
 class SpatialWhiteningInputSpec(BaseInterfaceInputSpec):
     spm_mat_file = File(exists=True, mandatory=True, 
         desc="path to SPM file in main SPM directory (containing the betas)")
@@ -329,25 +186,17 @@ class WithinSimilarityInputSpec(BaseInterfaceInputSpec):
         usedefault=True,
         desc = "Use nonlinear shrinkage for p > 50, n > 50.")
 
+    # Safest default is runwise, but setting to partwise for backwards compatibility
+    normmode = Enum('partwise', 'runwise', 'overall',
+        usedefault=True,
+        desc="Do multivariate noise normalization by run or overall") 
+
 class WithinSimilarityOutputSpec(TraitedSpec):
     similarity = File(exists=True)
 
     betanames = File(exists=True)
 
 class WithinSimilarity(BaseInterface):
-    """
-    Uses the rsatoolbox to compute crossvalidated mahalanobis distances among
-    betas of interest. Optionally returns whitened rdms which
-    accounts for repeated measures dependencies among distances. You will need
-    spm12 and the rsatoolbox on your path, which can be obtained here:
-    https://github.com/rsagroup/rsatoolbox_matlab
-
-    Note that the atlas should be an indexed map in the same space as the one 
-    in which you're running spm. So if you're running SPM on surface data that's
-    been converted to nifti cubes using wb_command -cifti-convert, make sure you 
-    convert your atlas the same way too.
-    """
-
     input_spec = WithinSimilarityInputSpec
     output_spec = WithinSimilarityOutputSpec
 
@@ -363,6 +212,7 @@ class WithinSimilarity(BaseInterface):
 
         d = dict(atlas=self.inputs.atlas,
                  normmethod=self.inputs.normmethod,
+                 normmode=self.inputs.normmode,
                  shrinkage=self.inputs.shrinkage,
                  target=self.inputs.target,
                  nonlinearshrink=int(bool(self.inputs.nonlinearshrink)),
@@ -374,6 +224,7 @@ class WithinSimilarity(BaseInterface):
             """ spm_mat_file = '$spm_mat_file';
                 atlas_path = '$atlas';
                 normmethod = '$normmethod';
+                normmode = '$normmode';
                 shrinkage = str2double('$shrinkage');
                 target = '$target';
                 nonlinearshrink = $nonlinearshrink;
@@ -436,7 +287,8 @@ class WithinSimilarity(BaseInterface):
                     this_Y = Y(:,roi).*gSF; % mask and apply SPM global signal scaling;
                     this_Y = this_Y(:,var(this_Y) > 0);
                     if any(this_Y)
-                        [similarity(:,i), names] = betweenSessionSimilarity(this_Y, SPM, conditions(:), fun, 'normmethod', normmethod, ...
+                        [similarity(:,i), names] = betweenSessionSimilarity(this_Y, SPM, conditions(:), fun, ...
+                            'normmethod', normmethod, 'normmode', normmode, ...
                             'shrinkage', shrinkage, 'target', target,'nonlinearshrink',nonlinearshrink);
                     end
                 end
