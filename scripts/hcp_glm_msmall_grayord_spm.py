@@ -1154,12 +1154,12 @@ rsawf.connect([
 ])
 
 if normmode == 'legacy':
-    rsawf.connect([    
+    rsawf.connect([
         (estStdContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
         (joinTaskBetas, mergeStdContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
 
-        (estWhitenedContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
-        (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
+        (estWhitenedContrasts, joinTaskBetas, [('out_file', 'whitened_betas')]),
+        (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('whitened_betas', 'cifti')]),
     ])
 else:
     rsawf.connect([
@@ -1169,7 +1169,6 @@ else:
     ])
     
 rsawf.connect([
-
     # estimate within subject cosine similarity
     (inputnode_rsa, joinTaskSPMMats, [('spm_mat_file', 'spm_mat_file')]),
 
