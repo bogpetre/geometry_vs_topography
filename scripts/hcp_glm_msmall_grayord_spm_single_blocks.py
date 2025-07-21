@@ -305,8 +305,6 @@ def select_betas_of_interest(beta_images, run_info):
     #spm stacks session intercepts at the end, so we need to 
     # subract them from the count before dividing
     beta_per_sess = (len(beta_images)-n_sess)/n_sess
-
-    import pdb; pdb.set_trace()
     
     filt_beta_images = []
     filt_beta_names = []
@@ -566,9 +564,9 @@ addwhitenednames = pe.Node(
     interface=wb_misc.SetMapNames(),
     iterfield=['in_file'],
     name="addwhitenednames")
-    
+ 
+'''
 # merge whitened betas for post-hoc between subject spatial correlation analysis
-
 mergeWhitenedContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     iterfield=['cifti'],
     name="mergewhitenedcontrastsacrosstasks")
@@ -578,7 +576,7 @@ mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     iterfield=['cifti'],
     name="mergestandardizedcontrastsacrosstasks")
 
-'''
+
 whiteningwf.connect([
     (inputnode_whitening, atlas2nifti, [('atlas', 'cifti_in')]),
     
@@ -655,8 +653,6 @@ whiteningwf.connect([
     (selectStdBetasOfInterest, addstdnames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
     (standardizedbeta2cifti, addstdnames, [('out_file', 'in_file')]),
     
-    (addstdnames, mergeStdContrastsAcrossTasks, [('out_file', 'cifti')]),
-    
 
     # whiten runwise
     (atlas2nifti, whitenbetas, [('out_file', 'atlas')]),
@@ -676,8 +672,6 @@ whiteningwf.connect([
     # assign condition names to whitened betas
     (selectWhitenedBetasOfInterest, addwhitenednames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
     (whitenedbeta2cifti, addwhitenednames, [('out_file', 'in_file')]),
-    
-    (addwhitenednames, mergeWhitenedContrastsAcrossTasks, [('out_file', 'cifti')]),
 ])
 
 ########################################
@@ -739,8 +733,8 @@ subjectlevel.connect([
                              ('joinruns.run_info', 'inputspec.run_info'),
                             ]),
 
-    (whiteningwf, stdclfwf, [('mergestandardizedcontrastsacrosstasks.out_file', 'inputspec.cifti')]),
-    (whiteningwf, whclfwf, [('mergewhitenedcontrastsacrosstasks.out_file', 'inputspec.cifti')]),
+    (whiteningwf, stdclfwf, [('addstdnames.out_file', 'inputspec.cifti')]),
+    (whiteningwf, whclfwf, [('addwhitenednames.out_file', 'inputspec.cifti')]),
     
     # save desired outputs
     (modelfit, datasink, [('mergecontrastsacrosstasks.out_file', 'results.all_tasks.contrasts'),
@@ -755,8 +749,8 @@ subjectlevel.connect([
                           ]),
                           
     
-    (whiteningwf, datasink, [('mergestandardizedcontrastsacrosstasks.out_file', 'results.all_tasks.standardized_contrasts'),
-                             ('mergewhitenedcontrastsacrosstasks.out_file', 'results.all_tasks.whitened_contrasts'),
+    (whiteningwf, datasink, [('addstdnames.out_file', 'results.all_tasks.standardized_contrasts'),
+                             ('addwhitenednames.out_file', 'results.all_tasks.whitened_contrasts'),
                             ]),
 
     (stdclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),

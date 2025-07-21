@@ -99,7 +99,15 @@ for i=1:NSess
     row_ind = 0;
     col_ind = 0;
     for j = 1:length(SPM)
-        run_ind = (j-1)*NSess + i; % This keeps runs nested within sessions
+        % the run indexing here is important. This script will function
+        % just fine  as long as all runs within sessions/SPM.mat files are
+        % unique, but downstream scripts may break if the run order isn't
+        % maintained within SPM.mat file. Hence we nest run_ind within
+        % session so first you get all runs from SPM.mat 1, then all runs
+        % from SPM.mat 2, etc. This ensures the betas that are returned are
+        % the same as the betas you'd get by stacking the outputs of each
+        % SPM.mat file passed into this function, in the order that thyere passed in.
+        run_ind = (j-1)*NSess + i;
         partT(row_ind + SPM{j}.Sess(i).row,1)=i;
         partQ(col_ind + SPM{j}.Sess(i).col,1)=i;
         runT(row_ind + SPM{j}.Sess(i).row,1)=run_ind;
