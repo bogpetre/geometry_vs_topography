@@ -179,7 +179,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
     mergebetas = pe.MapNode(
         interface=fsl.Merge(
             dimension='t'),
-        iterfield=['in_files','map'],
+        iterfield=['in_files'],
         name="mergebetas")
         
     beta2cifti = pe.MapNode(
@@ -190,16 +190,16 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
     def makeSetNamesListSubjLevel(names):
         def _makeSetNamesListSubjLevel(names):
             if isinstance(names, list) and isinstance(names[0], list):
-                return _makeSetNamesListSubjLevel(names[0])
+                return [_makeSetNamesListSubjLevel(name) for name in names]
             else:
                 return [(int(i+1), item) for i,item in enumerate(names)]
-                
+
         return _makeSetNamesListSubjLevel(names)
 
     addnames = pe.MapNode(
         interface=wb_misc.SetMapNames(),
-        iterfield=['in_file'],
-        name="addnames")    
+        iterfield=['in_file','map'],
+        name="addnames")
 
     outputnode = pe.Node(
         interface=util.IdentityInterface(fields=[
