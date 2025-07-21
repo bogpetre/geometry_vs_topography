@@ -627,7 +627,7 @@ whiteningwf.connect([
 whiteningwf.connect([
     (inputnode_whitening, atlas2nifti, [('atlas', 'cifti_in')]),
     (inputnode_whitening, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file'),
-                                         (('run_info', pickfirst), 'run_info')]),
+                                         ('run_info', 'run_info')]),
     
     # standardize runwise
     (atlas2nifti, stdbetas, [(('out_file', pickfirst), 'atlas')]),
