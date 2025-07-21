@@ -20,6 +20,10 @@ function [u_hat,names,resMS,Sw_hat,beta_hat,shrinkage,trRR]=noiseNormalizeBetaMu
 %                     does multivariate noise normalization based on the
 %                     concatenated residuals, same as SPMs residual error
 %                     variance calculation.
+%                  'poolparts': Computes partition-wise covariance and 
+%                     pools covariances across partitions.
+%                  'poolruns': Computes run-wise covariance and pools 
+%                     covariances across runs.
 %   'shrinkage':  Shrinkage coefficient. 
 %                 0: No regularisation 
 %                 1: Using only the diagonal - i.e. univariate noise normalisation 
@@ -152,9 +156,10 @@ Bcov = blkdiag(Bcov{:});
 
 names = {};
 switch (Opt.normmode)
-    case 'runwise'              % do run-wise noise normalization
+    case {'runwise','poolruns'}              % do run-wise noise normalization
         u_hat   = zeros(size(beta_hat));
-        shrinkage=zeros(NSess,1);
+        shrinkage=zeros(NRun,1);
+        df      = zeros(NRun,1);
         for i=1:NRun
             idxT    = runT==i;             % Time points for this partition
             idxQ    = runQ==i;
@@ -166,31 +171,36 @@ switch (Opt.normmode)
             % shrinkage calculations
             scaleFactor = sqrt(mean(diag(Bcov(noMotion,noMotion))));
             assert(imag(scaleFactor) == 0, 'Imaginary Bcov matrix found. Please check for badly scaled design matrix columns.')
-            df = SPM{taskIdx}.xX.trRV/NSess;
-            if df > 50 && size(res,2) > 50 && ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1
+            df(i) = SPM{taskIdx}.xX.trRV/NSess;
+            if df(i) > 50 && size(res,2) > 50 && ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1
                 X = res(idxT,:)*sqrt(mean(diag(Bcov(noMotion,noMotion))));
-                Sw_hat(:,:,i) = 1/df*(X'*X);
-                Sw_reg(:,:,i) = QIS(X,round(df));
+                Sw_hat(:,:,i) = 1/df(i)*(X'*X);
+                Sw_reg(:,:,i) = QIS(X,round(df(i)));
                 shrinkage(i) = nan;
             else
-                [Sw_reg(:,:,i),shrinkage(i),Sw_hat(:,:,i)]=rsa.stat.covdiag(res(idxT,:)*sqrt(mean(diag(Bcov(noMotion,noMotion)))),df,...
+                [Sw_reg(:,:,i),shrinkage(i),Sw_hat(:,:,i)]=rsa.stat.covdiag(res(idxT,:)*sqrt(mean(diag(Bcov(noMotion,noMotion)))),df(i),...
                     'shrinkage',Opt.shrinkage,'target',Opt.target);                    %%% regularize Sw_hat through optimal shrinkage
             end
-            % Calculating sq over the eigenvalues is numerically more
-            % stable than sq = Sw_reg^-1/2 
-            [V,L]=eig(Sw_reg(:,:,i));   
-            l=diag(L);
-            sq(:,:,i) = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
-            % Postmultiply by the inverse square root of the estimated matrix 
-            u_hat(idxQ,:)=beta_hat(idxQ,:)*sq(:,:,i);
+            
             names(idxQ) = allnames(idxQ);
+            if strcmp(Opt.normmode,'runwise')
+                % Calculating sq over the eigenvalues is numerically more
+                % stable than sq = Sw_reg^-1/2 
+                [V,L]=eig(Sw_reg(:,:,i));   
+                l=diag(L);
+                sq(:,:,i) = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+                
+                % Postmultiply by the inverse square root of the estimated matrix 
+                u_hat(idxQ,:)=beta_hat(idxQ,:)*sq(:,:,i);
+            end
         end;
         shrinkage=mean(shrinkage);
-        Sw_hat = mean(Sw_hat,3); 
-        Sw_reg = mean(Sw_reg,3); 
-    case 'partwise'              % do run-wise noise normalization
+        %Sw_hat = mean(Sw_hat,3); 
+        %Sw_reg = mean(Sw_reg,3); 
+    case {'partwise','poolparts'}              % do run-wise noise normalization
         u_hat   = zeros(size(beta_hat));
         shrinkage=zeros(NSess,1);
+        df      = zeros(NSess,1);
         for i=1:NSess
             idxT    = partT==i;             % Time points for this partition 
             idxQ    = partQ==i;             % Regressors for this partition 
@@ -201,28 +211,32 @@ switch (Opt.normmode)
             % shrinkage calculations
             scaleFactor = sqrt(mean(diag(Bcov(noMotion,noMotion))));
             assert(imag(scaleFactor) == 0, 'Imaginary Bcov matrix found. Please check for badly scaled design matrix columns.')
-            df = totaldf/NSess;
-            if df > 50 && size(res,2) > 50 && ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1
+            df(i) = totaldf/NSess;
+            if df(i) > 50 && size(res,2) > 50 && ~isempty(Opt.nonlinearshrink) && Opt.nonlinearshrink == 1
                 X = res(idxT,:)*sqrt(mean(diag(Bcov(noMotion,noMotion))));
-                Sw_hat(:,:,i) = 1/df*(X'*X);
-                Sw_reg(:,:,i) = QIS(X,round(df));
+                Sw_hat(:,:,i) = 1/df(i)*(X'*X);
+                Sw_reg(:,:,i) = QIS(X,round(df(i)));
                 shrinkage(i) = nan;
             else
-                [Sw_reg(:,:,i),shrinkage(i),Sw_hat(:,:,i)]=rsa.stat.covdiag(res(idxT,:)*sqrt(mean(diag(Bcov(noMotion,noMotion)))),df,...
+                [Sw_reg(:,:,i),shrinkage(i),Sw_hat(:,:,i)]=rsa.stat.covdiag(res(idxT,:)*sqrt(mean(diag(Bcov(noMotion,noMotion)))),df(i),...
                     'shrinkage',Opt.shrinkage,'target',Opt.target);                    %%% regularize Sw_hat through optimal shrinkage
             end
-            % Calculating sq over the eigenvalues is numerically more
-            % stable than sq = Sw_reg^-1/2 
-            [V,L]=eig(Sw_reg(:,:,i));   
-            l=diag(L);
-            sq(:,:,i) = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
-            % Postmultiply by the inverse square root of the estimated matrix 
-            u_hat(idxQ,:)=beta_hat(idxQ,:)*sq(:,:,i);
+            
             names(idxQ) = allnames(idxQ);
+            if strcmp(Opt.normmode,'partwise')
+                % Calculating sq over the eigenvalues is numerically more
+                % stable than sq = Sw_reg^-1/2 
+                [V,L]=eig(Sw_reg(:,:,i));   
+                l=diag(L);
+                sq(:,:,i) = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+            
+                % Postmultiply by the inverse square root of the estimated matrix 
+                u_hat(idxQ,:)=beta_hat(idxQ,:)*sq(:,:,i);
+            end
         end;
         shrinkage=mean(shrinkage);
-        Sw_hat = mean(Sw_hat,3); 
-        Sw_reg = mean(Sw_reg,3); 
+        %Sw_hat = mean(Sw_hat,3); 
+        %Sw_reg = mean(Sw_reg,3); 
     case 'overall'              %%% do overall noise normalization
         % in the scaling of the noise, take into account mean beta-variance 
         %[Sw_reg,shrinkage,Sw_hat]=rsa.stat.covdiag(res,SPM.xX.trRV/mean(diag(SPM.xX.Bcov)),'shrinkage',Opt.shrinkage);   %%% regularize Sw_hat through optimal shrinkage
@@ -246,7 +260,26 @@ switch (Opt.normmode)
         names = all_names;
 end;
 
-names = cellfun(@(x1)(regexprep(x1,'Sn\([0-9]+\)\ (.*).*','$1')),names,'UniformOutput',false); % drop session indicator
+
+Sw_hat_pooled = df(1)/sum(df)*Sw_hat(:,:,1)
+Sw_reg_pooled = df(1)/sum(df)*Sw_reg(:,:,1)
+for i = 2:length(df)
+    Sw_hat_pooled = Sw_hat_pooled + df(i)/sum(df)*Sw_hat(:,:,i)
+    Sw_reg_pooled = Sw_reg_pooled + df(i)/sum(df)*Sw_reg(:,:,i)
+end
+Sw_hat = Sw_hat_pooled;
+Sw_reg = Sw_reg_pooled;
+
+if ismember(Opt.normmode,{'poolruns','poolparts'})
+    % Calculating sq over the eigenvalues is numerically more
+    % stable than sq = Sw_reg^-1/2 
+    [V,L]=eig(Sw_reg);   
+    l=diag(L);
+    sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+    u_hat=beta_hat*sq
+end
+
+%names = cellfun(@(x1)(regexprep(x1,'Sn\([0-9]+\)\ (.*).*','$1')),names,'UniformOutput',false); % drop session indicator
 names = cellfun(@(x1)(regexprep(x1,'(.*)\*bf.*','$1')),names,'UniformOutput',false); % drop any trailing bfs
 
 % Return the diagonal of Sw_hat - also weighted by the mean variance of beta-hat 
