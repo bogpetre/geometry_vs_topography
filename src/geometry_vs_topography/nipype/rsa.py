@@ -327,7 +327,7 @@ class SpatialWhiteningMultiTaskInputSpec(BaseInterfaceInputSpec):
     atlas = File(exists=True, mandatory=False,
         desc="Path to an atlas in register with SPM betas")
         
-    normmode = Enum('overall','partwise','runwise',
+    normmode = Enum('overall','partwise','runwise','poolparts','poolruns',
         usedefault=True,
         desc="Do multivariate noise normalization by run or overall") 
         

@@ -1039,12 +1039,15 @@ def makeSetNamesListSubjLevel(names):
     return _makeSetNamesListSubjLevel(names)
 
 # spatial normalize runwise
-stdwfl1 = workflows.init_spatial_whitening_wf(name='stdwfl1', joinsource=None, shrinkage=1.0, normmode='runwise')
+stdwfl1 = workflows.init_spatial_whitening_wf(
+    name='stdwfl1', joinsource=None, shrinkage=1.0, normmode='runwise')
 
-whitenwfl1 = workflows.init_spatial_whitening_wf(name='whitenwfl1', joinsource=None, shrinkage=-1, normmode='runwise')
+whitenwfl1 = workflows.init_spatial_whitening_wf(
+    name='whitenwfl1', joinsource=None, shrinkage=-1, normmode='runwise')
 
 # spatial normalize overall
-stdwfl2 = workflows.init_spatial_whitening_wf(name='stdwfl2', joinsource=None, shrinkage=1.0, normmode='overall')
+stdwfl2 = workflows.init_spatial_whitening_wf(
+    name='stdwfl2', joinsource=None, shrinkage=1.0, normmode='poolruns')
 
 estStdContrasts = pe.Node(
     interface=wb_cifti.Average(),
@@ -1054,7 +1057,8 @@ mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     name="mergestandardizedcontrastsacrosstasks")
 
 
-whitenwfl2 = workflows.init_spatial_whitening_wf(name='whitenwfl2', joinsource=None, shrinkage=-1, normmode='overall')
+whitenwfl2 = workflows.init_spatial_whitening_wf(
+    name='whitenwfl2', joinsource=None, shrinkage=-1, normmode='poolruns')
 
 estWhitenedContrasts = pe.Node(
     interface=wb_cifti.Average(),
@@ -1235,12 +1239,12 @@ subjectlevel.connect([
                        ('stdcosim.betanames', 'results.all_tasks.standardized_contrasts.@betanames'),
     
     
-                       ('stdwfl1.outputspec.out_file', 'results.@l1_standardized_betas'), # run specific (LR/RL) task tstats
+                       ('stdwfl1.outputspec.out_file', 'results.standardized_contrasts.@l1_standardized_betas'), # run specific (LR/RL) task tstats
                        #(('eststdcontrasts.out_file', pickfirst), 'results.standardized_betas.@l2_std_betas'), # subject level task stats. We output these merged acros tasks
                        ('mergestandardizedcontrastsacrosstasks.out_file', 
                         'results.all_tasks.standardized_contrasts'), # these are averaged across run-level standardized betas
     
-                       ('whitenwfl1.outputspec.out_file', 'results.@l1_whitened_betas'), # task x run specific tstats
+                       ('whitenwfl1.outputspec.out_file', 'results.whitened_contrasts.@l1_whitened_betas'), # task x run specific tstats
                        #(('estwhitenedcontrasts.out_file', pickfirst), 'results.whitened_betas.@l2_whitened_betas'), # subject level task stats. We output these merged across tasks.
                        ('mergewhitenedcontrastsacrosstasks.out_file', 'results.all_tasks.whitened_contrasts'), # these are averaged across run-level whitened betas
                        #('mergetstatsacrosstasks.out_file', 'results.all_subjectlevel_tstats')
