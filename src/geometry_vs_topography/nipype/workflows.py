@@ -110,7 +110,6 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
     atlas2nifti = pe.Node(
         interface=wb_cifti.CiftiConvertNifti(
             smaller_dims=True),
-        iterfield=['cifti_in'],
         name='atlas2nifti')
         
     joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
@@ -124,12 +123,10 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         interface=SpatialWhiteningMultiTask(
             normmode=normmode, 
             shrinkage=shrinkage),
-        iterfield=['spm_mat_files'],
         name="noisenormalizebetas")
         
-    splitbetas = pe.MapNode(
+    splitbetas = pe.Node(
         interface=fsl.Split(dimension='t'),
-        iterfield=['in_file'],
         name="splitbetas")
 
     def select_betas_of_interest_by_name(beta_images, betanames_file):
@@ -173,10 +170,9 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
 
         return filt_beta_images, filt_beta_names
 
-    selectBetasOfInterest = pe.MapNode(util.Function(input_names=['beta_images', 'betanames_file'],
+    selectBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'betanames_file'],
                                                     output_names=['beta_images', 'beta_names'],
                                                     function=select_betas_of_interest_by_name),
-                                        iterfield=['beta_images','betanames_file'],
                                         name='selectbetasofinterest')
                                         
     mergebetas = pe.MapNode(
