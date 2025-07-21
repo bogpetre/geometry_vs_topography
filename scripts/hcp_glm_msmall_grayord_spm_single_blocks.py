@@ -470,8 +470,18 @@ modelfit.connect([
 # do spatial whitening #
 ########################
 
+
+mergeStdBetasAcrossSessions = pe.Node(interface=wb_cifti.CiftiMerge(),
+    iterfield=["cifti"],
+    name="mergestdbetasacrosssessions")
+
+mergeWhitenedBetasAcrossSessions = pe.Node(interface=wb_cifti.CiftiMerge(),
+    iterfield=["cifti"],
+    name="mergewhitenedbetasacrosssessions")
+
 stdwf = init_spatial_whitening_wf(
     name='std', joinsource='tasksource', shrinkage=1.0, normmode=normmode)
+
 whitenwf = init_spatial_whitening_wf(
     name='whiten', joinsource='tasksource', shrinkage=-1, normmode=normmode)
 
@@ -534,8 +544,11 @@ subjectlevel.connect([
     (modelfit, stdwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
     (modelfit, whitenwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
 
-    (stdwf, stdclfwf, [('outputspec.out_file', 'inputspec.cifti')]),
-    (whitenwf, whclfwf, [('outputspec.out_file', 'inputspec.cifti')]),
+    (stdwf, mergeStdBetasAcrossSessions, [('outputspec.out_file', 'cifti')]),
+    (whitenwf, mergeWhitenedBetasAcrossSessions, [('outputspec.out_file', 'cifti')]),
+
+    (mergeStdBetasAcrossSessions, stdclfwf, [('out_file', 'inputspec.cifti')]),
+    (mergeWhitenedBetasAcrossSessions, whclfwf, [('out_file', 'inputspec.cifti')]),
     
     # save desired outputs
     (modelfit, datasink, [('mergecontrastsacrosstasks.out_file', 'results.all_tasks.contrasts'),
@@ -550,8 +563,8 @@ subjectlevel.connect([
                           ]),
                           
     
-    (stdwf, datasink, [('outputspec.out_file', 'results.all_tasks.standardized_contrasts')]),
-    (whitenwf, datasink, [('outputspec.out_file', 'results.all_tasks.whitened_contrasts')]),
+    (mergeStdBetasAcrossSessions, datasink, [('out_file', 'results.all_tasks.standardized_contrasts')]),
+    (mergeWhitenedBetasAcrossSessions, datasink, [('out_file', 'results.all_tasks.whitened_contrasts')]),
 
     (stdclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),
     (whclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf')]),

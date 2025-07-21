@@ -133,27 +133,39 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
     def select_betas_of_interest_by_name(beta_images, betanames_file):
         # this assumes equal number of contrasts in each session
         import numpy as np
+        import re
 
         beta_names = np.loadtxt(betanames_file, delimiter="\t", dtype='str')
+        sessions = [int(re.sub(r'Sn\(([0-9]+)\).*',r'\1',name)) for name in beta_names]
+        uniq_sessions = list(set(sessions))
 
         filt_beta_images = []
         filt_beta_names = []
-        for img, name in zip(beta_images, beta_names):
-            # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
-            # drop response and question periods since theyr'e also generic like the motor cue condition
-            isbad = False
-            for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question', 'constant']:
-                if bad_name in name:
-                    isbad = True
-            if isbad:
-                continue
+        for sess in uniq_sessions:
+            these_betas = []
+            these_names = []
+            for img, name, session in zip(beta_images, beta_names, session):
+                # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
+                # drop response and question periods since theyr'e also generic like the motor cue condition
+                isbad = False
+                for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question', 'constant']:
+                    if bad_name in name:
+                        isbad = True
+                if isbad:
+                    continue
 
-            # drop last trials of emotion task because they overrun the scan duration.
-            if 'Task-EMOTION' in name and '-05' in name:
-                continue
+                if session != sess:
+                    continue
 
-            filt_beta_images.append(img)
-            filt_beta_names.append(name)
+                # drop last trials of emotion task because they overrun the scan duration.
+                if 'Task-EMOTION' in name and '-05' in name:
+                    continue
+
+                these_betas.append(img)
+                these_names.append(name)
+
+            filt_beta_images.append(these_betas)
+            filt_beta_names.append(these_names)
 
         return filt_beta_images, filt_beta_names
 
