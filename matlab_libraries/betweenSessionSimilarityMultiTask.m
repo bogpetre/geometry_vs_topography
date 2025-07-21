@@ -88,8 +88,8 @@ Z(nonInterest,end+1:end+sum(numNonInterest))=eye(numNonInterest);
 %%% Get partions: For each run (1:K), find the time points (T) and regressors (K+Q) that belong to the run
 partT = nan(T,1);
 partN = nan(numReg,1);
-partT = nan(T,1);
-partN = nan(numReg,1);
+taskT = nan(T,1);
+taskN = nan(numReg,1);
 numPart=length(SPM{1}.Sess);                                     %%% number of runs
 for i = 1:length(SPM)
     if numPart ~= length(SPM{i}.Sess)
