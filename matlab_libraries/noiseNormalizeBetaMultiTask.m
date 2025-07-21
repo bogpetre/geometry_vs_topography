@@ -1,4 +1,4 @@
-function [u_hat,resMS,Sw_hat,beta_hat,shrinkage,trRR]=noiseNormalizeBetaMultiTask(Y,SPM,varargin)
+function [u_hat,names,resMS,Sw_hat,beta_hat,shrinkage,trRR]=noiseNormalizeBetaMultiTask(Y,SPM,varargin)
 % function [u_hat,Sw_hat,resMS,beta_hat]=rsa_noiseNormalizeBeta(Y,SPM,varargin)
 % Estimates beta coefficiencts beta_hat and residuals from raw time series Y
 % Estimates the true activity patterns u_hat by applying noise normalization to beta_hat
@@ -132,7 +132,7 @@ end;
 KWY = [];
 beta_hat = [];
 res = [];
-names = {};
+allnames = {};
 row0 = 0;
 Bcov = cell(1,length(SPM));
 totaldf = 0;
@@ -146,9 +146,11 @@ for i = 1:length(SPM)
     
     Bcov{i} = SPM{i}.xX.Bcov;
     totaldf = totaldf + SPM{i}.xX.trRV;
+    allnames = [allnames, SPM{i}.xX.name];
 end
 Bcov = blkdiag(Bcov{:});
 
+names = {};
 switch (Opt.normmode)
     case 'runwise'              % do run-wise noise normalization
         u_hat   = zeros(size(beta_hat));
@@ -181,6 +183,7 @@ switch (Opt.normmode)
             sq(:,:,i) = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
             % Postmultiply by the inverse square root of the estimated matrix 
             u_hat(idxQ,:)=beta_hat(idxQ,:)*sq(:,:,i);
+            names(idxQ) = allnames(idxQ);
         end;
         shrinkage=mean(shrinkage);
         Sw_hat = mean(Sw_hat,3); 
@@ -215,6 +218,7 @@ switch (Opt.normmode)
             sq(:,:,i) = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
             % Postmultiply by the inverse square root of the estimated matrix 
             u_hat(idxQ,:)=beta_hat(idxQ,:)*sq(:,:,i);
+            names(idxQ) = allnames(idxQ);
         end;
         shrinkage=mean(shrinkage);
         Sw_hat = mean(Sw_hat,3); 
@@ -239,11 +243,12 @@ switch (Opt.normmode)
         l=diag(L);
         sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
         u_hat=beta_hat*sq;
+        names = all_names;
 end;
 
 % Return the diagonal of Sw_hat - also weighted by the mean variance of beta-hat 
-if (nargout>1)
-    resMS=sum(res.^2)./SPM.xX.trRV*mean(diag(SPM.xX.Bcov));
+if (nargout>2)
+    resMS=sum(res.^2)./totaldf*mean(diag(Bcov));
 end; 
 
 % return the trace of the residual covariance matrix
@@ -251,7 +256,7 @@ end;
 % would be P. However, because we need to regularise our estimate, the residual 
 % spatial covariance matrix is somwhat correlated. For variance estimation on the distances, 
 % the effective voxel number would be numVox^2/trRR
-if (nargout>5)
+if (nargout>6)
     % Caluclate the predicted redidual covariance 
     sq     = mean(sq,3); 
     V_hat  = sq'*Sw_hat*sq; 

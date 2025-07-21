@@ -445,7 +445,7 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 for i = 1:length(uniq_rois)
                     this_roi = uniq_rois(i);
                     roi = any(this_roi == atlas, 2); % atlas might be overlapping searchlights across multiple volumes
-                    [beta,~,~,~,~,~,names] = noiseNormalizeBetaMultiTask(Y(:,roi), SPM, varg{:});
+                    [beta,names] = noiseNormalizeBetaMultiTask(Y(:,roi), SPM, varg{:});
 
                     newMap0(:,atlas == this_roi) = beta;
                 end
@@ -477,13 +477,13 @@ class SpatialWhiteningMultiTask(BaseInterface):
         mlab = MatlabCommand(script=script, mfile=True)
         result = mlab.run()
 
-        self.whitened_images = os.path.abspath(d['whitened_images'] + '.gz')
-        self.betanames = os.path.abspath(d['names_out'])
+        self._whitened_images = os.path.abspath(d['whitened_images'] + '.gz')
+        self._betanames = os.path.abspath(d['names_out'])
 
         return result.runtime
 
     def _list_outputs(self):
-        outputs = self._outputs().get()
-        outputs['whitened_images'] = os.path.abspath(self.whitened_images)
-        outputs['betanames'] = os.path.abspath(self.betanames)
-        return outputs
+        return {
+            'whitened_images': self._whitened_images,
+            'betanames': self._betanames
+        }
