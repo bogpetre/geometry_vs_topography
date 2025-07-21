@@ -124,6 +124,11 @@ def pickfirst(files):
     else:
 	    return files
 
+def mergelists(lists):
+    if isinstance(lists[0],list):
+        return sum(lists,[])
+    else:
+        return lists
 
 # ########################## #
 # Run specific configuration #
@@ -300,9 +305,11 @@ def select_betas_of_interest(beta_images, run_info):
     #spm stacks session intercepts at the end, so we need to 
     # subract them from the count before dividing
     beta_per_sess = (len(beta_images)-n_sess)/n_sess
+
+    import pdb; pdb.set_trace()
     
-    filt_beta_images = [];
-    filt_beta_names = [];
+    filt_beta_images = []
+    filt_beta_names = []
     for i,info in enumerate(run_info):
         ind0 = int(beta_per_sess*i)
         beta_names = set(info.conditions)
@@ -638,7 +645,7 @@ whiteningwf.connect([
     (splitstdbetas, selectStdBetasOfInterest, [
         ('out_files', 'beta_images')]),
     (joinTaskSPMs, selectStdBetasOfInterest, [
-        ('run_info', 'run_info')]),
+        (('run_info', mergelists), 'run_info')]),
         
     (selectStdBetasOfInterest, mergestdbetas, [('beta_images', 'in_files')]),
     (mergestdbetas, standardizedbeta2cifti, [('merged_file', 'nifti_in')]),
@@ -652,7 +659,7 @@ whiteningwf.connect([
     
 
     # whiten runwise
-    (atlas2nifti, whitenbetas, [(('out_file', pickfirst), 'atlas')]),
+    (atlas2nifti, whitenbetas, [('out_file', 'atlas')]),
     (joinTaskSPMs, whitenbetas, [('spm_mat_file', 'spm_mat_files')]),
     
     # split whitened betas by session, merge and convert to LR and RL specific ciftis
@@ -660,7 +667,7 @@ whiteningwf.connect([
     (splitwhitenedbetas, selectWhitenedBetasOfInterest, [
         ('out_files', 'beta_images')]),
     (joinTaskSPMs, selectWhitenedBetasOfInterest, [
-        ('run_info', 'run_info')]),
+        (('run_info', mergelists), 'run_info')]),
         
     (selectWhitenedBetasOfInterest, mergewhitenedbetas, [('beta_images', 'in_files')]),
     (mergewhitenedbetas, whitenedbeta2cifti, [('merged_file', 'nifti_in')]),
