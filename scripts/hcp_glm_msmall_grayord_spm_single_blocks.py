@@ -487,7 +487,7 @@ joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
 
 # spatial standardize runwise
 stdbetas = pe.Node(
-    interface=SpatialWhitening(normmode='runwise', shrinkage=1.0),
+    interface=SpatialWhiteningMultiTask(normmode='runwise', shrinkage=1.0),
     name="stdbetas")
     
 splitstdbetas = pe.Node(
