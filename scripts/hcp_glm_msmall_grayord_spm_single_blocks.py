@@ -84,7 +84,7 @@ v = SPMCommand().version
 # HCP style surface preprocessing
 from geometry_vs_topography.glm.preproc import preproc_surf_hcp
 # an interface to the rsatoolbox_matlab repo's spatial whitening tools
-from geometry_vs_topography.nipype.rsa import SpatialWhiteningMultiTask
+from geometry_vs_topography.nipype.workflows import init_spatial_whitening_wf
 
 # compute VIFs from SPM.mat using canlabCore tools
 from geometry_vs_topography.nipype.glm import VIFs, betaToTstat
@@ -470,168 +470,11 @@ modelfit.connect([
 # do spatial whitening #
 ########################
 
-whiteningwf = pe.Workflow(name='whitening')
+stdwf = init_spatial_whitening_wf(
+    name='std', joinsource='tasksource', shrinkage=1.0, normmode='partwise')
+whitenwf = init_spatial_whitening_wf(
+    name='whiten', joinsource='tasksource', shrinkage=1.0, normmode='partwise')
 
-inputnode_whitening = pe.Node(
-    interface=util.IdentityInterface(fields=[
-        'spm_mat_file','atlas']),
-    name='inputspec')
-
-atlas2nifti = pe.Node(
-    interface=wb_cifti.CiftiConvertNifti(
-        smaller_dims=True),
-    iterfield=['cifti_in'],
-    name='atlas2nifti')
-    
-joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
-        fields=['spm_mat_file']),
-    joinsource='tasksource',
-    joinfield=['spm_mat_file'],
-    name='jointaskbetas')
-
-# spatial standardize runwise
-stdbetas = pe.Node(
-    interface=SpatialWhiteningMultiTask(
-        normmode=normmode, 
-        shrinkage=1.0),
-    name="stdbetas")
-    
-splitstdbetas = pe.Node(
-    interface=fsl.Split(dimension='t'),
-    name="splitstdbetas")
-
-def select_betas_of_interest_by_name(beta_images, betanames_file):
-    # this assumes equal number of contrasts in each session
-    import numpy as np
-
-    beta_names = np.loadtxt(betanames_file, delimiter="\t", dtype='str')
-
-    filt_beta_images = []
-    filt_beta_names = []
-    for img, name in zip(beta_images, beta_names):
-        # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
-        # drop response and question periods since theyr'e also generic like the motor cue condition
-        isbad = False
-        for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question', 'constant']:
-            if bad_name in name:
-                isbad = True
-        if isbad:
-            continue
-
-        # drop last trials of emotion task because they overrun the scan duration.
-        if 'Task-EMOTION' in name and '-05' in name:
-            continue
-
-        filt_beta_images.append(img)
-        filt_beta_names.append(name)
-
-    return filt_beta_images, filt_beta_names
-
-selectStdBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'betanames_file'],
-                                                 output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest_by_name),
-                                       name='selectstdbetasofinterest')
-                                       
-mergestdbetas = pe.Node(
-    interface=fsl.Merge(
-        dimension='t'),
-    iterfield=['in_files'],
-    name="mergestdbetas")
-    
-standardizedbeta2cifti = pe.Node(
-    interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
-    iterfield=['nifti_in'],
-    name='standardizedbeta2cifti')
-
-def makeSetNamesListSubjLevel(names):
-    def _makeSetNamesListSubjLevel(names):
-        if isinstance(names, list) and isinstance(names[0], list):
-            return _makeSetNamesListSubjLevel(names[0])
-        else:
-            return [(int(i+1), item) for i,item in enumerate(names)]
-            
-    return _makeSetNamesListSubjLevel(names)
-
-addstdnames = pe.Node(
-    interface=wb_misc.SetMapNames(),
-    iterfield=['in_file'],
-    name="addstdnames")
-    
-# spatial whitening runwise
-whitenbetas = pe.Node(
-    interface=SpatialWhiteningMultiTask(normmode=normmode),
-    name="whitenbetas")
-    
-splitwhitenedbetas = pe.Node(
-    interface=fsl.Split(dimension='t'),
-    name="splitwhitenedbetas")
-
-selectWhitenedBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'betanames_file'],
-                                                 output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest_by_name),
-                                       name='selectwhitenedbetasofinterest')
-                                       
-mergewhitenedbetas = pe.Node(
-    interface=fsl.Merge(
-        dimension='t'),
-    iterfield=['in_files'],
-    name="mergewhitenedbetas")
-    
-whitenedbeta2cifti = pe.Node(
-    interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
-    iterfield=['nifti_in'],
-    name='whitenedbeta2cifti')
-
-addwhitenednames = pe.Node(
-    interface=wb_misc.SetMapNames(),
-    iterfield=['in_file'],
-    name="addwhitenednames")
- 
-
-
-whiteningwf.connect([
-    (inputnode_whitening, atlas2nifti, [('atlas', 'cifti_in')]),
-    (inputnode_whitening, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file')]),
-    
-    # standardize runwise
-    (atlas2nifti, stdbetas, [(('out_file', pickfirst), 'atlas')]),
-    (joinTaskSPMs, stdbetas, [('spm_mat_file', 'spm_mat_files')]),
-    
-    # split std betas by session, merge and convert to LR and RL specific ciftis
-    (stdbetas, splitstdbetas, [('whitened_images', 'in_file')]),
-    (splitstdbetas, selectStdBetasOfInterest, [
-        ('out_files', 'beta_images')]),
-    (stdbetas, selectStdBetasOfInterest, [
-        ('betanames','betanames_file')]),
-        
-    (selectStdBetasOfInterest, mergestdbetas, [('beta_images', 'in_files')]),
-    (mergestdbetas, standardizedbeta2cifti, [('merged_file', 'nifti_in')]),
-    (inputnode_whitening, standardizedbeta2cifti, [(('atlas', pickfirst), 'cifti_template')]),
-    
-    # assign condition names to std betas
-    (selectStdBetasOfInterest, addstdnames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
-    (standardizedbeta2cifti, addstdnames, [('out_file', 'in_file')]),
-    
-
-    # whiten runwise
-    (atlas2nifti, whitenbetas, [('out_file', 'atlas')]),
-    (joinTaskSPMs, whitenbetas, [('spm_mat_file', 'spm_mat_files')]),
-    
-    # split whitened betas by session, merge and convert to LR and RL specific ciftis
-    (whitenbetas, splitwhitenedbetas, [('whitened_images', 'in_file')]),
-    (splitwhitenedbetas, selectWhitenedBetasOfInterest, [
-        ('out_files', 'beta_images')]),
-    (whitenbetas, selectWhitenedBetasOfInterest, [
-        ('betanames', 'betanames_file')]),
-        
-    (selectWhitenedBetasOfInterest, mergewhitenedbetas, [('beta_images', 'in_files')]),
-    (mergewhitenedbetas, whitenedbeta2cifti, [('merged_file', 'nifti_in')]),
-    (inputnode_whitening, whitenedbeta2cifti, [(('atlas', pickfirst), 'cifti_template')]),
-    
-    # assign condition names to whitened betas
-    (selectWhitenedBetasOfInterest, addwhitenednames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
-    (whitenedbeta2cifti, addwhitenednames, [('out_file', 'in_file')]),
-])
 
 ########################################
 # Nearest centroid classifier workflow #
@@ -688,10 +531,11 @@ subjectlevel.connect([
     (directionsource, modelfit, [('direction','inputspec.direction')]),
     (preproc, modelfit, [('nii2cifti.out_file', 'inputspec.func')]),
         
-    (modelfit, whiteningwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
+    (modelfit, stdwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
+    (modelfit, whitenwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
 
-    (whiteningwf, stdclfwf, [('addstdnames.out_file', 'inputspec.cifti')]),
-    (whiteningwf, whclfwf, [('addwhitenednames.out_file', 'inputspec.cifti')]),
+    (stdwf, stdclfwf, [('outputspec.out_file', 'inputspec.cifti')]),
+    (whitenwf, whclfwf, [('outputspec.out_file', 'inputspec.cifti')]),
     
     # save desired outputs
     (modelfit, datasink, [('mergecontrastsacrosstasks.out_file', 'results.all_tasks.contrasts'),
@@ -706,9 +550,8 @@ subjectlevel.connect([
                           ]),
                           
     
-    (whiteningwf, datasink, [('addstdnames.out_file', 'results.all_tasks.standardized_contrasts'),
-                             ('addwhitenednames.out_file', 'results.all_tasks.whitened_contrasts'),
-                            ]),
+    (stdwf, datasink, [('outputspec.out_file', 'results.all_tasks.standardized_contrasts')]),
+    (whitenwf, datasink, [('outputspec.out_file', 'results.all_tasks.whitened_contrasts')]),
 
     (stdclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),
     (whclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf')]),
@@ -773,7 +616,8 @@ if __name__ == '__main__':
 
     datasink.inputs.base_directory = os.path.abspath(args.out)
 
-    subjectlevel.inputs.whitening.inputspec.atlas = args.atlas
+    subjectlevel.inputs.stdwf.inputspec.atlas = args.atlas
+    subjectlevel.inputs.whitenwf.inputspec.atlas = args.atlas
     subjectlevel.inputs.stdclf.inputspec.atlas = args.atlas
     subjectlevel.inputs.whclf.inputspec.atlas = args.atlas
 
