@@ -100,7 +100,7 @@ def init_tsnr(name='tsnr', run_source="directionsource", session_source="tasksou
 
 def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinkage=-1, normmode='runwise'):
 
-    wf = pe.Workflow(name='whitening')
+    wf = pe.Workflow(name=name)
 
     inputnode = pe.Node(
         interface=util.IdentityInterface(fields=[
