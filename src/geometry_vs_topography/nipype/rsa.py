@@ -364,15 +364,20 @@ class SpatialWhiteningMultiTask(BaseInterface):
     output_spec = SpatialWhiteningMultiTaskOutputSpec
 
     def _run_interface(self, runtime):    
-        d = dict(spm_mat_file=self.inputs.spm_mat_file,
+        d = dict(spm_mat_files=self.inputs.spm_mat_files,
                  atlas=self.inputs.atlas,
                  normmode=self.inputs.normmode,
                  shrinkage=self.inputs.shrinkage,
                  whitened_images='beta_whitened.nii')
 
+        # I don't know how to pass a list into the string Template, so instead
+        # I save these to a txt and reimport them.
+        paths = np.array(self.inputs.spm_mat_files)
+        np.savetxt('spm_mat_files.csv', paths, fmt="%s", delimiter="\n")
+
         # This is your MATLAB code template
         script = Template(
-            """ spm_mat_file = '$spm_mat_file';
+            """ spm_mat_files = textread('spm_mat_files.csv','%s\\n');
                 atlas_path = '$atlas';
                 normmode = '$normmode';
                 whitened_images = '$whitened_images';
@@ -395,15 +400,20 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 end
 
                 % import data
-                SPM = importdata(spm_mat_file);
+                SPM = cell(size(spm_mat_files));
+                for i = 1:length(SPM)
+                    SPM{i} = importdata(spm_mat_files{i});
+                    assert(length(SPM{i}.Sess) == length(SPM{1}.Sess),'Mismatched session lengths. Cannot compute RDMs');
+                end
 
                 filename = {};
-                for i = 1:size(SPM.xY.P,1)
-                    str = strsplit(SPM.xY.P(i,:),','); 
-                    filename{end+1} = str{1};
+                for j = 1:length(SPM)
+                    for i = 1:size(SPM{j}.xY.P,1)
+                        str = strsplit(SPM{j}.xY.P(i,:),','); 
+                        filename{end+1} = str{1};
+                    end
                 end
-                filename = unique(filename(:));
-                filename = cat(1,filename{:});
+                filename = unique(filename(:),'stable');
 
                 vols = cell(1,length(filename));
                 for i = 1:size(filename,1)
@@ -411,12 +421,6 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 end
                 vols = cat(4,vols{:});
 
-                %{
-                for i = 1:size(SPM.xY.P,1)
-                    hdr(i) = spm_vol(SPM.xY.P(i,:)); 
-                end
-                vols = spm_read_vols(hdr);
-                %}
                 [x,y,z,t] = size(vols);
 
                 if x ~= x0 || y ~= y0 | z ~= z0
@@ -432,7 +436,7 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 for i = 1:length(uniq_rois)
                     this_roi = uniq_rois(i);
                     roi = any(this_roi == atlas, 2); % atlas might be overlapping searchlights across multiple volumes
-                    beta = rsa.spm.noiseNormalizeBeta(Y(:,roi), SPM, varg{:});
+                    beta = noiseNormalizeBetaMultiTask(Y(:,roi), SPM, varg{:});
 
                     newMap0(:,atlas == this_roi) = beta;
                 end
