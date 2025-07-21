@@ -1039,124 +1039,32 @@ def makeSetNamesListSubjLevel(names):
     return _makeSetNamesListSubjLevel(names)
 
 # spatial normalize runwise
-stdwfl1 = init_spatial_whitening_wf('stdwfl1', shrinkage=1.0, normmode='runwise')
+stdwfl1 = init_spatial_whitening_wf(name='stdwfl1', joinsource=None, shrinkage=1.0, normmode='runwise')
 
-whitenwfl1 = init_spatial_whitening_wf('whitenwfl1', shrinkage=-1, normmode='runwise')
+whitenwfl1 = init_spatial_whitening_wf(name='whitenwfl1', joinsource=None, shrinkage=-1, normmode='runwise')
 
+# spatial normalize overall
+stdwfl2 = init_spatial_whitening_wf(name='stdwfl2', joinsource=None, shrinkage=1.0, normmode='overall')
 
-# spatial standardize overall
-stdbetasl2 = pe.Node(
-    interface=SpatialWhitening(
-        normmode='overall', 
-        shrinkage=1.0),
-    name="stdbetasl2")
-    
-splitstdbetasl2 = pe.Node(
-    interface=fsl.Split(dimension='t'),
-    name="splitstdbetasl2")
-
-selectStdBetasOfInterestl2 = pe.Node(util.Function(input_names=['beta_images', 'run_info'],
-                                                 output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest),
-                                       name='selectstdbetasofinterestl2')
-                                       
-mergestdbetasl2 = pe.MapNode(
-    interface=fsl.Merge(
-        dimension='t'),
-    iterfield=['in_files'],
-    name="mergestdbetasl2")
-    
-standardizedbeta2ciftil2 = pe.MapNode(
-    interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
-    iterfield=['nifti_in'],
-    name='standardizedbeta2ciftil2')
-
-addstdnamesl2 = pe.MapNode(
-    interface=wb_misc.SetMapNames(),
-    iterfield=['in_file'],
-    name="addstdnamesl2")
-
-estStdContrasts = pe.Node(
+estStdContrasts = pe.MapNode(
     interface=wb_cifti.Average(),
     name="eststdcontrasts")
-    
-    
-# spatial whitening runwise
-whitenbetas = pe.Node(
-    interface=SpatialWhitening(normmode='runwise'),
-    name="whitenbetas")
-    
-splitwhitenedbetas = pe.Node(
-    interface=fsl.Split(dimension='t'),
-    name="splitwhitenedbetas")
 
-selectWhitenedBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'run_info'],
-                                                 output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest),
-                                       name='selectwhitenedbetasofinterest')
-                                       
-mergewhitenedbetas = pe.MapNode(
-    interface=fsl.Merge(
-        dimension='t'),
-    iterfield=['in_files'],
-    name="mergewhitenedbetas")
-    
-whitenedbeta2cifti = pe.MapNode(
-    interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
-    iterfield=['nifti_in'],
-    name='whitenedbeta2cifti')
+mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
+    name="mergestandardizedcontrastsacrosstasks")
 
-addwhitenednames = pe.MapNode(
-    interface=wb_misc.SetMapNames(),
-    iterfield=['in_file'],
-    name="addwhitenednames")
-        
 
-# spatial whitening overall
-whitenbetasl2 = pe.Node(
-    interface=SpatialWhitening(
-        normmode='overall'),
-    name="whitenbetasl2")
-    
-splitwhitenedbetasl2 = pe.Node(
-    interface=fsl.Split(dimension='t'),
-    name="splitwhitenedbetasl2")
+whitenwfl2 = init_spatial_whitening_wf(name='whitenwfl2', joinsource=None, shrinkage=-1, normmode='overall')
 
-selectWhitenedBetasOfInterestl2 = pe.Node(util.Function(input_names=['beta_images', 'run_info'],
-                                                 output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest),
-                                       name='selectwhitenedbetasofinterestl2')
-                                       
-mergewhitenedbetasl2 = pe.MapNode(
-    interface=fsl.Merge(
-        dimension='t'),
-    iterfield=['in_files'],
-    name="mergewhitenedbetasl2")
-    
-whitenedbeta2ciftil2 = pe.MapNode(
-    interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
-    iterfield=['nifti_in'],
-    name='whitenedbeta2ciftil2')
-
-addwhitenednamesl2 = pe.MapNode(
-    interface=wb_misc.SetMapNames(),
-    iterfield=['in_file'],
-    name="addwhitenednamesl2")
-    
 estWhitenedContrasts = pe.Node(
     interface=wb_cifti.Average(),
     name="estwhitenedcontrasts")    
-    
-    
-    
-# merge whitened betas for post-hoc between subject spatial correlation analysis
-
+   
 mergeWhitenedContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     name="mergewhitenedcontrastsacrosstasks")
     
 
-mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
-    name="mergestandardizedcontrastsacrosstasks")
+
     
 
 # within subject cosine similarity
@@ -1199,27 +1107,12 @@ rsawf.connect([
     ############
     
     # standardize subject-wise ("overall" in rsatoolbox'select_contrasts parlance)
-    (inputnode_rsa, stdbetasl2, [('spm_mat_file', 'spm_mat_file')]),
-    (atlas2nifti, stdbetasl2, [('out_file', 'atlas')]),
-
-    # split std betas by session, merge and convert to overall average specific ciftis
-    (stdbetasl2, splitstdbetasl2, [('whitened_images', 'in_file')]),
-    (splitstdbetasl2, selectStdBetasOfInterestl2, [
-        ('out_files', 'beta_images')]),
-    (inputnode_rsa, selectStdBetasOfInterestl2, [
-        ('run_info', 'run_info')]),
-        
-    (selectStdBetasOfInterestl2, mergestdbetasl2, [('beta_images', 'in_files')]),
-    (mergestdbetasl2, standardizedbeta2ciftil2, [('merged_file', 'nifti_in')]),
-    (inputnode_rsa, standardizedbeta2ciftil2, [('atlas', 'cifti_template')]),
-    
-    # assign condition names to whitened betas
-    (selectStdBetasOfInterestl2, addstdnamesl2, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
-    (standardizedbeta2ciftil2, addstdnamesl2, [('out_file', 'in_file')]),
+    (inputnode_rsa, stdwfl2, [('spm_mat_file', 'inputspec.spm_mat_file')]),
+    (atlas2nifti, stdwfl2, [('out_file', 'inputspec.atlas')]),
 
     # this produces files equivalent to a standardized con_XXXX.nii file (more or less,
     # they are standardized by within session noise covariance after all)
-    (addstdnamesl2, estStdContrasts, [('out_file', 'in_vars')]),
+    (stdwfl2, estStdContrasts, [('outputspec.out_file', 'in_vars')]),
     
     (estStdContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
     (joinTaskBetas, mergeStdContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
@@ -1233,27 +1126,12 @@ rsawf.connect([
     ###############
 
     # whiten overall-wise
-    (inputnode_rsa, whitenbetasl2, [('spm_mat_file', 'spm_mat_file')]),
-    (atlas2nifti, whitenbetasl2, [('out_file', 'atlas')]),
+    (inputnode_rsa, whitenwfl2, [('spm_mat_file', 'inputspec.spm_mat_file')]),
+    (atlas2nifti, whitenwfl2, [('out_file', 'inputspec.atlas')]),
     
-    # split whitened betas by session, merge and convert to session specific ciftis
-    (whitenbetasl2, splitwhitenedbetasl2, [('whitened_images', 'in_file')]),
-    (splitwhitenedbetasl2, selectWhitenedBetasOfInterestl2, [
-        ('out_files', 'beta_images')]),
-    (inputnode_rsa, selectWhitenedBetasOfInterestl2, [
-        ('run_info', 'run_info')]),
-        
-    (selectWhitenedBetasOfInterestl2, mergewhitenedbetasl2, [('beta_images', 'in_files')]),
-    (mergewhitenedbetasl2, whitenedbeta2ciftil2, [('merged_file', 'nifti_in')]),
-    (inputnode_rsa, whitenedbeta2ciftil2, [('atlas', 'cifti_template')]),
-    
-    # assign condition names to whitened betas
-    (selectWhitenedBetasOfInterestl2, addwhitenednamesl2, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
-    (whitenedbeta2ciftil2, addwhitenednamesl2, [('out_file', 'in_file')]),
-
     # this produces files equivalent to a whitened con_XXXX.nii file (more or less,
     # they are standardized by within session noise covariance after all)
-    (addwhitenednamesl2, estWhitenedContrasts, [('out_file', 'in_vars')]),
+    (whitenwfl2, estWhitenedContrasts, [('outputspec.out_file', 'in_vars')]),
     
     (estWhitenedContrasts, joinTaskBetas, [('out_file', 'whitened_betas')]),
     (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('whitened_betas', 'cifti')]),
