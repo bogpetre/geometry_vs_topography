@@ -139,6 +139,8 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         sessions = [int(re.sub(r'Sn\(([0-9]+)\).*',r'\1',name)) for name in beta_names]
         uniq_sessions = list(set(sessions))
 
+        beta_names = [int(re.sub(r'Sn([0-9]+)\ \(.*\).*',r'\1',name)) for name in beta_names]
+
         filt_beta_images = []
         filt_beta_names = []
         for sess in uniq_sessions:
