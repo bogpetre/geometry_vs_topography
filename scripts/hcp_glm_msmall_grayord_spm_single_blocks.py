@@ -616,8 +616,8 @@ if __name__ == '__main__':
 
     datasink.inputs.base_directory = os.path.abspath(args.out)
 
-    subjectlevel.inputs.stdwf.inputspec.atlas = args.atlas
-    subjectlevel.inputs.whitenwf.inputspec.atlas = args.atlas
+    subjectlevel.inputs.std.inputspec.atlas = args.atlas
+    subjectlevel.inputs.whiten.inputspec.atlas = args.atlas
     subjectlevel.inputs.stdclf.inputspec.atlas = args.atlas
     subjectlevel.inputs.whclf.inputspec.atlas = args.atlas
 
