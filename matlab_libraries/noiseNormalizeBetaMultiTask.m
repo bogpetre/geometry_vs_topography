@@ -257,7 +257,7 @@ switch (Opt.normmode)
         l=diag(L);
         sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
         u_hat=beta_hat*sq;
-        names = all_names;
+        names = allnames;
 end;
 
 
