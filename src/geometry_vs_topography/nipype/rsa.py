@@ -364,6 +364,8 @@ class SpatialWhiteningMultiTask(BaseInterface):
     output_spec = SpatialWhiteningMultiTaskOutputSpec
 
     def _run_interface(self, runtime):    
+        import numpy as np
+
         d = dict(spm_mat_files=self.inputs.spm_mat_files,
                  atlas=self.inputs.atlas,
                  normmode=self.inputs.normmode,
@@ -417,7 +419,7 @@ class SpatialWhiteningMultiTask(BaseInterface):
 
                 vols = cell(1,length(filename));
                 for i = 1:size(filename,1)
-                    vols{i} = niftiread(filename(i,:)); 
+                    vols{i} = niftiread(filename{i}); 
                 end
                 vols = cat(4,vols{:});
 
@@ -430,7 +432,11 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 Y = double(reshape(vols, x*y*z, t))';
 
                 % loop over unique atlas regions and whiten each parcel independently
-                newMap0 = zeros(length(SPM.Vbeta), size(atlas,1));
+                numBeta = 0;
+                for i = 1:length(SPM)
+                    numBeta = numBeta + length(SPM{i}.Vbeta);
+                end
+                newMap0 = zeros(numBeta, size(atlas,1));
                 uniq_rois = unique(atlas(:));
                 uniq_rois(uniq_rois == 0) = [];
                 for i = 1:length(uniq_rois)
