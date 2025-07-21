@@ -485,9 +485,9 @@ joinTaskBetas = pe.JoinNode(util.IdentityInterface(
     name='jointaskbetas')
 '''
 joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
-        fields=['spm_mat_file', 'run_info']),
+        fields=['spm_mat_file']),
     joinsource='tasksource',
-    joinfield=['spm_mat_file', 'run_info'],
+    joinfield=['spm_mat_file'],
     name='jointaskbetas')
 
 # spatial standardize runwise
@@ -499,9 +499,29 @@ splitstdbetas = pe.Node(
     interface=fsl.Split(dimension='t'),
     name="splitstdbetas")
 
-selectStdBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'run_info'],
+def select_betas_of_interest_by_name(beta_images, beta_names):
+    # this assumes equal number of contrasts in each session
+
+    filt_beta_images = []
+    filt_beta_names = []
+    for img, name in zip(beta_images,beta_names):
+        # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
+        # drop response and question periods since theyr'e also generic like the motor cue condition
+        if name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question']:
+            continue
+
+        # drop last trials of emotion task because they overrun the scan duration.
+        if 'Task-Emotion' in name and '-05' in name:
+            continue
+
+        filt_beta_images.append(img)
+        filt_beta_names.append(name)
+
+    return filt_beta_images, filt_beta_names
+
+selectStdBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'beta_names'],
                                                  output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest),
+                                                 function=select_betas_of_interest_by_name),
                                        name='selectstdbetasofinterest')
                                        
 mergestdbetas = pe.Node(
@@ -544,9 +564,9 @@ splitwhitenedbetas = pe.Node(
     interface=fsl.Split(dimension='t'),
     name="splitwhitenedbetas")
 
-selectWhitenedBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'run_info'],
+selectWhitenedBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'beta_names'],
                                                  output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest),
+                                                 function=select_betas_of_interest_by_name),
                                        name='selectwhitenedbetasofinterest')
                                        
 mergewhitenedbetas = pe.Node(
@@ -631,8 +651,7 @@ whiteningwf.connect([
 
 whiteningwf.connect([
     (inputnode_whitening, atlas2nifti, [('atlas', 'cifti_in')]),
-    (inputnode_whitening, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file'),
-                                         ('run_info', 'run_info')]),
+    (inputnode_whitening, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file')]),
     
     # standardize runwise
     (atlas2nifti, stdbetas, [(('out_file', pickfirst), 'atlas')]),
@@ -642,8 +661,8 @@ whiteningwf.connect([
     (stdbetas, splitstdbetas, [('whitened_images', 'in_file')]),
     (splitstdbetas, selectStdBetasOfInterest, [
         ('out_files', 'beta_images')]),
-    (joinTaskSPMs, selectStdBetasOfInterest, [
-        (('run_info', mergelists), 'run_info')]),
+    (stdbetas, selectStdBetasOfInterest, [
+        ('betanames','beta_names')]),
         
     (selectStdBetasOfInterest, mergestdbetas, [('beta_images', 'in_files')]),
     (mergestdbetas, standardizedbeta2cifti, [('merged_file', 'nifti_in')]),
@@ -662,8 +681,8 @@ whiteningwf.connect([
     (whitenbetas, splitwhitenedbetas, [('whitened_images', 'in_file')]),
     (splitwhitenedbetas, selectWhitenedBetasOfInterest, [
         ('out_files', 'beta_images')]),
-    (joinTaskSPMs, selectWhitenedBetasOfInterest, [
-        (('run_info', mergelists), 'run_info')]),
+    (whitenbetas, selectWhitenedBetasOfInterest, [
+        ('betanames', 'beta_names')]),
         
     (selectWhitenedBetasOfInterest, mergewhitenedbetas, [('beta_images', 'in_files')]),
     (mergewhitenedbetas, whitenedbeta2cifti, [('merged_file', 'nifti_in')]),

@@ -340,6 +340,8 @@ class SpatialWhiteningMultiTaskInputSpec(BaseInterfaceInputSpec):
 class SpatialWhiteningMultiTaskOutputSpec(TraitedSpec):
     whitened_images = File(exists=True)
 
+    betanames = File(exists=True)
+
 
 class SpatialWhiteningMultiTask(BaseInterface):
     """
@@ -370,7 +372,8 @@ class SpatialWhiteningMultiTask(BaseInterface):
                  atlas=self.inputs.atlas,
                  normmode=self.inputs.normmode,
                  shrinkage=self.inputs.shrinkage,
-                 whitened_images='beta_whitened.nii')
+                 whitened_images='beta_whitened.nii',
+                 names_out='betanames.csv')
 
         # I don't know how to pass a list into the string Template, so instead
         # I save these to a txt and reimport them.
@@ -442,7 +445,7 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 for i = 1:length(uniq_rois)
                     this_roi = uniq_rois(i);
                     roi = any(this_roi == atlas, 2); % atlas might be overlapping searchlights across multiple volumes
-                    beta = noiseNormalizeBetaMultiTask(Y(:,roi), SPM, varg{:});
+                    [beta,~,~,~,~,~,names] = noiseNormalizeBetaMultiTask(Y(:,roi), SPM, varg{:});
 
                     newMap0(:,atlas == this_roi) = beta;
                 end
@@ -454,6 +457,11 @@ class SpatialWhiteningMultiTask(BaseInterface):
                 niftiwrite(newMap, nii_path);
                 gzip(nii_path);
                 delete(nii_path);
+
+                fid = fopen('$names_out','w+');
+                names = names(:);
+                fprintf(fid, '%s\\n', names{:});
+                fclose(fid)
             """
         ).substitute(d)
 
@@ -470,10 +478,12 @@ class SpatialWhiteningMultiTask(BaseInterface):
         result = mlab.run()
 
         self.whitened_images = os.path.abspath(d['whitened_images'] + '.gz')
+        self.betanames = os.path.abspath(d['names_out'])
 
         return result.runtime
 
     def _list_outputs(self):
         outputs = self._outputs().get()
         outputs['whitened_images'] = os.path.abspath(self.whitened_images)
+        outputs['betanames'] = os.path.abspath(self.betanames)
         return outputs
