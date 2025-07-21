@@ -17,7 +17,7 @@ class SpatialWhiteningInputSpec(BaseInterfaceInputSpec):
     atlas = File(exists=True, mandatory=False,
         desc="Path to an atlas in register with SPM betas")
         
-    normmode = Enum('overall','runwise',
+    normmode = Enum('overall','partwise','runwise',
         usedefault=True,
         desc="Do multivariate noise normalization by run or overall") 
         
@@ -316,4 +316,154 @@ class WithinSimilarity(BaseInterface):
         outputs['similarity'] = os.path.abspath(self.similarity)
         outputs['betanames'] = os.path.abspath(self.betanames)
 
+        return outputs
+
+
+class SpatialWhiteningMultiTaskInputSpec(BaseInterfaceInputSpec):
+    spm_mat_files = List(File(exists=True), 
+        mandatory=True, 
+        desc="path to SPM file in main SPM directory (containing the betas)")
+
+    atlas = File(exists=True, mandatory=False,
+        desc="Path to an atlas in register with SPM betas")
+        
+    normmode = Enum('overall','partwise','runwise',
+        usedefault=True,
+        desc="Do multivariate noise normalization by run or overall") 
+        
+    shrinkage = Float(-1,
+        usedefault=True,
+        desc="1 means diagonal spatial covariance. Default is to use Ledoit-Wolf method to pick optimal factor."
+    )
+        
+
+class SpatialWhiteningMultiTaskOutputSpec(TraitedSpec):
+    whitened_images = File(exists=True)
+
+
+class SpatialWhiteningMultiTask(BaseInterface):
+    """
+    Uses the rsatoolbox to implement spatial whitening based on the optimally
+    regularized spatial covariance matrix. Regularization is estimated according
+    to the method of Ledoit and Wolf (2004) Journal of Portfolio Management.
+    You will need spm12 and the rsatoolbox on your path, which can be obtained here:
+    https://github.com/rsagroup/rsatoolbox_matlab. The images differ from 
+    multivariate t-stats because they don't take the design covariance structure
+    into account. For t-stat computations refer to:
+    https://www.fil.ion.ucl.ac.uk/spm/doc/books/hbf2/pdfs/Ch8.pdf
+
+    Note that the atlas should be an indexed map in the same space as the one 
+    in which you're running spm. So if you're running SPM on surface data that's
+    been converted to nifti cubes, make sure you convert your atlas the same way too.
+    Covariance estimation is spatially agnostic (i.e. there's no distance based
+    taper in spatial correlation or anything like that), it's all purely data driven 
+    so you don't need to be working in any meaningful anatomical space.
+    """
+
+    input_spec = SpatialWhiteningMultiTaskInputSpec
+    output_spec = SpatialWhiteningMultiTaskOutputSpec
+
+    def _run_interface(self, runtime):    
+        d = dict(spm_mat_file=self.inputs.spm_mat_file,
+                 atlas=self.inputs.atlas,
+                 normmode=self.inputs.normmode,
+                 shrinkage=self.inputs.shrinkage,
+                 whitened_images='beta_whitened.nii')
+
+        # This is your MATLAB code template
+        script = Template(
+            """ spm_mat_file = '$spm_mat_file';
+                atlas_path = '$atlas';
+                normmode = '$normmode';
+                whitened_images = '$whitened_images';
+                shrinkage = $shrinkage;
+                
+                if shrinkage > 0
+                    varg = {'shrinkage', shrinkage, 'normmode', normmode};
+                else
+                    varg = {'normmode', normmode};
+                end
+
+                % import atlas
+                atlas_hdr = spm_vol(atlas_path);
+                atlas_vols = spm_read_vols(atlas_hdr);
+                [x0, y0, z0, t0] = size(atlas_vols);
+                atlas = reshape(atlas_vols, x0*y0*z0, t0);
+
+                if t0 > 1
+                    error('Multivariate noise normalization is only supported for 3d atlases. Consider fslsplitting atlas and running this as a mapnode instead');
+                end
+
+                % import data
+                SPM = importdata(spm_mat_file);
+
+                filename = {};
+                for i = 1:size(SPM.xY.P,1)
+                    str = strsplit(SPM.xY.P(i,:),','); 
+                    filename{end+1} = str{1};
+                end
+                filename = unique(filename(:));
+                filename = cat(1,filename{:});
+
+                vols = cell(1,length(filename));
+                for i = 1:size(filename,1)
+                    vols{i} = niftiread(filename(i,:)); 
+                end
+                vols = cat(4,vols{:});
+
+                %{
+                for i = 1:size(SPM.xY.P,1)
+                    hdr(i) = spm_vol(SPM.xY.P(i,:)); 
+                end
+                vols = spm_read_vols(hdr);
+                %}
+                [x,y,z,t] = size(vols);
+
+                if x ~= x0 || y ~= y0 | z ~= z0
+                    error('Atlas and data dimensions are mismatched.');
+                end
+
+                Y = double(reshape(vols, x*y*z, t))';
+
+                % loop over unique atlas regions and whiten each parcel independently
+                newMap0 = zeros(length(SPM.Vbeta), size(atlas,1));
+                uniq_rois = unique(atlas(:));
+                uniq_rois(uniq_rois == 0) = [];
+                for i = 1:length(uniq_rois)
+                    this_roi = uniq_rois(i);
+                    roi = any(this_roi == atlas, 2); % atlas might be overlapping searchlights across multiple volumes
+                    beta = rsa.spm.noiseNormalizeBeta(Y(:,roi), SPM, varg{:});
+
+                    newMap0(:,atlas == this_roi) = beta;
+                end
+
+                newMap = reshape(newMap0', x0, y0, z0, length(SPM.Vbeta));
+                newMap(isnan(newMap)) = 0;
+
+                nii_path = strrep(whitened_images,'.nii.gz','.nii');
+                niftiwrite(newMap, nii_path);
+                gzip(nii_path);
+                delete(nii_path);
+            """
+        ).substitute(d)
+
+        # mfile = True  will create an .m file with your script and executed.
+        # Alternatively
+        # mfile can be set to False which will cause the matlab code to be
+        # passed
+        # as a commandline argument to the matlab executable
+        # (without creating any files).
+        # This, however, is less reliable and harder to debug
+        # (code will be reduced to
+        # a single line and stripped of any comments).
+        mlab = MatlabCommand(script=script, mfile=True)
+        result = mlab.run()
+
+        self.whitened_images = os.path.abspath(d['whitened_images'] + '.gz')
+
+        return result.runtime
+
+    def _list_outputs(self):
+        outputs = self._outputs().get()
+        outputs['whitened_images'] = os.path.abspath(self.whitened_images)
         return outputs

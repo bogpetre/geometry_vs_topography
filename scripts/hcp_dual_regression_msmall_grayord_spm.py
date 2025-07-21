@@ -625,7 +625,8 @@ def assemble_confounds_mat(motion, csf, wm):
     confounds = pd.concat([motion_df, motion_df**2, csf_df, wm_df], axis=1)
     
     # csf and white matter will have non-zero offsets which need to be normalized
-    # to avoid reintroducing a scan effect
+    # to avoid reintroducing a scan effect. Motion quadratics can also be huge, 
+    # causing numerical problems if not normalized.
     confounds = sp.stats.zscore(confounds)
 
     cwd = os.getcwd()

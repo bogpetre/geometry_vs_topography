@@ -470,12 +470,19 @@ atlas2nifti = pe.Node(
     iterfield=['cifti_in'],
     name='atlas2nifti')
     
+'''
 joinTaskBetas = pe.JoinNode(util.IdentityInterface(
-        fields=['standardized_betas', 'whitened_betas']),
+        fields=['spm_mat_file']),
     joinsource='tasksource',
-    joinfield=['standardized_betas', 'whitened_betas'],
+    joinfield=['standardized_betas', 'whitened_betas', 'spm_mat_file'],
     name='jointaskbetas')
-    
+'''
+joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
+        fields=['spm_mat_file', 'run_info']),
+    joinsource='tasksource',
+    joinfield=['spm_mat_file', 'run_info'],
+    name='jointaskbetas')
+
 # spatial standardize runwise
 stdbetas = pe.Node(
     interface=SpatialWhitening(normmode='runwise', shrinkage=1.0),
@@ -516,8 +523,14 @@ addstdnames = pe.Node(
     name="addstdnames")
     
 # spatial whitening runwise
+'''
 whitenbetas = pe.Node(
     interface=SpatialWhitening(normmode='runwise'),
+    name="whitenbetas")
+'''
+
+whitenbetas = pe.Node(
+    interface=SpatialWhiteningMultiTask(normmode='runwise'),
     name="whitenbetas")
     
 splitwhitenedbetas = pe.Node(
@@ -556,7 +569,7 @@ mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     iterfield=['cifti'],
     name="mergestandardizedcontrastsacrosstasks")
 
-
+'''
 whiteningwf.connect([
     (inputnode_whitening, atlas2nifti, [('atlas', 'cifti_in')]),
     
@@ -605,6 +618,57 @@ whiteningwf.connect([
     
     (addwhitenednames, joinTaskBetas, [('out_file', 'whitened_betas')]),
     (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('whitened_betas', 'cifti')]),    
+])
+'''
+
+
+whiteningwf.connect([
+    (inputnode_whitening, atlas2nifti, [('atlas', 'cifti_in')]),
+    (inputnode_whitening, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file'),
+                                         (('run_info', pickfirst), 'run_info')]),
+    
+    # standardize runwise
+    (atlas2nifti, stdbetas, [(('out_file', pickfirst), 'atlas')]),
+    (joinTaskSPMs, stdbetas, [('spm_mat_file', 'spm_mat_files')]),
+    
+    # split std betas by session, merge and convert to LR and RL specific ciftis
+    (stdbetas, splitstdbetas, [('whitened_images', 'in_file')]),
+    (splitstdbetas, selectStdBetasOfInterest, [
+        ('out_files', 'beta_images')]),
+    (joinTaskSPMs, selectStdBetasOfInterest, [
+        ('run_info', 'run_info')]),
+        
+    (selectStdBetasOfInterest, mergestdbetas, [('beta_images', 'in_files')]),
+    (mergestdbetas, standardizedbeta2cifti, [('merged_file', 'nifti_in')]),
+    (inputnode_whitening, standardizedbeta2cifti, [(('atlas', pickfirst), 'cifti_template')]),
+    
+    # assign condition names to std betas
+    (selectStdBetasOfInterest, addstdnames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
+    (standardizedbeta2cifti, addstdnames, [('out_file', 'in_file')]),
+    
+    (addstdnames, mergeStdContrastsAcrossTasks, [('out_file', 'cifti')]),
+    
+
+    # whiten runwise
+    (atlas2nifti, whitenbetas, [(('out_file', pickfirst), 'atlas')]),
+    (joinTaskSPMs, whitenbetas, [('spm_mat_file', 'spm_mat_files')]),
+    
+    # split whitened betas by session, merge and convert to LR and RL specific ciftis
+    (whitenbetas, splitwhitenedbetas, [('whitened_images', 'in_file')]),
+    (splitwhitenedbetas, selectWhitenedBetasOfInterest, [
+        ('out_files', 'beta_images')]),
+    (joinTaskSPMs, selectWhitenedBetasOfInterest, [
+        ('run_info', 'run_info')]),
+        
+    (selectWhitenedBetasOfInterest, mergewhitenedbetas, [('beta_images', 'in_files')]),
+    (mergewhitenedbetas, whitenedbeta2cifti, [('merged_file', 'nifti_in')]),
+    (inputnode_whitening, whitenedbeta2cifti, [(('atlas', pickfirst), 'cifti_template')]),
+    
+    # assign condition names to whitened betas
+    (selectWhitenedBetasOfInterest, addwhitenednames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
+    (whitenedbeta2cifti, addwhitenednames, [('out_file', 'in_file')]),
+    
+    (addwhitenednames, mergeWhitenedContrastsAcrossTasks, [('out_file', 'cifti')]),
 ])
 
 ########################################
