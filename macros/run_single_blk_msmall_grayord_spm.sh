@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --mem=48G
 #SBATCH --hint=nomultithread
-#SBATCH --output single_blk_grayord_spm.logs/firstlvl_%a.out
+#SBATCH --output single_blk_grayord_spm2.logs/firstlvl_%a.out
 #SBATCH --account dbic
 #SBATCH --array 1
 
@@ -30,7 +30,7 @@ set -x
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/single_blocks_msmall_grayord_spm2/
+OUT_DIR=../derivatives/single_blocks_msmall_grayord_spm3/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
