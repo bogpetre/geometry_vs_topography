@@ -103,6 +103,19 @@ from nipype_workbench_ext import misc as wb_misc
 hp_cutoff = 200
 TR = 0.72
 
+normmode='legacy'
+if normmode == 'legacy':
+    normmode1='runwise'
+    normmode2='partwise'
+    normmode3='overall'
+else:
+    normmode1, normmode2 = normmode
+    if normmode == 'partwise':
+        normmode3 = 'poolparts'
+    elif normmode == 'runwise':
+        normmode3 = 'poolruns'
+    raise VaueError(f'normmode must be legacy, partwise or runwise, but recieved {normmode}')
+
 ###################################################
 # Define functions and classes for subsequent use #
 ###################################################
@@ -1038,16 +1051,23 @@ def makeSetNamesListSubjLevel(names):
             
     return _makeSetNamesListSubjLevel(names)
 
+
+if normmode == 'legacy':
+    tasksource = None
+else:
+    tasksource = 'tasksource'
+
 # spatial normalize runwise
 stdwfl1 = workflows.init_spatial_whitening_wf(
-    name='stdwfl1', joinsource=None, shrinkage=1.0, normmode='runwise')
+    name='stdwfl1', joinsource=tasksource, shrinkage=1.0, normmode=normmode1)
 
 whitenwfl1 = workflows.init_spatial_whitening_wf(
-    name='whitenwfl1', joinsource=None, shrinkage=-1, normmode='runwise')
+    name='whitenwfl1', joinsource=tasksource, shrinkage=-1, normmode=normmode1)
+
 
 # spatial normalize overall
 stdwfl2 = workflows.init_spatial_whitening_wf(
-    name='stdwfl2', joinsource=None, shrinkage=1.0, normmode='poolruns')
+    name='stdwfl2', joinsource=tasksource, shrinkage=1.0, normmode=normmode3)
 
 estStdContrasts = pe.Node(
     interface=wb_cifti.Average(),
@@ -1058,7 +1078,7 @@ mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
 
 
 whitenwfl2 = workflows.init_spatial_whitening_wf(
-    name='whitenwfl2', joinsource=None, shrinkage=-1, normmode='poolruns')
+    name='whitenwfl2', joinsource=tasksource, shrinkage=-1, normmode=normmode3)
 
 estWhitenedContrasts = pe.Node(
     interface=wb_cifti.Average(),
@@ -1068,18 +1088,17 @@ mergeWhitenedContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     name="mergewhitenedcontrastsacrosstasks")
     
 
-
-    
-
 # within subject cosine similarity
 stdCosim = pe.Node(
     interface=multiTaskWithinSimilarity(
-        normmethod='univariate'),
+        normmethod='univariate',
+        normmode=normmode2),
     name='stdcosim')
 
 whitenedCosim = pe.Node(
     interface=multiTaskWithinSimilarity(
-        normmethod='multivariate'),
+        normmethod='multivariate',
+        normmode=normmode2),
     name='whitenedcosim')
     
 
@@ -1091,55 +1110,65 @@ eucdist = pe.Node(
 stddist = pe.Node(
     interface=MultiTaskRDM(
         normmethod='univariate',
-        save_whitening_matrix=True),
+        normmode=normmode1,
+        save_whitening_matrix=True,
+        precision='double'),
     name="stddist")
     
 crossnobis = pe.Node(
     interface=MultiTaskRDM(
         normmethod='multivariate',
-        save_whitening_matrix=True),
+        normmode=normmode1,
+        save_whitening_matrix=True,
+        precision='double'),
     name="crossnobis")
 
 rsawf.connect([
     (inputnode_rsa, atlas2nifti, [('atlas', 'cifti_in')]),
     
-    #############
     # standardize runwise
     (inputnode_rsa, stdwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
                               ('atlas', 'inputspec.atlas')]),
 
-    ############
     
     # standardize subject-wise ("overall" in rsatoolbox'select_contrasts parlance)
     (inputnode_rsa, stdwfl2, [('spm_mat_file', 'inputspec.spm_mat_file'),
                               ('atlas', 'inputspec.atlas')]),
 
-    # this produces files equivalent to a standardized con_XXXX.nii file (more or less,
-    # they are standardized by within session noise covariance after all)
-    (stdwfl2, estStdContrasts, [('outputspec.out_file', 'in_vars')]),
-    
-    (estStdContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
-    (joinTaskBetas, mergeStdContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
-    
-    
-    ################
     # whitten runwise
     (inputnode_rsa, whitenwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
                                  ('atlas', 'inputspec.atlas')]),
     
-    ###############
 
     # whiten overall-wise
     (inputnode_rsa, whitenwfl2, [('spm_mat_file', 'inputspec.spm_mat_file'),
                                  ('atlas', 'inputspec.atlas')]),
+
+    # this produces files equivalent to a standardized con_XXXX.nii file (more or less,
+    # they are standardized by within session noise covariance after all)
+    (stdwfl2, estStdContrasts, [('outputspec.out_file', 'in_vars')]),
     
     # this produces files equivalent to a whitened con_XXXX.nii file (more or less,
     # they are standardized by within session noise covariance after all)
     (whitenwfl2, estWhitenedContrasts, [('outputspec.out_file', 'in_vars')]),
+])
+
+if normmode == 'legacy':
+    rsawf.connect([    
+        (estStdContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
+        (joinTaskBetas, mergeStdContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
+
+        (estWhitenedContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
+        (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
+    ])
+else:
+    rsawf.connect([
+        (estStdContrasts, mergeStdContrastsAcrossTasks, [('out_file', 'cifti')]),
+
+        (estWhitenedContrasts, mergeWhitenedContrastsAcrossTasks, [('out_file', 'cifti')]),
+    ])
     
-    (estWhitenedContrasts, joinTaskBetas, [('out_file', 'whitened_betas')]),
-    (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('whitened_betas', 'cifti')]),
-    
+rsawf.connect([
 
     # estimate within subject cosine similarity
     (inputnode_rsa, joinTaskSPMMats, [('spm_mat_file', 'spm_mat_file')]),
