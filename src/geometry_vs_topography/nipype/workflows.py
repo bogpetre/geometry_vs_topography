@@ -120,14 +120,16 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         name='jointaskbetas')
 
     # spatial standardize runwise
-    noiseNormalizeBetas = pe.Node(
+    noiseNormalizeBetas = pe.MapNode(
         interface=SpatialWhiteningMultiTask(
             normmode=normmode, 
             shrinkage=shrinkage),
+        iterfield=['spm_mat_files'],
         name="noisenormalizebetas")
         
-    splitbetas = pe.Node(
+    splitbetas = pe.MapNode(
         interface=fsl.Split(dimension='t'),
+        iterfield=['splitbetas'],
         name="splitbetas")
 
     def select_betas_of_interest_by_name(beta_images, betanames_file):
@@ -171,9 +173,10 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
 
         return filt_beta_images, filt_beta_names
 
-    selectBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'betanames_file'],
+    selectBetasOfInterest = pe.MapNode(util.Function(input_names=['beta_images', 'betanames_file'],
                                                     output_names=['beta_images', 'beta_names'],
                                                     function=select_betas_of_interest_by_name),
+                                        iterfield=['beta_names','betanames_file'],
                                         name='selectbetasofinterest')
                                         
     mergebetas = pe.MapNode(
@@ -209,11 +212,21 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
 
     wf.connect([
         (inputnode, atlas2nifti, [('atlas', 'cifti_in')]),
-        (inputnode, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file')]),
-        
+    ]),
+
+    if joinsource:
+        wf.connect([
+            (inputnode, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file')]),
+            (joinTaskSPMs, noiseNormalizeBetas, [('spm_mat_file', 'spm_mat_files')]),
+        ])
+    else:
+        wf.connect([
+            (inputnode, noiseNormalizeBetas, [('spm_mat_file', 'spm_mat_files')])
+        ])
+    
+    wf.connect([
         # standardize runwise
         (atlas2nifti, noiseNormalizeBetas, [(('out_file', pickfirst), 'atlas')]),
-        (joinTaskSPMs, noiseNormalizeBetas, [('spm_mat_file', 'spm_mat_files')]),
         
         # split std betas by session, merge and convert to LR and RL specific ciftis
         (noiseNormalizeBetas, splitbetas, [('whitened_images', 'in_file')]),

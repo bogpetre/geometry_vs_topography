@@ -1027,31 +1027,7 @@ joinTaskBetas = pe.JoinNode(util.IdentityInterface(
     joinsource='tasksource',
     joinfield=['standardized_betas', 'whitened_betas'],
     name='jointaskbetas')
-    
-# spatial standardize runwise
-stdbetas = pe.Node(
-    interface=SpatialWhitening(normmode='runwise', shrinkage=1.0),
-    name="stdbetas")
-    
-splitstdbetas = pe.Node(
-    interface=fsl.Split(dimension='t'),
-    name="splitstdbetas")
 
-selectStdBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'run_info'],
-                                                 output_names=['beta_images', 'beta_names'],
-                                                 function=select_betas_of_interest),
-                                       name='selectstdbetasofinterest')
-                                       
-mergestdbetas = pe.MapNode(
-    interface=fsl.Merge(
-        dimension='t'),
-    iterfield=['in_files'],
-    name="mergestdbetas")
-    
-standardizedbeta2cifti = pe.MapNode(
-    interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
-    iterfield=['nifti_in'],
-    name='standardizedbeta2cifti')
 
 def makeSetNamesListSubjLevel(names):
     def _makeSetNamesListSubjLevel(names):
@@ -1062,11 +1038,11 @@ def makeSetNamesListSubjLevel(names):
             
     return _makeSetNamesListSubjLevel(names)
 
-addstdnames = pe.MapNode(
-    interface=wb_misc.SetMapNames(),
-    iterfield=['in_file'],
-    name="addstdnames")
-    
+# spatial normalize runwise
+stdwfl1 = init_spatial_whitening_wf('stdwfl1', shrinkage=1.0, normmode='runwise')
+
+whitenwfl1 = init_spatial_whitening_wf('whitenwfl1', shrinkage=-1, normmode='runwise')
+
 
 # spatial standardize overall
 stdbetasl2 = pe.Node(
@@ -1215,26 +1191,12 @@ crossnobis = pe.Node(
 rsawf.connect([
     (inputnode_rsa, atlas2nifti, [('atlas', 'cifti_in')]),
     
-    
+    #############
     # standardize runwise
-    (inputnode_rsa, stdbetas, [('spm_mat_file', 'spm_mat_file')]),
-    (atlas2nifti, stdbetas, [('out_file', 'atlas')]),
+    (inputnode_rsa, stdwfl1, [('spm_mat_file', 'inputspec.spm_mat_file')]),
+    (atlas2nifti, stdwfl1, [('out_file', 'inputspec.atlas')]),
     
-    # split std betas by session, merge and convert to LR and RL specific ciftis
-    (stdbetas, splitstdbetas, [('whitened_images', 'in_file')]),
-    (splitstdbetas, selectStdBetasOfInterest, [
-        ('out_files', 'beta_images')]),
-    (inputnode_rsa, selectStdBetasOfInterest, [
-        ('run_info', 'run_info')]),
-        
-    (selectStdBetasOfInterest, mergestdbetas, [('beta_images', 'in_files')]),
-    (mergestdbetas, standardizedbeta2cifti, [('merged_file', 'nifti_in')]),
-    (inputnode_rsa, standardizedbeta2cifti, [('atlas', 'cifti_template')]),
-    
-    # assign condition names to whitened betas
-    (selectStdBetasOfInterest, addstdnames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
-    (standardizedbeta2cifti, addstdnames, [('out_file', 'in_file')]),
-
+    ############
     
     # standardize subject-wise ("overall" in rsatoolbox'select_contrasts parlance)
     (inputnode_rsa, stdbetasl2, [('spm_mat_file', 'spm_mat_file')]),
@@ -1263,24 +1225,12 @@ rsawf.connect([
     (joinTaskBetas, mergeStdContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
     
     
+    ################
     # whitten runwise
-    (inputnode_rsa, whitenbetas, [('spm_mat_file', 'spm_mat_file')]),
-    (atlas2nifti, whitenbetas, [('out_file', 'atlas')]),
+    (inputnode_rsa, whitenwfl1, [('spm_mat_file', 'inputspec.spm_mat_file')]),
+    (atlas2nifti, whitenwfl1, [('out_file', 'inputspec.atlas')]),
     
-    # split whitened betas by session, merge and convert to LR and RL specific ciftis
-    (whitenbetas, splitwhitenedbetas, [('whitened_images', 'in_file')]),
-    (splitwhitenedbetas, selectWhitenedBetasOfInterest, [
-        ('out_files', 'beta_images')]),
-    (inputnode_rsa, selectWhitenedBetasOfInterest, [
-        ('run_info', 'run_info')]),
-        
-    (selectWhitenedBetasOfInterest, mergewhitenedbetas, [('beta_images', 'in_files')]),
-    (mergewhitenedbetas, whitenedbeta2cifti, [('merged_file', 'nifti_in')]),
-    (inputnode_rsa, whitenedbeta2cifti, [('atlas', 'cifti_template')]),
-    
-    # assign condition names to whitened betas
-    (selectWhitenedBetasOfInterest, addwhitenednames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
-    (whitenedbeta2cifti, addwhitenednames, [('out_file', 'in_file')]),
+    ###############
 
     # whiten overall-wise
     (inputnode_rsa, whitenbetasl2, [('spm_mat_file', 'spm_mat_file')]),
@@ -1407,7 +1357,7 @@ subjectlevel.connect([
                        ('stdcosim.betanames', 'results.all_tasks.standardized_contrasts.@betanames'),
     
     
-                       ('addstdnames.out_file', 'results.@l1_standardized_betas'), # run specific (LR/RL) task tstats
+                       ('stdwfl1.outputspec.out_file', 'results.@l1_standardized_betas'), # run specific (LR/RL) task tstats
                        #(('eststdcontrasts.out_file', pickfirst), 'results.standardized_betas.@l2_std_betas'), # subject level task stats. We output these merged acros tasks
                        ('mergestandardizedcontrastsacrosstasks.out_file', 
                         'results.all_tasks.standardized_contrasts'), # these are averaged across run-level standardized betas
