@@ -144,7 +144,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         for sess in uniq_sessions:
             these_betas = []
             these_names = []
-            for img, name, session in zip(beta_images, beta_names, session):
+            for img, name, session in zip(beta_images, beta_names, sessions):
                 # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
                 # drop response and question periods since theyr'e also generic like the motor cue condition
                 isbad = False
