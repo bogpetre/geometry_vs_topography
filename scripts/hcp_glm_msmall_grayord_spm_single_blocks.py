@@ -105,7 +105,7 @@ TR = 0.72
 # run or jointly for each run within a partition. The latter is like SPMs
 # residual error variance estimates after scan concatenation, while the 
 # former is like SPMs timeseries error models.
-normmode = 'partwise'
+normmode = 'runwise'
 
 ###################################################
 # Define functions and classes for subsequent use #
@@ -471,9 +471,9 @@ modelfit.connect([
 ########################
 
 stdwf = init_spatial_whitening_wf(
-    name='std', joinsource='tasksource', shrinkage=1.0, normmode='partwise')
+    name='std', joinsource='tasksource', shrinkage=1.0, normmode=normmode)
 whitenwf = init_spatial_whitening_wf(
-    name='whiten', joinsource='tasksource', shrinkage=1.0, normmode='partwise')
+    name='whiten', joinsource='tasksource', shrinkage=-1, normmode=normmode)
 
 
 ########################################
