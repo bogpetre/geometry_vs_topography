@@ -179,7 +179,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
     mergebetas = pe.MapNode(
         interface=fsl.Merge(
             dimension='t'),
-        iterfield=['in_files'],
+        iterfield=['in_files','map'],
         name="mergebetas")
         
     beta2cifti = pe.MapNode(
