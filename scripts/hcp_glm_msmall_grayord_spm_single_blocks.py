@@ -507,8 +507,9 @@ def select_betas_of_interest_by_name(beta_images, beta_names):
     for img, name in zip(beta_images,beta_names):
         # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
         # drop response and question periods since theyr'e also generic like the motor cue condition
-        if name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question']:
-            continue
+        for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question']:
+            if bad_name in name:
+                continue
 
         # drop last trials of emotion task because they overrun the scan duration.
         if 'Task-Emotion' in name and '-05' in name:

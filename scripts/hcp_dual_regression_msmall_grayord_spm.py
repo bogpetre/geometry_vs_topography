@@ -28,12 +28,6 @@
 # - Make dual regression iteration count a commandline arguments
 #
 # - See about incorporating confounds into dual regression algorithm
-#
-# - Consider implementing group ICA for pairs of subjects.
-#   There may be no need for dual regression if we can get the component timeseries
-#   directly from the the group ICA, but think more about why dual regression starts 
-#   with maps to regenerate timeseries rather than simply using these directly. There
-#   may be a catch.
 
 from __future__ import print_function
 from __future__ import division
