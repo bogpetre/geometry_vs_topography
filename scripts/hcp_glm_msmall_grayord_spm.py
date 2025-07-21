@@ -1039,14 +1039,14 @@ def makeSetNamesListSubjLevel(names):
     return _makeSetNamesListSubjLevel(names)
 
 # spatial normalize runwise
-stdwfl1 = init_spatial_whitening_wf(name='stdwfl1', joinsource=None, shrinkage=1.0, normmode='runwise')
+stdwfl1 = workflows.init_spatial_whitening_wf(name='stdwfl1', joinsource=None, shrinkage=1.0, normmode='runwise')
 
-whitenwfl1 = init_spatial_whitening_wf(name='whitenwfl1', joinsource=None, shrinkage=-1, normmode='runwise')
+whitenwfl1 = workflows.init_spatial_whitening_wf(name='whitenwfl1', joinsource=None, shrinkage=-1, normmode='runwise')
 
 # spatial normalize overall
-stdwfl2 = init_spatial_whitening_wf(name='stdwfl2', joinsource=None, shrinkage=1.0, normmode='overall')
+stdwfl2 = workflows.init_spatial_whitening_wf(name='stdwfl2', joinsource=None, shrinkage=1.0, normmode='overall')
 
-estStdContrasts = pe.MapNode(
+estStdContrasts = pe.Node(
     interface=wb_cifti.Average(),
     name="eststdcontrasts")
 
@@ -1054,7 +1054,7 @@ mergeStdContrastsAcrossTasks = pe.Node(interface=wb_cifti.CiftiMerge(),
     name="mergestandardizedcontrastsacrosstasks")
 
 
-whitenwfl2 = init_spatial_whitening_wf(name='whitenwfl2', joinsource=None, shrinkage=-1, normmode='overall')
+whitenwfl2 = workflows.init_spatial_whitening_wf(name='whitenwfl2', joinsource=None, shrinkage=-1, normmode='overall')
 
 estWhitenedContrasts = pe.Node(
     interface=wb_cifti.Average(),
@@ -1101,14 +1101,14 @@ rsawf.connect([
     
     #############
     # standardize runwise
-    (inputnode_rsa, stdwfl1, [('spm_mat_file', 'inputspec.spm_mat_file')]),
-    (atlas2nifti, stdwfl1, [('out_file', 'inputspec.atlas')]),
-    
+    (inputnode_rsa, stdwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
+                              ('atlas', 'inputspec.atlas')]),
+
     ############
     
     # standardize subject-wise ("overall" in rsatoolbox'select_contrasts parlance)
-    (inputnode_rsa, stdwfl2, [('spm_mat_file', 'inputspec.spm_mat_file')]),
-    (atlas2nifti, stdwfl2, [('out_file', 'inputspec.atlas')]),
+    (inputnode_rsa, stdwfl2, [('spm_mat_file', 'inputspec.spm_mat_file'),
+                              ('atlas', 'inputspec.atlas')]),
 
     # this produces files equivalent to a standardized con_XXXX.nii file (more or less,
     # they are standardized by within session noise covariance after all)
@@ -1120,14 +1120,14 @@ rsawf.connect([
     
     ################
     # whitten runwise
-    (inputnode_rsa, whitenwfl1, [('spm_mat_file', 'inputspec.spm_mat_file')]),
-    (atlas2nifti, whitenwfl1, [('out_file', 'inputspec.atlas')]),
+    (inputnode_rsa, whitenwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
+                                 ('atlas', 'inputspec.atlas')]),
     
     ###############
 
     # whiten overall-wise
-    (inputnode_rsa, whitenwfl2, [('spm_mat_file', 'inputspec.spm_mat_file')]),
-    (atlas2nifti, whitenwfl2, [('out_file', 'inputspec.atlas')]),
+    (inputnode_rsa, whitenwfl2, [('spm_mat_file', 'inputspec.spm_mat_file'),
+                                 ('atlas', 'inputspec.atlas')]),
     
     # this produces files equivalent to a whitened con_XXXX.nii file (more or less,
     # they are standardized by within session noise covariance after all)
@@ -1240,7 +1240,7 @@ subjectlevel.connect([
                        ('mergestandardizedcontrastsacrosstasks.out_file', 
                         'results.all_tasks.standardized_contrasts'), # these are averaged across run-level standardized betas
     
-                       ('addwhitenednames.out_file', 'results.@l1_whitened_betas'), # task x run specific tstats
+                       ('whitenwfl1.outputspec.out_file', 'results.@l1_whitened_betas'), # task x run specific tstats
                        #(('estwhitenedcontrasts.out_file', pickfirst), 'results.whitened_betas.@l2_whitened_betas'), # subject level task stats. We output these merged across tasks.
                        ('mergewhitenedcontrastsacrosstasks.out_file', 'results.all_tasks.whitened_contrasts'), # these are averaged across run-level whitened betas
                        #('mergetstatsacrosstasks.out_file', 'results.all_subjectlevel_tstats')
