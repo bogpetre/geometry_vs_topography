@@ -246,6 +246,9 @@ switch (Opt.normmode)
         names = all_names;
 end;
 
+names = cellfun(@(x1)(regexprep(x1,'Sn\([0-9]+\)\ (.*).*','$1')),names,'UniformOutput',false); % drop session indicator
+names = cellfun(@(x1)(regexprep(x1,'(.*)\*bf.*','$1')),names,'UniformOutput',false); % drop any trailing bfs
+
 % Return the diagonal of Sw_hat - also weighted by the mean variance of beta-hat 
 if (nargout>2)
     resMS=sum(res.^2)./totaldf*mean(diag(Bcov));

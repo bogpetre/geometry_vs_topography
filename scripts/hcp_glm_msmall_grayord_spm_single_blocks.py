@@ -501,18 +501,24 @@ splitstdbetas = pe.Node(
 
 def select_betas_of_interest_by_name(beta_images, beta_names):
     # this assumes equal number of contrasts in each session
+    import numpy as np
+
+    beta_names = np.loadtxt(beta_names, delimiter="\t", dtype='str')
 
     filt_beta_images = []
     filt_beta_names = []
-    for img, name in zip(beta_images,beta_names):
+    for img, name in zip(beta_images, beta_names):
         # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
         # drop response and question periods since theyr'e also generic like the motor cue condition
-        for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question']:
+        isbad = False
+        for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question', 'constant']:
             if bad_name in name:
-                continue
+                isbad = True
+        if isbad:
+            continue
 
         # drop last trials of emotion task because they overrun the scan duration.
-        if 'Task-Emotion' in name and '-05' in name:
+        if 'Task-EMOTION' in name and '-05' in name:
             continue
 
         filt_beta_images.append(img)
