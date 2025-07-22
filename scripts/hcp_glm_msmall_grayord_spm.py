@@ -103,7 +103,7 @@ from nipype_workbench_ext import misc as wb_misc
 hp_cutoff = 200
 TR = 0.72
 
-normmode='legacy'
+normmode='partwise'
 if normmode == 'legacy':
     # Note: actual legacy would require remove Bcov scaling of univariate distanceLDCraw distances, 
     # but not multivariate distance calculations. This was a bug even in the legacy version though,
@@ -113,13 +113,14 @@ if normmode == 'legacy':
     normmode3='overall'
     precision='single'
 else:
-    normmode1, normmode2 = normmode
+    normmode1, normmode2 = normmode, normmode
     precision='double'
     if normmode == 'partwise':
         normmode3 = 'poolparts'
     elif normmode == 'runwise':
         normmode3 = 'poolruns'
-    raise VaueError(f'normmode must be legacy, partwise or runwise, but recieved {normmode}')
+    else:
+        raise ValueError(f'normmode must be legacy, partwise or runwise, but recieved {normmode}')
 
 ###################################################
 # Define functions and classes for subsequent use #
