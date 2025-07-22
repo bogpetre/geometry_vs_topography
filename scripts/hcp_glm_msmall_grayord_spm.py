@@ -105,6 +105,9 @@ TR = 0.72
 
 normmode='legacy'
 if normmode == 'legacy':
+    # Note: actual legacy would require remove Bcov scaling of univariate distanceLDCraw distances, 
+    # but not multivariate distance calculations. This was a bug even in the legacy version though,
+    # and should have no impact on WUC calculations since those are scale invariant.
     normmode1='runwise'
     normmode2='partwise'
     normmode3='overall'
@@ -1125,12 +1128,25 @@ crossnobis = pe.Node(
         precision=precision),
     name="crossnobis")
 
+outputnode_rsa = pe.Node(
+    interface=util.IdentityInterface(fields=[
+        'eucdist_rdm','eucdist_whitened_rdm','eucdist_betanames',
+        'stddist_rdm','stddist_whitened_rdm','stddist_betanames',
+        'stddist_whitening_matrix','stddist_whitening_matrix_metadata',
+        'crossnobis_rdm','crossnobis_whitened_rdm', 'crossnobis_betanames', 
+        'crossnobis_whitening_matrix', 'crossnobis_whitening_matrix_metadata',
+        'whitenedcosim_similarity', 'whitened_similarity_betanames',
+        'stdcosim_similarity','stdcosim_betanames',
+        'std_con_l1','std_con_l2','whitened_con_l1','whitened_con_l2']),
+    name='outputspec')    
+
 rsawf.connect([
     (inputnode_rsa, atlas2nifti, [('atlas', 'cifti_in')]),
     
     # standardize runwise
     (inputnode_rsa, stdwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
                               ('atlas', 'inputspec.atlas')]),
+    (stdwfl1, outputnode_rsa, [('outputspec.out_file','outputspec.std_con_l1')]),
 
     
     # standardize subject-wise ("overall" in rsatoolbox'select_contrasts parlance)
@@ -1140,6 +1156,7 @@ rsawf.connect([
     # whitten runwise
     (inputnode_rsa, whitenwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
                                  ('atlas', 'inputspec.atlas')]),
+    (whitenwfl1, outputnode_rsa, [('outputspec.out_file','outputspec.whitened_con_l1')]),
     
 
     # whiten overall-wise
@@ -1159,15 +1176,17 @@ if normmode == 'legacy':
     rsawf.connect([
         (estStdContrasts, joinTaskBetas, [('out_file', 'standardized_betas')]),
         (joinTaskBetas, mergeStdContrastsAcrossTasks, [('standardized_betas', 'cifti')]),
+        (mergeStdContrastsAcrossTasks, outputnode_rsa, [('out_file', 'std_con_l2')]),
 
         (estWhitenedContrasts, joinTaskBetas, [('out_file', 'whitened_betas')]),
         (joinTaskBetas, mergeWhitenedContrastsAcrossTasks, [('whitened_betas', 'cifti')]),
+        (mergeWhitenedContrastsAcrossTasks, outputnode_rsa, [('out_file', 'whitened_con_l2')]),
     ])
 else:
     rsawf.connect([
-        (estStdContrasts, mergeStdContrastsAcrossTasks, [('out_file', 'cifti')]),
+        (estStdContrasts, outputnode_rsa, [('out_file', 'std_con_l2')]),
 
-        (estWhitenedContrasts, mergeWhitenedContrastsAcrossTasks, [('out_file', 'cifti')]),
+        (estWhitenedContrasts, outputnode_rsa, [('out_file', 'std_con_l2')]),
     ])
     
 rsawf.connect([
@@ -1176,20 +1195,37 @@ rsawf.connect([
 
     (joinTaskSPMMats, whitenedCosim, [('spm_mat_file', 'spm_mat_files')]),
     (atlas2nifti, whitenedCosim, [(('out_file', pickfirst), 'atlas')]),
+    (whitenedCosim, outputnode_rsa, [('similarity','whitenedcosim_similarity'),
+                                     ('betanames','whitenedcosim_betanames')]),
     
     (joinTaskSPMMats, stdCosim, [('spm_mat_file', 'spm_mat_files')]),
     (atlas2nifti, stdCosim, [(('out_file', pickfirst), 'atlas')]),
+    (stdCosim, outputnode_rsa, [('similarity','stdcosim_similarity'),
+                                ('betanames','stdcosim_betanames')]),
 
     
     # do RSAs    
     (joinTaskSPMMats, crossnobis, [('spm_mat_file', 'spm_mat_files')]),
     (atlas2nifti, crossnobis, [(('out_file', pickfirst), 'atlas')]),
+    (crossnobis, outputnode_rsa, [('rdm','crossnobis_rdm',
+                                  ('whitened_rdm','crossnobis_whitened_rdm'),
+                                  ('betanames','crossnobis_betanames'),
+                                  ('whitening_matrix','crossnobis_whitening_matrix'),
+                                  ('whitening_matrix_metadata','crossnobis_whitening_matrix_metadata')]),
     
     (joinTaskSPMMats, eucdist, [('spm_mat_file', 'spm_mat_files')]),
     (atlas2nifti, eucdist, [(('out_file', pickfirst), 'atlas')]),
+    (stddist, outputnode_rsa, [('rdm','eucdist_rdm'),
+                               ('whitened_rdm','eucdist_whitened_rdm'),
+                               ('betanames','eucdist_betanames')]),
     
     (joinTaskSPMMats, stddist, [('spm_mat_file', 'spm_mat_files')]),
     (atlas2nifti, stddist, [(('out_file', pickfirst), 'atlas')]),
+    (stddist, outputnode_rsa, [('rdm','stddist_rdm'),
+                               ('whitened_rdm','stddist_whitened_rdm'),
+                               ('betanames','stddist_betanames'),
+                               ('whitening_matrix','stddist_whitening_matrix'),
+                               ('whitening_matrix_metadata','stddist_whitening_matrix_metadata')]),
     
 ])
 
@@ -1245,39 +1281,35 @@ subjectlevel.connect([
                           ]),
                           
     
-    (rsawf, datasink, [('crossnobis.rdm', 'results.all_tasks.rsa.crossnobis.@rdm'),
-                       ('crossnobis.whitened_rdm', 'results.all_tasks.rsa.crossnobis.@whitened_rdm'),
-                       ('crossnobis.betanames', 'results.all_tasks.rsa.crossnobis.@betanames'),
-                       ('crossnobis.whitening_matrix', 'results.all_tasks.rsa.crossnobis.@whitening_matrix'),
-                       ('crossnobis.whitening_matrix_metadata', 'results.all_tasks.rsa.crossnobis.@whitening_matrix_metadata'),
+    (rsawf, datasink, [('outputspec.crossnobis_rdm', 'results.all_tasks.rsa.crossnobis.@rdm'),
+                       ('outputspec.crossnobis_whitened_rdm', 'results.all_tasks.rsa.crossnobis.@whitened_rdm'),
+                       ('outputspec.crossnobis_betanames', 'results.all_tasks.rsa.crossnobis.@betanames'),
+                       ('outputspec.crossnobis_whitening_matrix', 'results.all_tasks.rsa.crossnobis.@whitening_matrix'),
+                       ('outputspec.crossnobis_whitening_matrix_metadata', 'results.all_tasks.rsa.crossnobis.@whitening_matrix_metadata'),
                        
-                       ('eucdist.rdm', 'results.all_tasks.rsa.eucdist.@rdm'),
-                       ('eucdist.whitened_rdm', 'results.all_tasks.rsa.eucdist.@whitened_rdm'),
-                       ('eucdist.betanames', 'results.all_tasks.rsa.eucdist.@betanames'),
+                       ('outputspec.eucdist.rdm', 'results.all_tasks.rsa.eucdist.@rdm'),
+                       ('outputspec.eucdist.whitened_rdm', 'results.all_tasks.rsa.eucdist.@whitened_rdm'),
+                       ('outputspec.eucdist.betanames', 'results.all_tasks.rsa.eucdist.@betanames'),
                        
-                       ('stddist.rdm', 'results.all_tasks.rsa.stddist.@rdm'),
-                       ('stddist.whitened_rdm', 'results.all_tasks.rsa.stddist.@whitened_rdm'),
-                       ('stddist.betanames', 'results.all_tasks.rsa.stddist.@betanames'),
-                       ('stddist.whitening_matrix', 'results.all_tasks.rsa.stddist.@whitening_matrix'),
-                       ('stddist.whitening_matrix_metadata', 'results.all_tasks.rsa.stddist.@whitening_matrix_metadata'),
+                       ('outputspec.stddist.rdm', 'results.all_tasks.rsa.stddist.@rdm'),
+                       ('outputspec.stddist.whitened_rdm', 'results.all_tasks.rsa.stddist.@whitened_rdm'),
+                       ('outputspec.stddist.betanames', 'results.all_tasks.rsa.stddist.@betanames'),
+                       ('outputspec.stddist.whitening_matrix', 'results.all_tasks.rsa.stddist.@whitening_matrix'),
+                       ('outputspec.stddist.whitening_matrix_metadata', 'results.all_tasks.rsa.stddist.@whitening_matrix_metadata'),
     
                         
-                       ('whitenedcosim.similarity', 'results.all_tasks.whitened_contrasts.@cosim'),
-                       ('whitenedcosim.betanames', 'results.all_tasks.whitened_contrasts.@betanames'),
+                       ('outputspec.whitenedcosim_similarity', 'results.all_tasks.whitened_contrasts.@cosim'),
+                       ('outputspec.whitenedcosim_betanames', 'results.all_tasks.whitened_contrasts.@betanames'),
     
-                       ('stdcosim.similarity', 'results.all_tasks.standardized_contrasts.@cosim'),
-                       ('stdcosim.betanames', 'results.all_tasks.standardized_contrasts.@betanames'),
+                       ('outputspec.stdcosim_similarity', 'results.all_tasks.standardized_contrasts.@cosim'),
+                       ('outputspec.stdcosim_betanames', 'results.all_tasks.standardized_contrasts.@betanames'),
     
     
-                       ('stdwfl1.outputspec.out_file', 'results.standardized_contrasts.@l1_standardized_betas'), # run specific (LR/RL) task tstats
-                       #(('eststdcontrasts.out_file', pickfirst), 'results.standardized_betas.@l2_std_betas'), # subject level task stats. We output these merged acros tasks
-                       ('mergestandardizedcontrastsacrosstasks.out_file', 
-                        'results.all_tasks.standardized_contrasts'), # these are averaged across run-level standardized betas
+                       ('outputspec.std_con_l1', 'results.standardized_contrasts.@l1_standardized_betas'), # run specific (LR/RL) task tstats
+                       ('outputspec.std_con_l2', 'results.all_tasks.standardized_contrasts'), # these are averaged across run-level standardized betas
     
-                       ('whitenwfl1.outputspec.out_file', 'results.whitened_contrasts.@l1_whitened_betas'), # task x run specific tstats
-                       #(('estwhitenedcontrasts.out_file', pickfirst), 'results.whitened_betas.@l2_whitened_betas'), # subject level task stats. We output these merged across tasks.
-                       ('mergewhitenedcontrastsacrosstasks.out_file', 'results.all_tasks.whitened_contrasts'), # these are averaged across run-level whitened betas
-                       #('mergetstatsacrosstasks.out_file', 'results.all_subjectlevel_tstats')
+                       ('outputspec.whitened_con_l1', 'results.whitened_contrasts.@l1_whitened_betas'), # task x run specific tstats
+                       ('outputspec.whitened_con_l2', 'results.all_tasks.whitened_contrasts'), # these are averaged across run-level whitened betas
                        ])
 ])
 
