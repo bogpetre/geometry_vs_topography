@@ -84,6 +84,7 @@ for i = 1:length(SPM)
     noMotion = [noMotion; ~contains(SPM{i}.xX.name,'Realign')']; % filter these from rescaling procedure since they can be on wildly different scales if using quadratics
     numReg = numReg + size(SPM{i}.xX.X,2);
 end
+noMotion = logical(noMotion);
 Q = size(X,2);
 
 %%% Get partions: For each session (1:K), find the time points (T) and
@@ -261,11 +262,11 @@ switch (Opt.normmode)
 end;
 
 
-Sw_hat_pooled = df(1)/sum(df)*Sw_hat(:,:,1)
-Sw_reg_pooled = df(1)/sum(df)*Sw_reg(:,:,1)
+Sw_hat_pooled = df(1)/sum(df)*Sw_hat(:,:,1);
+Sw_reg_pooled = df(1)/sum(df)*Sw_reg(:,:,1);
 for i = 2:length(df)
-    Sw_hat_pooled = Sw_hat_pooled + df(i)/sum(df)*Sw_hat(:,:,i)
-    Sw_reg_pooled = Sw_reg_pooled + df(i)/sum(df)*Sw_reg(:,:,i)
+    Sw_hat_pooled = Sw_hat_pooled + df(i)/sum(df)*Sw_hat(:,:,i);
+    Sw_reg_pooled = Sw_reg_pooled + df(i)/sum(df)*Sw_reg(:,:,i);
 end
 Sw_hat = Sw_hat_pooled;
 Sw_reg = Sw_reg_pooled;
@@ -276,7 +277,7 @@ if ismember(Opt.normmode,{'poolruns','poolparts'})
     [V,L]=eig(Sw_reg);   
     l=diag(L);
     sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
-    u_hat=beta_hat*sq
+    u_hat=beta_hat*sq;
 end
 
 %names = cellfun(@(x1)(regexprep(x1,'Sn\([0-9]+\)\ (.*).*','$1')),names,'UniformOutput',false); % drop session indicator
