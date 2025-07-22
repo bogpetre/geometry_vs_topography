@@ -108,8 +108,10 @@ if normmode == 'legacy':
     normmode1='runwise'
     normmode2='partwise'
     normmode3='overall'
+    precision='single'
 else:
     normmode1, normmode2 = normmode
+    precision='double'
     if normmode == 'partwise':
         normmode3 = 'poolparts'
     elif normmode == 'runwise':
@@ -1112,7 +1114,7 @@ stddist = pe.Node(
         normmethod='univariate',
         normmode=normmode1,
         save_whitening_matrix=True,
-        precision='double'),
+        precision=precision),
     name="stddist")
     
 crossnobis = pe.Node(
@@ -1120,7 +1122,7 @@ crossnobis = pe.Node(
         normmethod='multivariate',
         normmode=normmode1,
         save_whitening_matrix=True,
-        precision='double'),
+        precision=precision),
     name="crossnobis")
 
 rsawf.connect([
