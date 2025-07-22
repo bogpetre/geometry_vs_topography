@@ -176,7 +176,7 @@ switch (Opt.normmethod)
                     [Sw_hat(:,:, i),shrink(i)]=rsa.stat.covdiag(res(idxT,:)*scaleFactor, dof);   %%% regularize Sw_hat through optimal shrinkage
                     [V,L]=eig(Sw_hat(:,:,i));       % This is overall faster and numerical more stable than Sw_hat.^-1/2
                     l=diag(L);
-                    sq{j} = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
+                    sq = V*bsxfun(@rdivide,V',sqrt(l)); % Slightly faster than sq = V*diag(1./sqrt(l))*V';
                     KWY(idxT,:)=KWY(idxT,:)*sq;
                 end
             case 'overall'
