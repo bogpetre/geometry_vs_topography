@@ -49,6 +49,18 @@ if (any(test))
     Y=Y(:,test==0);
 end;
 
+% This script assumes that each "task" contains a single run per session,
+% and then treats each session within a task as a 'run'. Lets verify. This
+% script should fail if sessions contain concatenated runs.
+if ismember(Opt.normmode, {'runwise'})
+    for i = 1:length(SPM)
+        NSess = length(SPM{i}.Sess);
+        NRun = length(SPM{i}.xX.K);
+        assert(length(SPM{i}.xX.K) == length(SPM{i}.Sess), ...
+            sprintf('Expected %d runs for %d sessions, but found %d runs in task %d instead.',NSess,NSess,NRun,i));
+    end
+end
+
 X = [];
 for i = 1:length(SPM), X = blkdiag(X,SPM{i}.xX.xKXs.X); end
 
@@ -191,15 +203,13 @@ switch (Opt.normmethod)
                     % different spatial statistics due to when they were 
                     % acquired (e.g. different days).
                     for j = 1:length(SPM)
-                        beta_ind = (i-1)*length(SPM)+j;
                         idxT = partT==i & taskT == j;
-                        idxN = partN==i & taskN == j;
-                        numFilt = size(SPM{j}.xX.K(i).X0,2);
 
                         dof = SPM{j}.xX.trRV/numPart;
                         sigma = sum(res(idxT,:).^2)/dof;
 
-                        sq = 1./sqrt(sigma);
+                        scaleFactor = mean(diag(Bcov(conditionVec>0,conditionVec>0)));
+                        sq = 1./sqrt(sigma*scaleFactor);
                         KWY(idxT,:)=KWY(idxT,:).*sq;
                     end
                 end;
@@ -214,7 +224,8 @@ switch (Opt.normmethod)
 
                     sigma = sum(res(idxT,:).^2)/dof;
 
-                    sq = 1./sqrt(sigma);
+                    scaleFactor = mean(diag(Bcov(conditionVec>0,conditionVec>0)));
+                    sq = 1./sqrt(sigma*scaleFactor);
                     KWY(idxT,:)=KWY(idxT,:).*sq;
                 end;
             case 'overall'
