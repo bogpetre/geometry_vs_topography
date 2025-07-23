@@ -85,7 +85,7 @@ uni_mask = atlas_cii.cortex_left == uni;
 trans_mask = atlas_cii.cortex_right == trans;
 
 %% plot regions of interest and atlas
-
+%{
 figure(1);
 clf
 t0 = tiledlayout(1,2,'Padding','none','TileSpacing','compact');
@@ -123,8 +123,8 @@ title(ax2, strrep(trans_label,'_',' '),'FontWeight','bold','fontsize',fs)
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 380,143]);
 
-exportgraphics(gcf,'panels/atlas.png','ContentType','image','Resolution',300);
-
+exportgraphics(gcf,sprintf('panels_%s/atlas.png',noise),'ContentType','image','Resolution',300);
+%}
 %% Unimodal topographies
 
 topo1_uni = topo1.cortex_left;
@@ -276,7 +276,7 @@ cbar2.Position(4) = 0.03;
 pos = get(gcf,'Position');
 set(gcf,'Position', [pos(1:2),385,315])
 
-exportgraphics(gcf,'panels/common_topographies.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/common_topographies.png',noise),'ContentType','image','Resolution',300);
 
 % print descriptive statistics
 cosim_uni = zeros(size(mtopo1_uni,1),1);
@@ -467,7 +467,7 @@ cbar2.Position(4) = 0.03;
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 385, 380])
 
-exportgraphics(gcf,'panels/idiosyncratic_topographies.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies.png',noise),'ContentType','image','Resolution',300);
 
 % print descriptive statistics
 cosim_trans = zeros(size(mtopo1_trans,1),1);
@@ -739,7 +739,8 @@ sgtitle(uni_rdm_tile, {'Geometry of common topographies',sprintf('with common re
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 400, 400]);
 
-exportgraphics(gcf,'panels/common_topographies_common_representations.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/common_topographies_common_representations.png',noise), ...
+    'ContentType','image','Resolution',300);
 
 
 % compute unbiased cosine similarity
@@ -831,7 +832,8 @@ sgtitle(uni_clf_tile, {'Geometry measures decodability',regexprep(strrep(strrep(
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 400, 400]);
 
-exportgraphics(gcf,'panels/common_topographies_common_representations_sup.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/common_topographies_common_representations_sup.png',noise), ...
+    'ContentType','image','Resolution',300);
 
 
 %% transmodal geometry
@@ -995,7 +997,8 @@ sgtitle(trans_rdm_tile, {'Geometry of idiosyncratic topographies',sprintf('with 
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 400, 400]);
 
-exportgraphics(gcf,'panels/idiosyncratic_topographies_common_topographies.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies.png',noise), ...
+    'ContentType','image','Resolution',300);
 
 
 % compute unbiased cosine similarity
@@ -1090,4 +1093,5 @@ sgtitle(trans_clf_tile, {'Geometry measures decodability',regexprep(strrep(strre
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 400, 400]);
 
-exportgraphics(gcf,'panels/idiosyncratic_topographies_common_topographies_sup.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies_sup.png',noise), ...
+    'ContentType','image','Resolution',300);
