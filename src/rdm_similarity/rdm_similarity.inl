@@ -23,6 +23,9 @@
 using namespace std;
 using namespace Eigen;
 using json = nlohmann::json;
+using MatrixT = Eigen::Matrix<REAL_T, Dynamic, Dynamic>;
+using VectorT = Eigen::Matrix<REAL_T, Dynamic, 1>;
+
 
 template <typename Real_T>
 inline Real_T regularization_epsilon();
@@ -33,8 +36,25 @@ inline float regularization_epsilon<float>() { return 1e-6f; }
 template <>
 inline double regularization_epsilon<double>() { return 1e-12; }
 
-using MatrixT = Eigen::Matrix<REAL_T, Dynamic, Dynamic>;
-using VectorT = Eigen::Matrix<REAL_T, Dynamic, 1>;
+
+extern "C" {
+    void spotrf_(char* uplo, int* n, float* a, int* lda, int* info);
+    void dpotrf_(char* uplo, int* n, double* a, int* lda, int* info);
+}
+
+template <typename T>
+inline void lapack_potrf(char* uplo, int* n, T* a, int* lda, int* info);
+
+template <>
+inline void lapack_potrf<float>(char* uplo, int* n, float* a, int* lda, int* info) {
+    spotrf_(uplo, n, a, lda, info);
+}
+
+template <>
+inline void lapack_potrf<double>(char* uplo, int* n, double* a, int* lda, int* info) {
+    dpotrf_(uplo, n, a, lda, info);
+}
+
 
 struct MetaData {
     std::string format;
@@ -96,7 +116,10 @@ MatrixT load_csv_column(const string& filename, size_t col, size_t rows) {
                 throw runtime_error("Malformed CSV row in " + filename);
         }
         try {
-            mat(i, 0) = stof(cell);
+            if constexpr (std::is_same<REAL_T, float>::value)
+                mat(i, 0) = std::stof(cell);
+            else
+                mat(i, 0) = std::stod(cell);
         } catch (const std::exception& e) {
             cerr << "Warning: failed to parse value from column " << col
                  << " in line " << i << " of " << filename
@@ -110,11 +133,6 @@ MatrixT load_csv_column(const string& filename, size_t col, size_t rows) {
 
 MatrixT pooled_covariance(const MatrixT& A, REAL_T dofA, const MatrixT& B, REAL_T dofB) {
     return (A * dofA + B * dofB) / (dofA + dofB);
-}
-
-extern "C" {
-    void spotrf_(char* uplo, int* n, float* a, int* lda, int* info);
-    void dpotrf_(char* uplo, int* n, double* a, int* lda, int* info);
 }
 
 
@@ -332,9 +350,9 @@ int main(int argc, char** argv) {
                 A_map = regularized;
                 int info;
                 char uplo = 'L';
-                LAPACK_POTRF(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
+                lapack_potrf(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
                 if (info != 0) {
-                    cerr << "Warning: positive definite ordered triangular refactorization (*potr) failed at region (" << j << "," << i << ") (info = " << info << ")\n";
+                    cerr << "Warning: positive definite ordered triangular refactorization (*potrf) failed at region (" << j << "," << i << ") (info = " << info << ")\n";
                     similarity_matrix(i, j) = NAN;
                     if (i != j) similarity_matrix(j,i) = NAN;
                     continue;
@@ -387,7 +405,7 @@ int main(int argc, char** argv) {
             A_map = regularized;
             int info;
             char uplo = 'L';
-            LAPACK_POTRF(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
+            lapack_potrf(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
             if (info != 0) {
                 cerr << "Warning: positive definite ordered triangular refactorization (*potrf) failed at region " << i << " (info = " << info << ")\n";
                 similarity_matrix(0,i) = NAN;
@@ -422,6 +440,7 @@ int main(int argc, char** argv) {
 
     ofstream fout(out_file);
     if (!fout) throw runtime_error("Failed to open output file");
+    fout << std::setprecision(std::numeric_limits<REAL_T>::max_digits10) << std::fixed;
     for (int i = 0; i < similarity_matrix.rows(); ++i) {
         for (int j = 0; j < similarity_matrix.cols(); ++j) {
             fout << similarity_matrix(i, j);

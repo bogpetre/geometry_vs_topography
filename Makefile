@@ -1,7 +1,8 @@
 # Makefile for compiling rdm_similarity.cpp
 
 # Output binary name
-TARGET = bin/rdm_similarity
+TARGET32 = bin/rdm_similarity32
+TARGET64 = bin/rdm_similarity64
 
 # Compiler and flags
 CXX = g++
@@ -13,19 +14,21 @@ JSON_INC  = $(CONDA_PREFIX)/include
 LIB_PATH = ${CONDA_PREFIX}/lib
 
 # LAPACK / BLAS (assumes conda-forge lapack/OpenBLAS or MKL)
-LDFLAGS = -L${LIB_PATH} -lblas
+LDFLAGS = -L${LIB_PATH} -lblas -llapack
 
 # Source file
-SRC = src/rdm_similarity/rdm_similarity.cpp
+SRC32 = src/rdm_similarity/rdm_similarity32.cpp
+SRC64 = src/rdm_similarity/rdm_similarity64.cpp
 
-# Build target
-all: $(TARGET)
+# Build all
+all: $(TARGET32) $(TARGET64)
 
-$(TARGET): $(SRC)
-	mkdir -p bin
-	$(CXX) $(CXXFLAGS) -I$(EIGEN_INC) -I$(JSON_INC) $(SRC) -o $(TARGET) ${LDFLAGS}
+$(TARGET32): $(SRC32) src/rdm_similarity/rdm_similarity.inl
+	$(CXX) $(CXXFLAGS) -I$(EIGEN_INC) -I$(JSON_INC) $(SRC32) -o $(TARGET32) ${LDFLAGS}
+
+$(TARGET64): $(SRC64) src/rdm_similarity/rdm_similarity.inl
+	$(CXX) $(CXXFLAGS) -I$(EIGEN_INC) -I$(JSON_INC) $(SRC64) -o $(TARGET64) ${LDFLAGS}
 
 # Clean target
 clean:
-	rm -f $(TARGET)
-
+	rm -f $(TARGET32) $(TARGET64)
