@@ -24,10 +24,23 @@ using namespace std;
 using namespace Eigen;
 using json = nlohmann::json;
 
+template <typename Real_T>
+inline Real_T regularization_epsilon();
+
+template <>
+inline float regularization_epsilon<float>() { return 1e-6f; }
+
+template <>
+inline double regularization_epsilon<double>() { return 1e-12; }
+
+using MatrixT = Eigen::Matrix<REAL_T, Dynamic, Dynamic>;
+using VectorT = Eigen::Matrix<REAL_T, Dynamic, 1>;
+
 struct MetaData {
+    std::string format;
     int shape_per_matrix_0;
     size_t n_regions;
-    float dof;
+    REAL_T dof;
 };
 
 MetaData parse_metadata(const string& filename) {
@@ -45,8 +58,8 @@ MetaData parse_metadata(const string& filename) {
     return meta;
 }
 
-MatrixXf unpack_lower_triangle(const vector<float>& data, int dim) {
-    MatrixXf mat(dim, dim);
+MatrixT unpack_lower_triangle(const vector<REAL_T>& data, int dim) {
+    MatrixT mat(dim, dim);
     mat.setZero();
     int index = 0;
     for (int i = 0; i < dim; ++i) {
@@ -59,20 +72,20 @@ MatrixXf unpack_lower_triangle(const vector<float>& data, int dim) {
     return mat;
 }
 
-vector<float> read_region_cov_matrix(const string& filename, size_t region_index, size_t floats_per_matrix) {
+vector<REAL_T> read_region_cov_matrix(const string& filename, size_t region_index, size_t REAL_Ts_per_matrix) {
     ifstream fin(filename, ios::binary);
     if (!fin) throw runtime_error("Failed to open binary file " + filename);
-    size_t offset = region_index * floats_per_matrix * sizeof(float);
+    size_t offset = region_index * REAL_Ts_per_matrix * sizeof(REAL_T);
     fin.seekg(offset, ios::beg);
-    vector<float> buffer(floats_per_matrix);
-    fin.read(reinterpret_cast<char*>(buffer.data()), floats_per_matrix * sizeof(float));
+    vector<REAL_T> buffer(REAL_Ts_per_matrix);
+    fin.read(reinterpret_cast<char*>(buffer.data()), REAL_Ts_per_matrix * sizeof(REAL_T));
     return buffer;
 }
 
-MatrixXf load_csv_column(const string& filename, size_t col, size_t rows) {
+MatrixT load_csv_column(const string& filename, size_t col, size_t rows) {
     ifstream fin(filename);
     if (!fin) throw runtime_error("Failed to open " + filename);
-    MatrixXf mat(rows, 1);
+    MatrixT mat(rows, 1);
     string line;
     size_t i = 0;
     while (getline(fin, line) && i < rows) {
@@ -85,30 +98,31 @@ MatrixXf load_csv_column(const string& filename, size_t col, size_t rows) {
         try {
             mat(i, 0) = stof(cell);
         } catch (const std::exception& e) {
-            cerr << "Warning: failed to parse float from column " << col
+            cerr << "Warning: failed to parse value from column " << col
                  << " in line " << i << " of " << filename
                  << ": '" << cell << "' (" << e.what() << ")\n";
-            mat(i, 0) = NAN; // or 0.0f or some sentinel value
+            mat(i, 0) = NAN; // or some sentinel value
         }
         ++i;
     }
     return mat;
 }
 
-MatrixXf pooled_covariance(const MatrixXf& A, float dofA, const MatrixXf& B, float dofB) {
+MatrixT pooled_covariance(const MatrixT& A, REAL_T dofA, const MatrixT& B, REAL_T dofB) {
     return (A * dofA + B * dofB) / (dofA + dofB);
 }
 
 extern "C" {
     void spotrf_(char* uplo, int* n, float* a, int* lda, int* info);
+    void dpotrf_(char* uplo, int* n, double* a, int* lda, int* info);
 }
 
 
 /* BEGIN: Task Balancing Code */
 
 // expand lower diagonal vectorization of a matrix into a symmetric matrix
-MatrixXf vector_to_matrix(const VectorXf& vec, int dim) {
-    MatrixXf mat(dim, dim);
+MatrixT vector_to_matrix(const VectorT& vec, int dim) {
+    MatrixT mat(dim, dim);
     mat.setZero();
     int index = 0;
     for (int i = 0; i < dim; ++i) {
@@ -120,9 +134,9 @@ MatrixXf vector_to_matrix(const VectorXf& vec, int dim) {
 }
 
 // vectorize symmetric matrix using lower triangular part
-VectorXf matrix_to_vector(const MatrixXf& mat) {
+VectorT matrix_to_vector(const MatrixT& mat) {
     int dim = mat.rows();
-    VectorXf vec(dim * (dim - 1) / 2);
+    VectorT vec(dim * (dim - 1) / 2);
     int index = 0;
     for (int i = 0; i < dim; ++i) {
         for (int j = i + 1; j < dim; ++j) {
@@ -193,9 +207,9 @@ ReplicationPlan make_replication_plan(const vector<int>& task_ids) {
 
 // replicate elements of a matrix using a vector of replicate_ids that indexs into the 
 // input_matrix
-MatrixXf apply_replication(const MatrixXf& input_matrix, const vector<int>& replicate_ids) {
+MatrixT apply_replication(const MatrixT& input_matrix, const vector<int>& replicate_ids) {
     int n = replicate_ids.size();
-    MatrixXf expanded(n, n);
+    MatrixT expanded(n, n);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j)
             expanded(i, j) = input_matrix(replicate_ids[i], replicate_ids[j]);
@@ -205,7 +219,7 @@ MatrixXf apply_replication(const MatrixXf& input_matrix, const vector<int>& repl
 // replicates of diagonal elements of distance matrices will all be zero. This would positively
 // bias similarity estimates between individuals. This function replaces replicated null diagonal 
 // elements with the mean value of the within-task RDM entries.
-VectorXf patch_block_diagonals(const MatrixXf& rdm_orig, MatrixXf& rdm_full, const vector<int>& task_ids, const vector<int>& replicate_ids, const vector<int>& block_labels) {
+VectorT patch_block_diagonals(const MatrixT& rdm_orig, MatrixT& rdm_full, const vector<int>& task_ids, const vector<int>& replicate_ids, const vector<int>& block_labels) {
     int dim = task_ids.size();
 
     for (size_t b = 0; b < block_labels.size(); ++b) {
@@ -217,7 +231,7 @@ VectorXf patch_block_diagonals(const MatrixXf& rdm_orig, MatrixXf& rdm_full, con
             if (task_ids[i] == label) inds.push_back(i);
 
         // compute average distance of task conditions within-task
-        float sum = 0.0f;
+        REAL_T sum = static_cast<REAL_T>(0.0);
         int count = 0;
         for (int i : inds) {
             for (int j : inds) {
@@ -227,7 +241,7 @@ VectorXf patch_block_diagonals(const MatrixXf& rdm_orig, MatrixXf& rdm_full, con
                 }
             }
         }
-        float mean = count > 0 ? sum / count : 0.0f;
+        REAL_T mean = count > 0 ? sum / count : static_cast<REAL_T>(0.0);
         
         for (int i : inds) {
             // find indices corresponding to current condition in expanded RDM
@@ -241,7 +255,7 @@ VectorXf patch_block_diagonals(const MatrixXf& rdm_orig, MatrixXf& rdm_full, con
         }
     }
     for (int i = 0; i < rdm_full.rows(); ++i)
-        rdm_full(i, i) = 0.0f;
+        rdm_full(i, i) = static_cast<REAL_T>(0.0);
     return matrix_to_vector(rdm_full);
 }
 
@@ -283,9 +297,9 @@ int main(int argc, char** argv) {
 
     int rdm_dim = meta1.shape_per_matrix_0;
     int n_regions = meta1.n_regions;
-    float dofA = meta1.dof;
-    float dofB = meta2.dof;
-    size_t floats_per_matrix = rdm_dim * (rdm_dim + 1) / 2;
+    REAL_T dofA = meta1.dof;
+    REAL_T dofB = meta2.dof;
+    size_t REAL_Ts_per_matrix = rdm_dim * (rdm_dim + 1) / 2;
 
     ReplicationPlan plan;
 
@@ -295,113 +309,113 @@ int main(int argc, char** argv) {
         plan = make_replication_plan(task_ids);
     }
 
-    MatrixXf similarity_matrix;
+    MatrixT similarity_matrix;
 
     if (full_matrix) {
-        similarity_matrix = MatrixXf::Zero(n_regions, n_regions);
+        similarity_matrix = MatrixT::Zero(n_regions, n_regions);
         #pragma omp parallel for schedule(dynamic)
         for (int i = 0; i < n_regions; ++i) {
             cout << "Evaluating region pair (.," << i << ")" << endl;
-            vector<float> cov1 = read_region_cov_matrix(cov1_file, i, floats_per_matrix);
-            MatrixXf Sigma1 = unpack_lower_triangle(cov1, rdm_dim);
-            MatrixXf x1 = load_csv_column(subject1_file, i, rdm_dim);
+            vector<REAL_T> cov1 = read_region_cov_matrix(cov1_file, i, REAL_Ts_per_matrix);
+            MatrixT Sigma1 = unpack_lower_triangle(cov1, rdm_dim);
+            MatrixT x1 = load_csv_column(subject1_file, i, rdm_dim);
             for (int j = i; j < n_regions; ++j) {
                 //cout << "Evaluating region pair (" << i << ", " << j << ")" << endl;
-                vector<float> cov2 = read_region_cov_matrix(cov2_file, j, floats_per_matrix);
-                MatrixXf Sigma2 = unpack_lower_triangle(cov2, rdm_dim);
-                MatrixXf pooled = pooled_covariance(Sigma1, dofA, Sigma2, dofB);
-                MatrixXf regularized = pooled + 1e-6f * MatrixXf::Identity(rdm_dim, rdm_dim);
+                vector<REAL_T> cov2 = read_region_cov_matrix(cov2_file, j, REAL_Ts_per_matrix);
+                MatrixT Sigma2 = unpack_lower_triangle(cov2, rdm_dim);
+                MatrixT pooled = pooled_covariance(Sigma1, dofA, Sigma2, dofB);
+                MatrixT regularized = pooled + regularization_epsilon<REAL_T>() * MatrixT::Identity(rdm_dim, rdm_dim);
 
                 // Use LAPACK for fast Cholesky factorization
-                vector<float> A(regularized.size());
-                Map<MatrixXf> A_map(A.data(), rdm_dim, rdm_dim);
+                vector<REAL_T> A(regularized.size());
+                Map<MatrixT> A_map(A.data(), rdm_dim, rdm_dim);
                 A_map = regularized;
                 int info;
                 char uplo = 'L';
-                spotrf_(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
+                LAPACK_POTRF(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
                 if (info != 0) {
-                    cerr << "Warning: spotrf failed at region (" << j << "," << i << ") (info = " << info << ")\n";
+                    cerr << "Warning: positive definite ordered triangular refactorization (*potr) failed at region (" << j << "," << i << ") (info = " << info << ")\n";
                     similarity_matrix(i, j) = NAN;
                     if (i != j) similarity_matrix(j,i) = NAN;
                     continue;
                 }
 
-                MatrixXf x2 = load_csv_column(subject2_file, j, rdm_dim);
+                MatrixT x2 = load_csv_column(subject2_file, j, rdm_dim);
 
                 // Solve L * y = x using Eigen’s triangular solver
-                MatrixXf L = Map<MatrixXf>(A.data(), rdm_dim, rdm_dim);
+                MatrixT L = Map<MatrixT>(A.data(), rdm_dim, rdm_dim);
                 L = L.triangularView<Lower>();
-                MatrixXf x1_whitened = L.triangularView<Lower>().solve(x1);
-                MatrixXf x2_whitened = L.triangularView<Lower>().solve(x2);
+                MatrixT x1_whitened = L.triangularView<Lower>().solve(x1);
+                MatrixT x2_whitened = L.triangularView<Lower>().solve(x2);
 
                 // balance across tasks
                 if (task_ids.size() > 0) {
-                    MatrixXf x1_whitened_sq = vector_to_matrix(x1_whitened.col(0), task_ids.size());
-                    MatrixXf x1_whitened_sq_exp = apply_replication(x1_whitened_sq, plan.replicate_ids);
+                    MatrixT x1_whitened_sq = vector_to_matrix(x1_whitened.col(0), task_ids.size());
+                    MatrixT x1_whitened_sq_exp = apply_replication(x1_whitened_sq, plan.replicate_ids);
                     x1_whitened = patch_block_diagonals(x1_whitened_sq, x1_whitened_sq_exp, task_ids, plan.replicate_ids, plan.block_labels);
-                    MatrixXf x2_whitened_sq = vector_to_matrix(x2_whitened.col(0), task_ids.size());
-                    MatrixXf x2_whitened_sq_exp = apply_replication(x2_whitened_sq, plan.replicate_ids);
+                    MatrixT x2_whitened_sq = vector_to_matrix(x2_whitened.col(0), task_ids.size());
+                    MatrixT x2_whitened_sq_exp = apply_replication(x2_whitened_sq, plan.replicate_ids);
                     x2_whitened = patch_block_diagonals(x2_whitened_sq, x2_whitened_sq_exp, task_ids, plan.replicate_ids, plan.block_labels);
                 }
 
                 similarity_matrix(i,j) = (x1_whitened.transpose() * x2_whitened)(0,0);
 
-                float norm1 = x1_whitened.norm();
-                float norm2 = x2_whitened.norm();
+                REAL_T norm1 = x1_whitened.norm();
+                REAL_T norm2 = x2_whitened.norm();
 		        similarity_matrix(i,j) /= (norm1 * norm2);
 
                 if (i != j) similarity_matrix(j, i) = similarity_matrix(i,j);
             }
         }
     } else {
-        similarity_matrix = MatrixXf::Zero(1, n_regions);
+        similarity_matrix = MatrixT::Zero(1, n_regions);
         #pragma omp parallel for schedule(dynamic)
         for (int i = 0; i < n_regions; ++i) {
             //cout << "Processing region " << i << endl;
-            vector<float> cov1 = read_region_cov_matrix(cov1_file, i, floats_per_matrix);
-            vector<float> cov2 = read_region_cov_matrix(cov2_file, i, floats_per_matrix);
-            MatrixXf Sigma1 = unpack_lower_triangle(cov1, rdm_dim);
+            vector<REAL_T> cov1 = read_region_cov_matrix(cov1_file, i, REAL_Ts_per_matrix);
+            vector<REAL_T> cov2 = read_region_cov_matrix(cov2_file, i, REAL_Ts_per_matrix);
+            MatrixT Sigma1 = unpack_lower_triangle(cov1, rdm_dim);
             //save_vector_to_csv(cov1,"Sigma1.csv");
             //save_matrix_to_csv(Sigma1,"Sigma" + std::to_string(i) + ".csv");
-            MatrixXf Sigma2 = unpack_lower_triangle(cov2, rdm_dim);
-            MatrixXf pooled = pooled_covariance(Sigma1, dofA, Sigma2, dofB);
-            MatrixXf regularized = pooled + 1e-6f * MatrixXf::Identity(rdm_dim, rdm_dim);
+            MatrixT Sigma2 = unpack_lower_triangle(cov2, rdm_dim);
+            MatrixT pooled = pooled_covariance(Sigma1, dofA, Sigma2, dofB);
+            MatrixT regularized = pooled + regularization_epsilon<REAL_T>() * MatrixT::Identity(rdm_dim, rdm_dim);
 
             // Use LAPACK for fast Cholesky factorization
-            vector<float> A(regularized.size());
-            Map<MatrixXf> A_map(A.data(), rdm_dim, rdm_dim);
+            vector<REAL_T> A(regularized.size());
+            Map<MatrixT> A_map(A.data(), rdm_dim, rdm_dim);
             A_map = regularized;
             int info;
             char uplo = 'L';
-            spotrf_(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
+            LAPACK_POTRF(&uplo, &rdm_dim, A.data(), &rdm_dim, &info);
             if (info != 0) {
-                cerr << "Warning: spotrf failed at region " << i << " (info = " << info << ")\n";
+                cerr << "Warning: positive definite ordered triangular refactorization (*potrf) failed at region " << i << " (info = " << info << ")\n";
                 similarity_matrix(0,i) = NAN;
                 continue;
             }
-            MatrixXf x1 = load_csv_column(subject1_file, i, rdm_dim);
-            MatrixXf x2 = load_csv_column(subject2_file, i, rdm_dim);
+            MatrixT x1 = load_csv_column(subject1_file, i, rdm_dim);
+            MatrixT x2 = load_csv_column(subject2_file, i, rdm_dim);
 
 	        // Solve L * y = x using Eigen’s triangular solver
-            MatrixXf L = Map<MatrixXf>(A.data(), rdm_dim, rdm_dim);
+            MatrixT L = Map<MatrixT>(A.data(), rdm_dim, rdm_dim);
             L = L.triangularView<Lower>();
-            MatrixXf x1_whitened = L.triangularView<Lower>().solve(x1);
-            MatrixXf x2_whitened = L.triangularView<Lower>().solve(x2);
+            MatrixT x1_whitened = L.triangularView<Lower>().solve(x1);
+            MatrixT x2_whitened = L.triangularView<Lower>().solve(x2);
 
             // balance across tasks
             if (task_ids.size() > 0) {
-                MatrixXf x1_whitened_sq = vector_to_matrix(x1_whitened.col(0), task_ids.size());
-                MatrixXf x1_whitened_sq_exp = apply_replication(x1_whitened_sq, plan.replicate_ids);
+                MatrixT x1_whitened_sq = vector_to_matrix(x1_whitened.col(0), task_ids.size());
+                MatrixT x1_whitened_sq_exp = apply_replication(x1_whitened_sq, plan.replicate_ids);
                 x1_whitened = patch_block_diagonals(x1_whitened_sq, x1_whitened_sq_exp, task_ids, plan.replicate_ids, plan.block_labels);
-                MatrixXf x2_whitened_sq = vector_to_matrix(x2_whitened.col(0), task_ids.size());
-                MatrixXf x2_whitened_sq_exp = apply_replication(x2_whitened_sq, plan.replicate_ids);
+                MatrixT x2_whitened_sq = vector_to_matrix(x2_whitened.col(0), task_ids.size());
+                MatrixT x2_whitened_sq_exp = apply_replication(x2_whitened_sq, plan.replicate_ids);
                 x2_whitened = patch_block_diagonals(x2_whitened_sq, x2_whitened_sq_exp, task_ids, plan.replicate_ids, plan.block_labels);
             }
 
             similarity_matrix(0,i) = (x1_whitened.transpose() * x2_whitened)(0,0);
 
-            float norm1 = x1_whitened.norm();
-            float norm2 = x2_whitened.norm();
+            REAL_T norm1 = x1_whitened.norm();
+            REAL_T norm2 = x2_whitened.norm();
             similarity_matrix(0,i) /= (norm1 * norm2);
         }
     }
