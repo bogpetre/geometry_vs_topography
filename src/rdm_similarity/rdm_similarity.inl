@@ -34,7 +34,7 @@ template <>
 inline float regularization_epsilon<float>() { return 1e-6f; }
 
 template <>
-inline double regularization_epsilon<double>() { return 1e-12; }
+inline double regularization_epsilon<double>() { return 1e-6; }
 
 
 extern "C" {
@@ -342,7 +342,9 @@ int main(int argc, char** argv) {
                 vector<REAL_T> cov2 = read_region_cov_matrix(cov2_file, j, REAL_Ts_per_matrix);
                 MatrixT Sigma2 = unpack_lower_triangle(cov2, rdm_dim);
                 MatrixT pooled = pooled_covariance(Sigma1, dofA, Sigma2, dofB);
-                MatrixT regularized = pooled + regularization_epsilon<REAL_T>() * MatrixT::Identity(rdm_dim, rdm_dim);
+                REAL_T scale = pooled.diagonal().mean();
+                REAL_T eps = std::max(regularization_epsilon<REAL_T>(), scale * regularization_epsilon<REAL_T>());
+                MatrixT regularized = pooled + eps * MatrixT::Identity(rdm_dim, rdm_dim);
 
                 // Use LAPACK for fast Cholesky factorization
                 vector<REAL_T> A(regularized.size());
@@ -397,7 +399,9 @@ int main(int argc, char** argv) {
             //save_matrix_to_csv(Sigma1,"Sigma" + std::to_string(i) + ".csv");
             MatrixT Sigma2 = unpack_lower_triangle(cov2, rdm_dim);
             MatrixT pooled = pooled_covariance(Sigma1, dofA, Sigma2, dofB);
-            MatrixT regularized = pooled + regularization_epsilon<REAL_T>() * MatrixT::Identity(rdm_dim, rdm_dim);
+            REAL_T scale = pooled.diagonal().mean();
+            REAL_T eps = std::max(regularization_epsilon<REAL_T>(), scale * regularization_epsilon<REAL_T>());
+            MatrixT regularized = pooled + eps * MatrixT::Identity(rdm_dim, rdm_dim);
 
             // Use LAPACK for fast Cholesky factorization
             vector<REAL_T> A(regularized.size());
