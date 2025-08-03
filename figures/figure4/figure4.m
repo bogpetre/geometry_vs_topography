@@ -157,6 +157,7 @@ mapname = {};
 [Bb, Bp, cohensf2] = deal(zeros(length(mapvals),1));
 [Bb_CI] = deal(zeros(length(mapvals),2));
 for i = 1:length(mapvals)
+    tic
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
 
     vals(:,i) = csvread(fullfile(mapvals(i).folder, mapvals(i).name));
@@ -186,6 +187,7 @@ for i = 1:length(mapvals)
     rdm = atanh(wuc_md(:,these_good_rois));
 
     [Bb(i), Bb_CI(i,:), Bp(i), cohensD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    toc
 end
 
 
@@ -411,3 +413,18 @@ sgtitle({'Topographic similarity only indicates','geometric similarity in unimod
 
 
 exportgraphics(gcf,sprintf('panels_%s/second_level_associations.png',noise),'ContentType','image','Resolution',300);
+
+%% post hoc eval of cerebellum
+ind = find(contains({atlas_labels.name},{'Cblm_V_','Cblm_VI_'}));
+x = mean(wuc_md(:,ind),2);
+y = mean(cosim(:,ind),2);
+
+B_CI = bootci(5000,@get_regression_B,[x,y])
+B = get_regression_B([x,y])
+
+ind = find(contains({atlas_labels.name},{'Cblm_Crus'}));
+x = mean(wuc_md(:,ind),2);
+y = mean(cosim(:,ind),2);
+
+B_CI = bootci(5000,@get_regression_B,[x,y])
+B = get_regression_B([x,y])

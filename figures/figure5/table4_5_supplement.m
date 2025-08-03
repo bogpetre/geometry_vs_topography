@@ -113,13 +113,13 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[Bb, Bp, cohensf2, Bb_corr, Bp_corr, cohensf2_corr] = deal(zeros(length(mapvals),1));
+[Bb, Bp, cohensD, Bb_corr, Bp_corr, cohensD_corr] = deal(zeros(length(mapvals),1));
 [Bb_CI, Bb_CI_corr] = deal(zeros(length(mapvals),2));
 [wucD, wucDStd, cosimD, cosimDStd, ...
     wucb, wucp, wucstd, cosimb, cosimp, cosimstd] = deal(zeros(length(mapvals),1));
 [wucb_CI, wucstd_CI, cosim_CI, cosimstd_CI] = deal(zeros(length(mapvals),2));
-[mainInt, mainStd, mainD, mainDStd] = deal(zeros(length(mapvals),4));
-[mainInt_CI, mainStd_CI] = deal(zeros(length(mapvals),4,2));
+[mainInt, mainStd, mainD, mainDStd] = deal(zeros(length(mapvals),2));
+[mainInt_CI, mainStd_CI] = deal(zeros(length(mapvals),2,2));
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
 
@@ -135,6 +135,7 @@ for i = 1:length(mapvals)
 
     % do coupling strength test with and without confounds
     randgrad = csvread(fullfile('../../resources/neuromaps/canlab2024_permuted_annotations',mapvals(i).name));
+    randgrad(randgrad == 0) = nan; % medial wall
 
     map_val = vals(these_good_rois, i);
     perm_map = randgrad(these_good_rois,:);
@@ -143,52 +144,42 @@ for i = 1:length(mapvals)
     map_sd = std(map_val);
     
     map_val = (map_val - map_mu)./map_sd;
-    perm_map = (perm_map - map_mu)./map_sd;
+    perm_map = (perm_map - nanmean(perm_map))./map_sd;
     
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    [Bb(i), Bb_CI(i,:), Bp(i), cohensf2(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
+    % mean imputation within dyad
+    for j = 1:size(rdm,1)
+        rdm(j,isnan(rdm(j,:))) = nanmean(rdm(j,:));
+    end
 
-    [Bb_corr(i), Bb_CI_corr(i,:), Bp_corr(i), cohensf2_corr(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    [Bb(i), Bb_CI(i,:), Bp(i), cohensD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
+
+    [Bb_corr(i), Bb_CI_corr(i,:), Bp_corr(i), cohensD_corr(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
 
 
     % estimate uncorrected gradient similarities
-    map_val = vals(these_good_rois, i);
-
-    map_mu = mean(map_val);
-    map_sd = std(map_val);
-    
-    map_val = (map_val - map_mu)./map_sd;
-    
-    n_tests = size(vals,2);
-    sidak_95CI = [(1-0.95^(1/n_tests))/2,1-(1-0.95^(1/n_tests))/2];
     
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), ~, bootstat, wucstd(i), ~, bootstat_std, wucD(i), wucDStd(i)] = neuromaps_corr_fx(obs_val, ...
-        map_val);
-    wucb_CI(i,:) = prctile(bootstat, 100*sidak_95CI);
-    wucstd_CI(i,:) = prctile(bootstat_std, 100*sidak_95CI);
+    [wucb(i), wucb_CI(i,:), wucp(i) wucD(i)] = neuromaps_corr_fx(obs_val, ...
+        map_val, perm_map);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), ~, bootstat, cosimstd(i), ~, bootstat_std, cosimD(i), cosimDStd(i)] = neuromaps_corr_fx(obs_val, ...
-        map_val);
-    cosim_CI(i,:) = prctile(bootstat, 100*sidak_95CI);
-    cosimstd_CI(i,:) = prctile(bootstat_std, 100*sidak_95CI);
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
+        map_val, perm_map);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainInt(i,:), mainInt_CI(i,:,:), bootstat, mainStd(i,:), ~, bootstat_std, mainD(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
-        map_val);
-    mainInt_CI(i,:,:) = prctile(bootstat, 100*sidak_95CI)';
-    mainStd_CI(i,:,:) = prctile(bootstat_std, 100*sidak_95CI)';
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+        map_val, perm_map);
 end
 
 
-%% plot neurmap associations
+%% print neurmap associations
 % The tables we print below contribute to the tables in the manuscript
 
 abr_mapname = maps(:,3);
@@ -204,7 +195,7 @@ for i = 1:length(wucb)
 end
 int_str = {};
 for i = 1:length(wucb)
-    int_str{i} = sprintf('%0.3f±%0.3f',mainStd(i,3), mean([mainStd_CI(i,3,2) - mainStd(i,3), mainStd(i,3) - mainStd_CI(i,3,1)],2));
+    int_str{i} = sprintf('%0.3f±%0.3f',mainStd(i,2), mean([mainStd_CI(i,2,2) - mainStd(i,2), mainStd(i,2) - mainStd_CI(i,2,1)],2));
 end
 bb_str = {};
 for i = 1:length(Bb)

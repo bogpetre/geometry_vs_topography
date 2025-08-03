@@ -99,7 +99,7 @@ dlPFC = find(contains(roi_labels,...
     'Ctx_46','Ctx_a9_46v','Ctx_9_46d','Ctx_9a','Ctx_i6_8','Ctx_s6_8'}));
 
 cblm_crus = find(contains(roi_labels,'Cblm_Crus'));
-cblm_sensory = find(contains(roi_labels,{'Cblm_I','Cblm_V_','Cblm_IX'})) % Cblm_I pulls Cblm_I_IV
+cblm_sensory = find(contains(roi_labels,{'Cblm_V_','Cblm_VI'})) % Cblm_I pulls Cblm_I_IV
 
 mean(mean(cosim(:,[EVC_rois])));
 mean(mean(cosim(:,somatomotor_rois)))
@@ -113,7 +113,7 @@ mean(mean(wuc_md(:,[somatomotor_rois])));
 mean(mean(wuc_md(:,[TPOJ])));
 mean(mean(wuc_md(:,[dlPFC])));
 mean(mean(wuc_md(:,[cblm_crus])));
-mean(mean(wuc_md(:,[cblm_sensory])));
+mean(mean(wuc_md(:,[cblm_sensory]),2));
 
 %% plot topographic and geometric similarities
 
@@ -144,7 +144,7 @@ cifti_write_from_template(atlas_cii, new_cii_data,'mean_geometric_similarity.dsc
 
 %% compute similarity of geometry and topography
 % this is slow, uncomment as needed
-%{
+
 % We use these statistics in the main text of the results
 sid_ind = repmat(1:size(wuc_md,1)',1,length(good_rois));
 roi_ind = kron(helmertCoding(1:length(good_rois)),ones(size(wuc_md,1),1));
@@ -251,8 +251,6 @@ for i = 1:length(mapvals)
     fprintf('Evaluating %s\n', mapname{i})
 
     randgrad = csvread(fullfile('../../resources/neuromaps/canlab2024_permuted_annotations',mapvals(i).name));
-    %randgrad = csvread(fullfile('/home/bogdan/MyDocuments/canlab/hcp_hyperalignment/papers/RSA_vs_topography_2/figure1/permuted_annotations_canlab2024',mapvals(i).name));
-    %randgrad = csvread(fullfile('../../permuted_maps/',mapvals(i).name));
     randgrad(randgrad == 0) = nan; % medial wall
 
     map_val = vals(these_good_rois, i);
