@@ -41,6 +41,18 @@ ACE = [1,1,0,0,1;...
     0.25,0,0,1,1;...
     0,0,0,0,1];
 
+DCE = [1,1,0,0,1;...
+    0.25,1,0,0,1;...
+    0.25,0,1,0,1;...
+    0,0,0,1,1;...
+    0,0,0,0,1];
+
+ACDE = [1,1,1,0,0,1;...
+    0.5,0.25,1,0,0,1;...
+    0.5,0.25,0,1,0,1;...
+    0.25,0,0,0,1,1;...
+    0,0,0,0,0,1];
+
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -860,3 +872,216 @@ pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),305,650])
 
 export_fig(gcf,sprintf('panels_%s/ACE_proportional.png',noise),'-transparent','-r300');
+
+%% Print tables
+
+disp('Task Topo')
+for i = 1:5
+    fprintf('%0.3f ± [%0.3f, %0.3f]\n', task_topo_B(i), task_topo_ACE_CI(i,1), task_topo_ACE_CI(i,2));
+end
+
+disp('Task Geom')
+for i = 1:5
+    fprintf('%0.3f ± [%0.3f, %0.3f]\n', task_geom_B(i), task_geom_ACE_CI(i,1), task_geom_ACE_CI(i,2));
+end
+
+
+disp('RSN Topo')
+for i = 1:5
+    fprintf('%0.3f ± [%0.3f, %0.3f]\n', rsn_topo_B(i), rsn_topo_ACE_CI(i,1), rsn_topo_ACE_CI(i,2));
+end
+
+disp('RSN Geom')
+for i = 1:5
+    fprintf('%0.3f ± [%0.3f, %0.3f]\n', rsn_geom_B(i), rsn_geom_ACE_CI(i,1), rsn_geom_ACE_CI(i,2));
+end
+
+%% Nonparametric tests of heritability
+tril_ind = tril(true(size(dz)),-1);
+
+disp('Task Topography')
+x = mean_topo_r(mz & tril_ind);
+y = mean_topo_r(dz & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('Task Geometry')
+x = mean_geom_r(mz & tril_ind);
+y = mean_geom_r(dz & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Topography')
+x = rsn_mean_topo_r(mz & tril_ind);
+y = rsn_mean_topo_r(dz & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Geometry')
+x = rsn_mean_geom_r(mz & tril_ind);
+y = rsn_mean_geom_r(dz & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+%% Nonparmaetric interaction tests of mz vs. dz x geometry vs. topography
+
+mz_topo = mean_topo_r(mz & tril_ind);
+dz_topo = mean_topo_r(dz & tril_ind);
+mz_geom = mean_geom_r(mz & tril_ind);
+dz_geom = mean_geom_r(dz & tril_ind);
+
+nx = length(mz_topo);
+ny = length(dz_topo);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [mz_topo; dz_topo];
+geom = [mz_geom; dz_geom];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+dmz = topo(grp > 0) - geom(grp > 0);
+ddz = topo(grp < 0) - geom(grp < 0);
+
+disp('MZ vs. DZ x Geometry vs. Topography (task):')
+[P,H,STATS] = ranksum(dmz,ddz,'tail','right')
+U = STATS.ranksum - length(dmz)*(length(dmz) + 1)/2
+AUC = U/(length(dmz)*length(ddz))
+
+
+
+mz_topo = rsn_mean_topo_r(mz & tril_ind);
+dz_topo = rsn_mean_topo_r(dz & tril_ind);
+mz_geom = rsn_mean_geom_r(mz & tril_ind);
+dz_geom = rsn_mean_geom_r(dz & tril_ind);
+
+nx = length(mz_topo);
+ny = length(dz_topo);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [mz_topo; dz_topo];
+geom = [mz_geom; dz_geom];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+dmz = topo(grp > 0) - geom(grp > 0);
+ddz = topo(grp < 0) - geom(grp < 0);
+
+disp('MZ vs. DZ x Geometry vs. Topography (RSN):')
+[P,H,STATS] = ranksum(dmz,ddz,'tail','right')
+U = STATS.ranksum - length(dmz)*(length(dmz) + 1)/2
+AUC = U/(length(dmz)*length(ddz))
+
+%% Nonparametric tests of dz vs. fs environment
+P = zeros(4,1);
+
+disp('Task Topography')
+x = mean_topo_r(dz & tril_ind);
+y = mean_topo_r(fs & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(1),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('Task Geometry')
+x = mean_geom_r(dz & tril_ind);
+y = mean_geom_r(fs & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(2),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Topography')
+x = rsn_mean_topo_r(dz & tril_ind);
+y = rsn_mean_topo_r(fs & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(3),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Geometry')
+x = rsn_mean_geom_r(dz & tril_ind);
+y = rsn_mean_geom_r(fs & tril_ind);
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(4),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+%% Nonparmaetric interaction tests of dz vs. fs x geometry vs. topography
+
+dz_topo = mean_topo_r(dz & tril_ind);
+fs_topo = mean_topo_r(fs & tril_ind);
+dz_geom = mean_geom_r(dz & tril_ind);
+fs_geom = mean_geom_r(fs & tril_ind);
+
+nx = length(dz_topo);
+ny = length(fs_topo);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [dz_topo; fs_topo];
+geom = [dz_geom; fs_geom];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+ddz = geom(grp > 0) - topo(grp > 0);
+dfs = geom(grp < 0) - topo(grp < 0);
+
+disp('DZ vs. FS x Geometry vs. Topography (Task):')
+[P,H,STATS] = ranksum(ddz,dfs,'tail','right')
+U = STATS.ranksum - length(ddz)*(length(ddz) + 1)/2
+AUC = U/(length(ddz)*length(dfs))
+
+
+dz_topo = rsn_mean_topo_r(dz & tril_ind);
+fs_topo = rsn_mean_topo_r(fs & tril_ind);
+dz_geom = rsn_mean_geom_r(dz & tril_ind);
+fs_geom = rsn_mean_geom_r(fs & tril_ind);
+
+nx = length(dz_topo);
+ny = length(fs_topo);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [dz_topo; fs_topo];
+geom = [dz_geom; fs_geom];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+ddz = geom(grp > 0) - topo(grp > 0);
+dfs = geom(grp < 0) - topo(grp < 0);
+
+disp('DZ vs. FS x Geometry vs. Topography (RSN):')
+[P,H,STATS] = ranksum(ddz,dfs,'tail','right')
+U = STATS.ranksum - length(ddz)*(length(ddz) + 1)/2
+AUC = U/(length(ddz)*length(dfs))
+
