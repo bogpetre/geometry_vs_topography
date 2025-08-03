@@ -7,7 +7,7 @@ the nipype pipelines provided in the scripts/ folder of this repository and this
 is designed to work with the whitening_matrix_out.bin, whitening_matrix_out.json and 
 [euclidean|standardized|whitened|]_distance.csv files produced by these pipelines.
 
-rdm_similarity reads in RDM covariance matrices, pools them across RDMs under consideration 
+rdm_similarity* reads in RDM covariance matrices, pools them across RDMs under consideration 
 and whitens RDM distances by the inverse of this matrix. The program by default only computes
 similarites for matched regions, but optionally it can also compute similarities of 
 geometries across all region-region pairs, a much more computatoinally demanding operation, 
@@ -31,7 +31,15 @@ Refer to matlab/unit_test_rdm_cosim_scripts.m for an idea of how to use this cod
 
 ## USAGE:
 
-./rdm_similarity --help
+./rdm_similarity32 --help
+./rdm_similarity64 --help
+
+There are two versions of the program, one is 32-bit the other is 64-bit. These correspond
+to singleton and double precision in matlab (respectively) and you should use the version
+corresponding to the output specified in your RDM and MultiTaskRDM nipype interfaces. The 
+choice of which to use will depend on your compute time, memory and disk space constraints.
+If you use the wrong version it will output bogus values, probably mostly NaNs, since it
+won't read in the whitening matrices correctly.
 
 The algorithm is designed to work with potentially very large RDMs where the covariance
 matrices (which scale O(n^4) in tasks) may be many GB. Consequently the whitening matrices 
