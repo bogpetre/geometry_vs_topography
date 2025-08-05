@@ -1,4 +1,4 @@
-function [mz, dz, fs, hs, unr] = get_independent_obs(SM, MZ, DZ, FS, HS, UNR)
+function [mz, dz, fs, hs, unr, fs_not_dz] = get_independent_obs(SM, MZ, DZ, FS, HS, UNR)
 % returns example observations of pairwise similarity measures that are 
 %   independent (i.e. each pair's 2 members are non-intersecting with the 
 %   observations of remaining pairs) for each type of family cluster (mz, 
@@ -41,6 +41,15 @@ for i = flip(1:length(fs_ind))
     end
 end
 
+[dz_1, dz_2] = find(~isnan(dz));
+fs_not_dz_ind = [fs_1, fs_2];
+for i = flip(1:length(fs_not_dz_ind))
+    if ismember(fs_1(i,1), fs_1(1:i-1,1)) || ismember(fs_1(i,1), dz_1) || ismember(fs_2(i,1), dz_2)
+        fs_not_dz_ind(i,:) = [];
+    end
+end
+
+
 % filter hs for repeats
 [hs_1, hs_2] = find(~isnan(hs));
 
@@ -55,17 +64,24 @@ end
 mz = mz(~isnan(mz));
 dz = dz(~isnan(dz));
 
-geom_r_fs_ = nan(size(fs));
-for i = 1:size(fs_ind)
-    geom_r_fs_(fs_ind(i,1), fs_ind(i,2)) = fs(fs_ind(i,1), fs_ind(i,2));
+fs_ = nan(size(fs));
+for i = 1:size(fs_not_dz_ind)
+    fs_(fs_not_dz_ind(i,1), fs_not_dz_ind(i,2)) = fs(fs_not_dz_ind(i,1), fs_not_dz_ind(i,2));
 end
-fs = geom_r_fs_(~isnan(geom_r_fs_));
+fs_not_dz = fs_(~isnan(fs_));
 
-geom_r_hs_ = nan(size(hs));
-for i = 1:size(hs_ind)
-    geom_r_hs_(hs_ind(i,1), hs_ind(i,2)) = hs(hs_ind(i,1), hs_ind(i,2));
+fs_ = nan(size(fs));
+for i = 1:size(fs_ind)
+    fs_(fs_ind(i,1), fs_ind(i,2)) = fs(fs_ind(i,1), fs_ind(i,2));
 end
-hs = geom_r_hs_(~isnan(geom_r_hs_));
+fs = fs_(~isnan(fs_));
+
+
+hs_ = nan(size(hs));
+for i = 1:size(hs_ind)
+    hs_(hs_ind(i,1), hs_ind(i,2)) = hs(hs_ind(i,1), hs_ind(i,2));
+end
+hs = hs_(~isnan(hs_));
 
 % filter unrelated
 unr = SM;

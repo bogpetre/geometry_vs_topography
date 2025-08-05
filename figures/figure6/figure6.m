@@ -33,13 +33,7 @@ perm = 5000;
 data_root = '../../derivatives/hcp_glm_msmall_grayord_spm/';
 rsn_root = '../../derivatives/restingstate/hcp25/';
 
-noise='whitened';
-%% ACE model design
-ACE = [1,1,0,0,1;...
-    0.5,1,0,0,1;...
-    0.5,0,1,0,1;...
-    0.25,0,0,1,1;...
-    0,0,0,0,1];
+noise='standardized';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
@@ -317,6 +311,7 @@ unr_income_bracket_counts = table(a,[diff(b); length(unr_race)-b(end)]/length(un
 
 
 %% get bootstrap and jackknife samples from task data
+
 uniq_family = unique(restricted.Family_ID);
 family_ind = {};
 for i = 1:length(uniq_family)
@@ -327,48 +322,11 @@ for i = 1:perm
     perm_inds(i,:) = randi(length(family_ind), length(family_ind),1);
 end
 
-[task_topo_B_bs, task_topo_B_jk, task_topo_B, ...
-    task_topo_clusters_bs, task_topo_clusters_jk, task_topo_clusters] = bootstrap(...
-    mean_topo_r, perm, family_ind, mz, dz, fs, hs, unr, ACE, perm_inds);
+[task_topo_clusters_bs, task_topo_clusters_jk, task_topo_clusters] = bootstrap5(...
+    mean_topo_r, perm, family_ind, mz, dz, fs, hs, unr, perm_inds);
 
-disp('Mean task topography ACE model coefficients');
-disp(task_topo_B)
-
-%{
-topo_B =
-
-    0.0615
-   -0.0050
-   -0.0115
-   -0.0204
-    0.1636
-%}
-
-
-[task_geom_B_bs, task_geom_B_jk, task_geom_B, ...
-    task_geom_clusters_bs, task_geom_clusters_jk, task_geom_clusters] = bootstrap(...
-    mean_geom_r, perm, family_ind, mz, dz, fs, hs, unr, ACE, perm_inds);
-
-disp('Mean task geometry ACE model coefficients');
-disp(task_geom_B)
-
-% mean heritability and environmental effects on geometries
-% h2 = B(1)
-% c2_tw = B(2)
-% c2_fs = B(3)
-% c2_hs = B(4)
-% gc2 = B(5)
-
-%{
-geom_B =
-
-    0.0440
-    0.0071
-   -0.0030
-   -0.0327
-    0.2988
-%}
-
+[task_geom_clusters_bs, task_geom_clusters_jk, task_geom_clusters] = bootstrap5(...
+    mean_geom_r, perm, family_ind, mz, dz, fs, hs, unr, perm_inds);
 
 %% load exhaustive cosine similarities and goemetric similarities of RSNs
 load(sprintf('rsn_topographic_similarities_%s.mat',noise),'rsn_roi_topo','rsn_good_topo');
@@ -398,47 +356,11 @@ rsn_mean_geom_r = nanmean(rsn_roi_geom,3);
 
 %% get bootstrap and jackknife samples from RSN data
 
-[rsn_topo_B_bs, rsn_topo_B_jk, rsn_topo_B, ...
-    rsn_topo_clusters_bs, rsn_topo_clusters_jk, rsn_topo_clusters] = bootstrap(...
-    rsn_mean_topo_r, perm, family_ind, mz, dz, fs, hs, unr, ACE, perm_inds);
+[rsn_topo_clusters_bs, rsn_topo_clusters_jk, rsn_topo_clusters] = bootstrap5(...
+    rsn_mean_topo_r, perm, family_ind, mz, dz, fs, hs, unr, perm_inds);
 
-disp('Mean rsn topography ACE model coefficients');
-disp(rsn_topo_B)
-
-%{
-rsn_topo_B =
-
-    0.0798
-   -0.0095
-   -0.0157
-   -0.0076
-    0.1956
-%}
-
-[rsn_geom_B_bs, rsn_geom_B_jk, rsn_geom_B, ...
-    rsn_geom_clusters_bs, rsn_geom_clusters_jk, rsn_geom_clusters] = bootstrap(...
-    rsn_mean_geom_r, perm, family_ind, mz, dz, fs, hs, unr, ACE, perm_inds);
-
-disp('Mean rsn geometry ACE model coefficients');
-disp(rsn_geom_B)
-
-% mean heritability and environmental effects on geometries
-% h2 = B(1)
-% c2_tw = B(2)
-% c2_fs = B(3)
-% c2_hs = B(4)
-% gc2 = B(5)
-
-%{
-rsn_geom_B =
-
-    0.0874
-    0.0036
-   -0.0150
-    0.0136
-    0.2482
-%}
-
+[rsn_geom_clusters_bs, rsn_geom_clusters_jk, rsn_geom_clusters] = bootstrap5(...
+    rsn_mean_geom_r, perm, family_ind, mz, dz, fs, hs, unr, perm_inds);
 
 %% estimate mean regional task topography heritabilities
 
@@ -451,7 +373,7 @@ end
 
 topo_r(any(isnan(topo_r),3)) = nan;
 mean_topo_r = nanmean(topo_r,3);
-[task_topo_r_mz, task_topo_r_dz, task_topo_r_fs, task_topo_r_hs, task_topo_r_unr] = get_independent_obs( ...
+[task_topo_r_mz, task_topo_r_dz, task_topo_r_fs, task_topo_r_hs, task_topo_r_unr, task_topo_r_fs_not_dz] = get_independent_obs( ...
     mean_topo_r, mz, dz, fs, hs, unr);
 
 %% estimate mean task geometry heritabilities
@@ -464,7 +386,7 @@ end
 % for mz, dz, fs, hs
 geom_r(any(isnan(topo_r),3)) = nan;
 mean_geom_r = nanmean(geom_r,3);
-[task_geom_r_mz, task_geom_r_dz, task_geom_r_fs, task_geom_r_hs, task_geom_r_unr] = get_independent_obs( ...
+[task_geom_r_mz, task_geom_r_dz, task_geom_r_fs, task_geom_r_hs, task_geom_r_unr, task_geom_r_fs_not_dz] = get_independent_obs( ...
     mean_geom_r, mz, dz, fs, hs, unr);
 
 %% estimate mean regional RSN topography heritabilities
@@ -478,7 +400,7 @@ end
 
 rsn_roi_topo(any(isnan(topo_r),3)) = nan;
 rsn_mean_topo_r = nanmean(rsn_roi_topo,3);
-[rsn_topo_r_mz, rsn_topo_r_dz, rsn_topo_r_fs, rsn_topo_r_hs, rsn_topo_r_unr] = get_independent_obs( ...
+[rsn_topo_r_mz, rsn_topo_r_dz, rsn_topo_r_fs, rsn_topo_r_hs, rsn_topo_r_unr, rsn_topo_r_fs_not_dz] = get_independent_obs( ...
     rsn_mean_topo_r, mz, dz, fs, hs, unr);
 
 %% estimate mean RSN geometry heritabilities
@@ -491,68 +413,169 @@ end
 % for mz, dz, fs, hs
 rsn_roi_geom(any(isnan(rsn_roi_topo),3)) = nan;
 rsn_mean_geom_r = nanmean(rsn_roi_geom,3);
-[rsn_geom_r_mz, rsn_geom_r_dz, rsn_geom_r_fs, rsn_geom_r_hs, rsn_geom_r_unr] = get_independent_obs( ...
+[rsn_geom_r_mz, rsn_geom_r_dz, rsn_geom_r_fs, rsn_geom_r_hs, rsn_geom_r_unr, rsn_geom_r_fs_not_dz] = get_independent_obs( ...
     rsn_mean_geom_r, mz, dz, fs, hs, unr);
 
-%% estimate ACE coefficients
+%% Import test-retest reliability data
+sid = readtable('../../resources/paired_retest_iid_sid.csv', 'ReadVariableNames',false);
+sid = table([sid.Var1; sid.Var2]);
 
-[task_topo_ACE, task_geom_ACE, rsn_topo_ACE, rsn_geom_ACE] = deal(cell(size(ACE,2),1));
-[task_prop_topo_ACE, task_prop_geom_ACE, rsn_prop_topo_ACE, rsn_prop_geom_ACE] = deal(cell(size(ACE,2),1));
-[task_prop_herit_diff, rsn_prop_herit_diff] = deal(zeros(size(ACE,2),2));
-for i = 1:size(ACE,2)
-    % task
-    [~, task_topo_ACE{i}] = BCa(task_topo_B(i), task_topo_B_bs(i,:), task_topo_B_jk(i,:), 0.05);
-    [~, task_geom_ACE{i}] = BCa(task_geom_B(i), task_geom_B_bs(i,:), task_geom_B_jk(i,:), 0.05);
+balanced_mean_op = [1/7*repmat(1/2,1,10), 1/7*repmat(1/5,1,5), 1/7*repmat(1/8,1,8)];
 
-    [~, task_prop_topo_ACE{i}] = BCa(task_topo_B(i)/task_topo_B(end), task_topo_B_bs(i,:)./task_topo_B_bs(end,:), task_topo_B_jk(i,:)./task_topo_B_jk(end,:), 0.05);
-    [~, task_prop_geom_ACE{i}] = BCa(task_geom_B(i)/task_geom_B(end), task_geom_B_bs(i,:)./task_geom_B_bs(end,:), task_geom_B_jk(i,:)./task_geom_B_jk(end,:), 0.05);
+task_labels = [1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7];
 
-    % difference in proportional heritabilities of topographies and
-    % geometries. Note: This is only valid if bootstrap samples are
-    % synchronized across topographic and geometric comparisons
-    task_topo_gt_geom = task_topo_B(i)/task_topo_B(end) - task_geom_B(i)/task_geom_B(end);
-    task_topo_gt_geom_jk = task_topo_B_jk(i,:)./task_topo_B_jk(end,:) - task_geom_B_jk(i,:)./task_geom_B_jk(end,:);
-    task_topo_gt_geom_bs = task_topo_B_bs(i,:)./task_topo_B_bs(end,:) - task_geom_B_bs(i,:)./task_geom_B_bs(end,:);
-    [~, task_prop_herit_diff(i,:)] = BCa(task_topo_gt_geom, task_topo_gt_geom_bs, task_topo_gt_geom_jk, 0.05);
-
-    % rsn
-    [~, rsn_topo_ACE{i}] = BCa(rsn_topo_B(i), rsn_topo_B_bs(i,:), rsn_topo_B_jk(i,:), 0.05);
-    [~, rsn_geom_ACE{i}] = BCa(rsn_geom_B(i), rsn_geom_B_bs(i,:), rsn_geom_B_jk(i,:), 0.05);
-
-    [~, rsn_prop_topo_ACE{i}] = BCa(rsn_topo_B(i)/rsn_topo_B(end), rsn_topo_B_bs(i,:)./rsn_topo_B_bs(end,:), rsn_topo_B_jk(i,:)./rsn_topo_B_jk(end,:), 0.05);
-    [~, rsn_prop_geom_ACE{i}] = BCa(rsn_geom_B(i)/rsn_geom_B(end), rsn_geom_B_bs(i,:)./rsn_geom_B_bs(end,:), rsn_geom_B_jk(i,:)./rsn_geom_B_jk(end,:), 0.05);
-
-    % difference in proportional heritabilities of topographies and
-    % geometries. Note: This is only valid if bootstrap samples are
-    % synchronized across topographic and geometric comparisons
-    rsn_topo_gt_geom = rsn_topo_B(i)/rsn_topo_B(end) - rsn_geom_B(i)/rsn_geom_B(end);
-    rsn_topo_gt_geom_jk = rsn_topo_B_jk(i,:)./rsn_topo_B_jk(end,:) - rsn_geom_B_jk(i,:)./rsn_geom_B_jk(end,:);
-    rsn_topo_gt_geom_bs = rsn_topo_B_bs(i,:)./rsn_topo_B_bs(end,:) - rsn_geom_B_bs(i,:)./rsn_geom_B_bs(end,:);
-    [~, rsn_prop_herit_diff(i,:)] = BCa(rsn_topo_gt_geom, rsn_topo_gt_geom_bs, rsn_topo_gt_geom_jk, 0.05);
+task_wuc_retest = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        task_wuc_retest(s,:) = diag(readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var1(s)),'FileType','text'));
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+for s = 1:height(sid)
+    % Some distance matrices are so noise dominated that their test-retest
+    % reliability does not produce a valid RDM whitening matrix. We set
+    % those to nans here. If we consider the residual non-imaginary
+    % subjects for these regions we'll have biased estimates, but nans make
+    % these easy to keep track of so we can mask them out later
+    nan_regions = imag(task_wuc_retest(s,:)) ~= 0;
+    task_wuc_retest(s, nan_regions) = nan;
 end
 
-task_topo_ACE_CI = cat(1,task_topo_ACE{:});
-task_geom_ACE_CI = cat(1,task_geom_ACE{:});
+task_cosim_retest = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        task_cosim_retest(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var1(s)), '\t');
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
 
-task_prop_topo_ACE_CI = cat(1,task_prop_topo_ACE{:});
-task_prop_geom_ACE_CI = cat(1,task_prop_geom_ACE{:});
+has_data = any(task_cosim_retest,2) & any(~isnan(task_wuc_retest),2);
 
-rsn_topo_ACE_CI = cat(1,rsn_topo_ACE{:});
-rsn_geom_ACE_CI = cat(1,rsn_geom_ACE{:});
+task_cosim_retest = task_cosim_retest(has_data,:);
+task_wuc_retest = task_wuc_retest(has_data,:);
 
-rsn_prop_topo_ACE_CI = cat(1,rsn_prop_topo_ACE{:});
-rsn_prop_geom_ACE_CI = cat(1,rsn_prop_geom_ACE{:});
+rsn_wuc_retest = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        rsn_wuc_retest(s,:) = readmatrix(sprintf('../../derivatives/retest/restingstate/hcp25/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var1(s)),'FileType','text');
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+for s = 1:height(sid)
+    % Some distance matrices are so noise dominated that their test-retest
+    % reliability does not produce a valid RDM whitening matrix. We set
+    % those to nans here. If we consider the residual non-imaginary
+    % subjects for these regions we'll have biased estimates, but nans make
+    % these easy to keep track of so we can mask them out later
+    nan_regions = imag(rsn_wuc_retest(s,:)) ~= 0;
+    rsn_wuc_retest(s, nan_regions) = nan;
+end
+
+rsn_cosim_retest = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        rsn_cosim_retest(s,:) = mean(dlmread(sprintf('../../derivatives/retest/restingstate/hcp25/bsc_retest/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var1(s)), '\t'));
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+
+has_data = any(rsn_cosim_retest,2) & any(~isnan(rsn_wuc_retest),2);
+
+rsn_cosim_retest = rsn_cosim_retest(has_data,:);
+rsn_wuc_retest = rsn_wuc_retest(has_data,:);
+
+
+
+% import between subject metrics
+
+sid = readtable('../../resources/paired_retest_iid_sid.csv', 'ReadVariableNames',false);
+task_wuc = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        task_wuc(s,:) = diag(readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var2(s)),'FileType','text'));
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+for s = 1:height(sid)
+    % Some distance matrices are so noise dominated that their test-retest
+    % reliability does not produce a valid RDM whitening matrix. We set
+    % those to nans here. If we consider the residual non-imaginary
+    % subjects for these regions we'll have biased estimates, but nans make
+    % these easy to keep track of so we can mask them out later
+    nan_regions = imag(task_wuc(s,:)) ~= 0;
+    task_wuc(s, nan_regions) = nan;
+end
+
+task_cosim = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        task_cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+
+has_data = any(task_cosim,2) & any(~isnan(task_wuc),2);
+
+task_cosim = task_cosim(has_data,:);
+task_wuc = task_wuc(has_data,:);
+
+rsn_wuc = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        rsn_wuc(s,:) = readmatrix(sprintf('../../derivatives/retest/restingstate/hcp25/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var2(s)),'FileType','text');
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+for s = 1:height(sid)
+    % Some distance matrices are so noise dominated that their test-retest
+    % reliability does not produce a valid RDM whitening matrix. We set
+    % those to nans here. If we consider the residual non-imaginary
+    % subjects for these regions we'll have biased estimates, but nans make
+    % these easy to keep track of so we can mask them out later
+    nan_regions = imag(rsn_wuc(s,:)) ~= 0;
+    rsn_wuc(s, nan_regions) = nan;
+end
+
+rsn_cosim = zeros(height(sid), n_roi);
+for s = 1:height(sid)
+    try
+        rsn_cosim(s,:) = mean(dlmread(sprintf('../../derivatives/retest/restingstate/hcp25/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t'));
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+
+has_data = any(rsn_cosim,2) & any(~isnan(rsn_wuc),2);
+
+rsn_cosim = rsn_cosim(has_data,:);
+rsn_wuc = rsn_wuc(has_data,:);
+
 
 %% Plot bargraphs
 
-f1 = figure(98); 
+f1 = figure(97);
+f2 = figure(98);
 lines = colormap('lines');
 lines_dark = tanh(atanh(2*(lines - 0.5)) - 0.3)/2 + 0.5;
 lines_darkest = tanh(atanh(2*(lines - 0.5)) - 0.8)/2 + 0.5;
 
 clf
-t0 = tiledlayout(2,2,'Padding','none','TileSpacing','compact');
-ax1 = nexttile();
+w = 56;
+t0 = tiledlayout(f1,2,w,'Padding','none','TileSpacing','tight');
+t1 = tiledlayout(f2,2,w,'Padding','none','TileSpacing','tight');
+s1 = 18;
+s2 = 12;
+s3 = 13;
+
+ax1 = nexttile(t0);
+ax1.Layout.TileSpan = [1,s1]
 cla
 bar(task_topo_clusters, 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
 hold on;
@@ -562,31 +585,16 @@ violinplot({task_topo_r_mz, task_topo_r_dz, task_topo_r_fs, task_topo_r_hs, task
 h = errorbar(1:5, task_topo_clusters(:),...
     task_topo_clusters(:) - task_topo_clusters_CI(:,1),task_topo_clusters(:) - task_topo_clusters_CI(:,2), ...
     'LineStyle','none','color',lines_darkest(1,:),'linewidth',2);
-title({'Task Topography'},'FontWeight','normal'); 
+title({'Task'},'FontWeight','bold','fontsize',fontsize); 
+subtitle('Topography','fontsize',fontsize)
 set(gca,'FontSize',fontsize+2,'XTickLabels',[]);
 ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
 grid on
 box off
 yl1 = ylim;
 
-ax2 = nexttile();
-cla
-bar(task_geom_clusters, 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-violinplot({task_geom_r_mz, task_geom_r_dz, task_geom_r_fs, task_geom_r_hs, task_geom_r_unr}, ...
-    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
-h = errorbar(1:5, task_geom_clusters(:),...
-    task_geom_clusters(:) - task_geom_clusters_CI(:,1),task_geom_clusters(:) - task_geom_clusters_CI(:,2), ...
-    'LineStyle','none','color',lines_darkest(1,:),'linewidth',2);
-title({'Task Geometry'},'FontWeight','normal'); 
-set(gca,'FontSize',fontsize+2,'XTickLabels',[]);
-ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
-grid on
-box off
-yl2 = ylim;
-
-ax3 = nexttile();
+ax2 = nexttile(t1);
+ax2.Layout.TileSpan = [1,s1];
 cla
 bar(rsn_topo_clusters, 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
 hold on;
@@ -596,14 +604,36 @@ violinplot({rsn_topo_r_mz, rsn_topo_r_dz, rsn_topo_r_fs, rsn_topo_r_hs, rsn_topo
 h = errorbar(1:5, rsn_topo_clusters(:),...
     rsn_topo_clusters(:) - rsn_topo_clusters_CI(:,1),rsn_topo_clusters(:) - rsn_topo_clusters_CI(:,2), ...
     'LineStyle','none','color',lines_darkest(2,:),'linewidth',2);
-title({'RSN Topography'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'},'FontSize',fontsize+2,'XTickLabelRotation', 90);
+title({'RSN'},'FontWeight','bold','fontsize',fontsize); 
+subtitle('Topography','fontsize',fontsize)
 ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
+set(gca,'FontSize',fontsize+2,'XTickLabels',[]);
+grid on
+box off
+yl2 = ylim;
+
+ax3 = nexttile(t0);
+ax3.Layout.Tile = w+1;
+ax3.Layout.TileSpan = [1,s1];
+cla
+bar(task_geom_clusters, 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+violinplot({task_geom_r_mz, task_geom_r_dz, task_geom_r_fs, task_geom_r_hs, task_geom_r_unr}, ...
+    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+h = errorbar(1:5, task_geom_clusters(:),...
+    task_geom_clusters(:) - task_geom_clusters_CI(:,1),task_geom_clusters(:) - task_geom_clusters_CI(:,2), ...
+    'LineStyle','none','color',lines_darkest(1,:),'linewidth',2);
+subtitle('Geometry','fontsize',fontsize)
+set(gca,'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'},'FontSize',fontsize+2,'XTickLabelRotation', 90);
+ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
 box off
 yl3 = ylim;
 
-ax4 = nexttile();
+ax4 = nexttile(t1);
+ax4.Layout.Tile = w+1;
+ax4.Layout.TileSpan = [1,s1];
 cla
 bar(rsn_geom_clusters, 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
 hold on;
@@ -613,250 +643,664 @@ violinplot({rsn_geom_r_mz, rsn_geom_r_dz, rsn_geom_r_fs, rsn_geom_r_hs, rsn_geom
 h = errorbar(1:5, rsn_geom_clusters(:),...
     rsn_geom_clusters(:) - rsn_geom_clusters_CI(:,1),rsn_geom_clusters(:) - rsn_geom_clusters_CI(:,2), ...
     'LineStyle','none','color',lines_darkest(2,:),'linewidth',2);
-title({'RSN Geometry'},'FontWeight','normal'); 
+title({'Geometry'},'FontWeight','normal','fontsize',fontsize); 
 set(gca,'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'},'FontSize',fontsize+2,'XTickLabelRotation', 90);
 ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
 box off
 yl4 = ylim;
 
-sgtitle({'Family Clusters'},'FontSize',16,'FontWeight','BOLD');
 
-pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2),450,650])
+%{
+sgtitle(f1,{'Family Clusters'},'FontSize',fontsize+4,'FontWeight','BOLD');
+
+pos = get(f1,'Position');
+set(f1,'Position',[pos(1:2),200,650])
 
 
-f2 = figure(99);
-t0 = tiledlayout(2,2,'Padding','none','TileSpacing','compact');
-ax5 = nexttile();
+sgtitle(f2,{'Family Clusters'},'FontSize',fontsize+4,'FontWeight','BOLD');
+
+pos = get(f2,'Position');
+set(f2,'Position',[pos(1:2),200,650])
+%}
+
+disp('tSNR')
+disp('Task Topography:')
+disp([task_topo_clusters'./diff(task_topo_clusters_CI,[],2), task_geom_clusters'./diff(task_geom_clusters_CI,[],2)])
+
+disp('Task Geometry:')
+disp([task_topo_clusters'./diff(task_topo_clusters_CI,[],2), task_geom_clusters'./diff(task_geom_clusters_CI,[],2)])
+
+disp('RSN Topography:')
+disp([rsn_topo_clusters'./diff(rsn_topo_clusters_CI,[],2), rsn_geom_clusters'./diff(rsn_geom_clusters_CI,[],2)])
+
+disp('RSN Geometry:')
+disp([rsn_topo_clusters'./diff(rsn_topo_clusters_CI,[],2), rsn_geom_clusters'./diff(rsn_geom_clusters_CI,[],2)])
+
+%% Plot test-retest reliability of geometry and topography for tasks and RSNs
+%{
+f3 = figure(101); 
+f4 = figure(102); 
+lines = colormap('lines');
+lines_dark = tanh(atanh(2*(lines - 0.5)) - 0.3)/2 + 0.5;
+lines_darkest = tanh(atanh(2*(lines - 0.5)) - 0.8)/2 + 0.5;
+
+clf
+t0 = tiledlayout(f3,2,1,'Padding','none','TileSpacing','compact');
+t1 = tiledlayout(f4,2,1,'Padding','none','TileSpacing','compact');
+%}
+ax5 = nexttile(t0);
+ax5.Layout.TileSpan = [1,s2];
+ax5.Layout.Tile = 11;
 cla
-y = [task_topo_B(:)];
-h = bar(y, 'grouped','EdgeAlpha',0);
+bar([mean(task_cosim(:)),mean(task_cosim_retest(:))], 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
 hold on;
-ngroups = size(y,1);
-nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - task_topo_ACE_CI(:,1), task_topo_ACE_CI(:,2) - y(:,i), ...
-        'LineStyle','none','color','bla', 'capsize', 0);
-end
-title({'Task Topography'},'FontWeight','normal'); 
-set(gca,'XTickLabels',[],'FontSize',fontsize+2);
-ylabel({'Marginal similarity',['(Marginal cos\theta ', char(177), ' CI_{95})']});
+violinplot({mean(task_cosim,2)',mean(task_cosim_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+%title({'Task'},'FontWeight','bold','fontsize',fontsize); 
+%subtitle('Topography','fontsize',fontsize)
+set(gca,'FontSize',fontsize+2,'XTickLabels',[],'XTickLabelRotation',0);
+set(get(gca,'YAxis'),'visible','off')
+%ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
 grid on
 box off
 yl5 = ylim;
+yline(ax5,mean(task_cosim_retest(:)))
+yline(ax1,mean(task_cosim_retest(:)))
 
-ax6 = nexttile();
+ax6 = nexttile(t1);
+ax6.Layout.TileSpan = [1,s2];
+ax6.Layout.Tile = 11;
 cla
-y = [task_geom_B(:)];
-bar(y, 'grouped','EdgeAlpha',0);
+bar([mean(rsn_cosim(:)),mean(rsn_cosim_retest(:))], 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
 hold on;
-ngroups = size(y,1);
-nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - task_geom_ACE_CI(:,1), task_geom_ACE_CI(:,2) - y(:,i), ...
-        'LineStyle','none','color','bla', 'capsize', 0);
-end
-title({'Task Geometry'},'FontWeight','normal'); 
-set(gca,'XTickLabels',[],'FontSize',fontsize+2);
-ylabel({['(Marginal WUC ', char(177), ' CI_{95})']});
+violinplot({mean(rsn_cosim,2)',mean(rsn_cosim_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
+%title({'RSN'},'FontWeight','bold','fontsize',fontsize); 
+%subtitle('Topography','fontsize',fontsize)
+set(gca,'FontSize',fontsize+2,'XTickLabels',[],'XTickLabelRotation',0);
+set(get(gca,'YAxis'),'visible','off')
+%ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
 grid on
 box off
 yl6 = ylim;
+yline(ax6,mean(rsn_cosim_retest(:)))
+yline(ax2,mean(rsn_cosim_retest(:)))
 
-ax7 = nexttile();
+
+ax7 = nexttile(t0);
+ax7.Layout.Tile = ax3.Layout.Tile + ax3.Layout.TileSpan(2) - 8;
+ax7.Layout.TileSpan = [1,s2];
 cla
-y = [rsn_topo_B(:)];
-h = bar(y, 'grouped','EdgeAlpha',0, 'FaceColor', lines(2,:));
+bar([nanmean(task_wuc(:)),nanmean(task_wuc_retest(:))], 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
 hold on;
-ngroups = size(y,1);
-nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - rsn_topo_ACE_CI(:,1), rsn_topo_ACE_CI(:,2) - y(:,i), ...
-        'LineStyle','none','color','bla', 'capsize', 0);
-end
-title({'RSN Topography'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Heritability (h^2)','Env Twin',...
-    'Env FS','Env HS','Unrelated'},'FontSize',14,'XTickLabelRotation', 90);
-ylabel({'Marginal similarity',['(Marginal cos\theta ', char(177), ' CI_{95})']});
+violinplot({nanmean(task_wuc,2)',nanmean(task_wuc_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+%title({'Geometry'},'FontWeight','normal'); 
+set(gca,'FontSize',fontsize+2,'XTickLabels',{'Unrelated','Self'},'XTickLabelRotation',90);
+set(get(gca,'YAxis'),'visible','off')
+%ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
 box off
 yl7 = ylim;
+yline(ax7,nanmean(task_wuc_retest(:)))
+yline(ax3,nanmean(task_wuc_retest(:)))
 
-ax8 = nexttile();
+ax8 = nexttile(t1);
+ax8.Layout.Tile = ax4.Layout.Tile + ax4.Layout.TileSpan(2) - 8;
+ax8.Layout.TileSpan = [1,s2];
 cla
-y = [rsn_geom_B(:)];
-bar(y, 'grouped','EdgeAlpha',0,'FaceColor',lines(2,:));
+bar([nanmean(rsn_wuc(:)),nanmean(rsn_wuc_retest(:))], 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
 hold on;
-ngroups = size(y,1);
-nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - rsn_geom_ACE_CI(:,1), rsn_geom_ACE_CI(:,2) - y(:,i), ...
-        'LineStyle','none','color','bla', 'capsize', 0);
-end
-title({'RSN Geometry'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Heritability (h^2)','Env Twin',...
-    'Env FS','Env HS','Unrelated'},'FontSize',14,'XTickLabelRotation', 90);
-ylabel({['(Marginal WUC ', char(177), ' CI_{95})']});
+violinplot({nanmean(rsn_wuc,2)',nanmean(rsn_wuc_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
+%title({'Geometry'},'FontWeight','normal'); 
+set(gca,'FontSize',fontsize+2,'XTickLabels',{'Unrelated','Self'},'XTickLabelRotation',90);
+set(get(gca,'YAxis'),'visible','off')
+%ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
 box off
 yl8 = ylim;
+yline(ax8,nanmean(rsn_wuc_retest(:)))
+yline(ax4,nanmean(rsn_wuc_retest(:)))
+%{
+pos = get(f3,'Position');
+set(f3,'Position',[pos(1:2),79,614]);
 
-sgtitle({'Environmental and Genetic Effects'},'FontSize',16,'FontWeight','BOLD');
+pos = get(f4,'Position');
+set(f4,'Position',[pos(1:2),79,614]);
 
-switch noise
-    case 'standardized'
-        set(ax1, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        set(ax2, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        set(ax3, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        set(ax4, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        
-        set(ax5, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        set(ax6, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        set(ax7, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-        set(ax8, 'YLim', [min([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8]), max([yl1, yl2, yl3, yl4, yl5, yl6, yl7, yl8])]);
-    case 'whitened'
-        set(ax1, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
-        set(ax2, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
-        set(ax3, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
-        set(ax4, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
-        
-        set(ax5, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
-        set(ax6, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
-        set(ax7, 'YLim', [min([yl1, yl3, yl5, yl7]), max([yl1, yl3, yl5, yl7])]);
-        set(ax8, 'YLim', [min([yl2, yl4, yl6, yl8]), max([yl2, yl4, yl6, yl8])]);
+sgtitle(f3,'Test-Retest Reliability','FontSize',fontsize+4,'FontWeight','bold')
+sgtitle(f4,'Test-Retest Reliability','FontSize',fontsize+4,'FontWeight','bold')
+%}
+yla = [min([yl1,yl2,yl5,yl6]), max([yl1,yl2,yl5,yl6])];
+ylb = [min([yl3,yl4,yl7,yl8]), max([yl3,yl4,yl7,yl8])];
+
+for ax = [ax1,ax2,ax5,ax6]
+    set(ax,'YLim',yla);
 end
+for ax = [ax3,ax4,ax7,ax8]
+    set(ax,'YLim',ylb);
+end
+%{
+export_fig(f1,sprintf('panels_%s/task_family_clusters.png',noise),'-transparent','-r300');
+export_fig(f2,sprintf('panels_%s/rsn_family_clusters.png',noise),'-transparent','-r300');
+export_fig(f3,sprintf('panels_%s/task_test_retest_reliability.png',noise),'-transparent','-r300');
+export_fig(f4,sprintf('panels_%s/rsn_test_retest_reliability.png',noise),'-transparent','-r300');
+%}
+%% plot ranks
+%{
+f5 = figure(99);
+f6 = figure(100);
+t0 = tiledlayout(f5,2,2,'Padding','none','TileSpacing','compact');
+t1 = tiledlayout(f6,2,2,'Padding','none','TileSpacing','compact');
+%}
 
+ax9 = nexttile(t0);
+ax9.Layout.Tile = ax5.Layout.Tile + ax5.Layout.TileSpan(2) - 2;
+ax9.Layout.TileSpan = [1,s3];
+cla
+task_topo_rank = rankdata([task_topo_r_mz(:); task_topo_r_dz(:)]);
+n1 = length(task_topo_r_mz);
+n2 = length(task_topo_r_dz);
+y = {task_topo_rank(1:n1), task_topo_rank(n1+1:end)};
+%y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
+bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({'Genetics'},'FontWeight','bold'); 
+subtitle({'Topo'},'FontWeight','normal');
+set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel('Similarity Rank');
+grid on
+box off
+yl9 = ylim;
+
+ax10 = nexttile(t1);
+ax10.Layout.Tile = ax6.Layout.Tile + ax6.Layout.TileSpan(2) - 2;
+ax10.Layout.TileSpan = [1,s3];
+cla
+rsn_topo_rank = rankdata([rsn_topo_r_mz(:); rsn_topo_r_dz(:)]);
+n1 = length(rsn_topo_r_mz);
+n2 = length(rsn_topo_r_dz);
+y = {rsn_topo_rank(1:n1), rsn_topo_rank(n1+1:end)};
+%y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
+bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({'Genetics'},'FontWeight','bold'); 
+subtitle({'Topo'},'FontWeight','normal');
+set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel('Similarity Rank');
+grid on
+box off
+yl10 = ylim;
+
+
+
+ax11 = nexttile(t0);
+ax11.Layout.Tile = ax9.Layout.Tile + ax9.Layout.TileSpan(2) - 6;
+ax11.Layout.TileSpan = [1,s3];
+cla
+task_geom_rank = rankdata([task_geom_r_mz(:); task_geom_r_dz(:)]);
+n1 = length(task_geom_r_mz);
+n2 = length(task_geom_r_dz);
+y = {task_geom_rank(1:n1), task_geom_rank(n1+1:end)};
+%y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
+bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({''},'FontWeight','bold'); 
+subtitle({'Geo'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(get(gca,'YAxis'),'Visible','off')
+grid on
+box off
+yl11 = ylim;
+
+
+ax12 = nexttile(t1);
+ax12.Layout.Tile = ax10.Layout.Tile + ax10.Layout.TileSpan(2) - 6;
+ax12.Layout.TileSpan = [1,s3];
+cla
+rsn_geom_rank = rankdata([rsn_geom_r_mz(:); rsn_geom_r_dz(:)]);
+n1 = length(rsn_geom_r_mz);
+n2 = length(rsn_geom_r_dz);
+y = {rsn_geom_rank(1:n1), rsn_geom_rank(n1+1:end)};
+bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({''},'FontWeight','bold'); 
+subtitle({'Geo'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(get(gca,'YAxis'),'Visible','off')
+grid on
+box off
+yl12 = ylim;
+
+
+yl = [min([yl9,yl11]), max([yl9,yl11])];
+yl(2) = yl(2)*1.2;
+set(ax9,'YLim',yl)
+set(ax11,'YLim',yl);
+
+yl = [min([yl10,yl12]), max([yl12,yl10])];
+yl(2) = yl(2)*1.2;
+set(ax10,'YLim',yl)
+set(ax12,'YLim',yl);
+
+
+ax13 = nexttile(t0);
+ax13.Layout.Tile = ax7.Layout.Tile + ax7.Layout.TileSpan(2) - 2;
+ax13.Layout.TileSpan = [1,s3];
+cla
+task_topo_rank = rankdata([task_topo_r_dz(:); task_topo_r_fs_not_dz(:)]);
+n1 = length(task_topo_r_dz);
+n2 = length(task_topo_r_fs_not_dz);
+y = {task_topo_rank(1:n1), task_topo_rank(n1+1:end)};
+bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({'Environment'},'FontWeight','bold');
+subtitle({'Topo'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'Twins (DZ)','Sublings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel('Similarity Rank');
+grid on
+box off
+yl13 = ylim;
+
+ax14 = nexttile(t0);
+ax14.Layout.Tile = ax13.Layout.Tile + ax13.Layout.TileSpan(2) - 6;
+ax14.Layout.TileSpan = [1,s3];
+cla
+task_geom_rank = rankdata([task_geom_r_dz(:); task_geom_r_fs_not_dz(:)]);
+n1 = length(task_geom_r_dz);
+n2 = length(task_geom_r_fs_not_dz);
+y = {task_geom_rank(1:n1), task_geom_rank(n1+1:end)};
+bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({' '},'FontWeight','bold');
+subtitle({'Geo'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel('Similarity Rank');
+grid on
+box off
+set(get(gca,'YAxis'),'Visible','off');
+yl14 = ylim;
+
+yl = [min([yl13,yl14]), max([yl13,yl14])];
+yl(2) = yl(2)*1.2;
+set(ax13,'YLim',yl)
+set(ax14,'YLim',yl);
+
+
+ax15 = nexttile(t1);
+ax15.Layout.Tile = ax8.Layout.Tile + ax8.Layout.TileSpan(2) - 2;
+ax15.Layout.TileSpan = [1,s3];
+cla
+rsn_topo_rank = rankdata([rsn_topo_r_dz(:); rsn_topo_r_fs_not_dz(:)]);
+n1 = length(rsn_topo_r_dz);
+n2 = length(rsn_geom_r_fs_not_dz);
+y = {rsn_topo_rank(1:n1), rsn_topo_rank(n1+1:end)};
+bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({'Environment'},'FontWeight','bold');
+subtitle({'Topo'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel('Similarity Rank');
+grid on
+box off
+yl15 = ylim;
+
+ax16 = nexttile();
+ax16.Layout.Tile = ax15.Layout.Tile + ax15.Layout.TileSpan(2) - 6;
+ax16.Layout.TileSpan = [1,s3];
+cla
+rsn_geom_rank = rankdata([rsn_geom_r_dz(:); rsn_geom_r_fs_not_dz(:)]);
+n1 = length(rsn_geom_r_dz);
+n2 = length(rsn_geom_r_fs_not_dz);
+y = {rsn_geom_rank(1:n1), rsn_geom_rank(n1+1:end)};
+%y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
+bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({' '},'FontWeight','bold');
+subtitle({'Geo'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel('Similarity Rank');
+grid on
+box off
+set(get(gca,'YAxis'),'Visible','off')
+yl16 = ylim;
+
+yl = [min([yl15,yl16]), max([yl15,yl16])];
+yl(2) = yl(2)*1.2;
+set(ax15,'YLim',yl15)
+set(ax16,'YLim',yl16);
+%{
+pos = get(f5,'Position');
+set(f5,'Position',[pos(1:2),200,650]);
+
+pos = get(f6,'Position');
+set(f6,'Position',[pos(1:2),200,650]);
+
+export_fig(f5,sprintf('panels_%s/task_ranks.png',noise),'-transparent','-r300');
+export_fig(f6,sprintf('panels_%s/rsn_ranks.png',noise),'-transparent','-r300');
+%}
+%% Nonparametric tests of heritability
+disp('Task Topography')
+x = task_topo_r_mz;
+y = task_topo_r_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('Task Geometry')
+x = task_geom_r_mz;
+y = task_geom_r_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Topography')
+x = rsn_topo_r_mz;
+y = rsn_topo_r_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Geometry')
+x = rsn_geom_r_mz;
+y = rsn_geom_r_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P,H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+%% Nonparmaetric interaction tests of mz vs. dz x geometry vs. topography
+nx = length(task_topo_r_mz);
+ny = length(task_topo_r_dz);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [task_topo_r_mz; task_topo_r_dz];
+geom = [task_geom_r_mz; task_geom_r_dz];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+genes_task_dmz = topo(grp > 0) - geom(grp > 0);
+genes_task_ddz = topo(grp < 0) - geom(grp < 0);
+
+disp('MZ vs. DZ x Geometry vs. Topography (task):')
+[P,H,STATS] = ranksum(genes_task_dmz,genes_task_ddz,'tail','right')
+U = STATS.ranksum - length(genes_task_dmz)*(length(genes_task_dmz) + 1)/2
+AUC = U/(length(genes_task_dmz)*length(genes_task_ddz))
+
+
+
+
+nx = length(rsn_topo_r_mz);
+ny = length(rsn_topo_r_dz);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [rsn_topo_r_mz; rsn_topo_r_dz];
+geom = [rsn_geom_r_mz; rsn_geom_r_dz];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+genes_rsn_dmz = topo(grp > 0) - geom(grp > 0);
+genes_rsn_ddz = topo(grp < 0) - geom(grp < 0);
+
+disp('MZ vs. DZ x Geometry vs. Topography (RSN):')
+[P,H,STATS] = ranksum(genes_task_dmz,genes_rsn_ddz,'tail','right')
+U = STATS.ranksum - length(genes_rsn_dmz)*(length(genes_rsn_dmz) + 1)/2
+AUC = U/(length(genes_rsn_dmz)*length(genes_rsn_ddz))
+
+%% Nonparametric tests of dz vs. fs environment
+P = zeros(4,1);
+
+disp('Task Topography')
+x = task_topo_r_dz;
+y = task_topo_r_fs_not_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(1),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('Task Geometry')
+x = task_geom_r_dz;
+y = task_geom_r_fs_not_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(2),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Topography')
+x = rsn_topo_r_dz;
+y = rsn_topo_r_fs_not_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(3),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+disp('RSN Geometry')
+x = rsn_geom_r_dz;
+y = rsn_geom_r_fs_not_dz;
+nx = sum(~isnan(x));
+ny = sum(~isnan(y));
+[P(4),H,STATS] = ranksum(x, y,'tail','right')
+U = STATS.ranksum - nx*(nx + 1)/2
+AUC = U/(nx*ny)
+
+holm_sidak(P,0.05)
+
+%% Nonparmaetric interaction tests of dz vs. fs x geometry vs. topography
+
+dz_topo = task_topo_r_dz;
+fs_topo = task_topo_r_fs_not_dz;
+dz_geom = task_geom_r_dz;
+fs_geom = task_geom_r_fs_not_dz;
+
+nx = length(dz_topo);
+ny = length(fs_topo);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [dz_topo; fs_topo];
+geom = [dz_geom; fs_geom];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+env_task_ddz = geom(grp > 0) - topo(grp > 0);
+env_task_dfs = geom(grp < 0) - topo(grp < 0);
+
+disp('DZ vs. FS x Geometry vs. Topography (Task):')
+[P,H,STATS] = ranksum(env_task_ddz,env_task_dfs,'tail','right')
+U = STATS.ranksum - length(env_task_ddz)*(length(env_task_ddz) + 1)/2
+AUC = U/(length(env_task_ddz)*length(env_task_dfs))
+
+
+dz_topo = rsn_topo_r_dz;
+fs_topo = rsn_topo_r_fs_not_dz;
+dz_geom = rsn_geom_r_dz;
+fs_geom = rsn_geom_r_fs_not_dz;
+
+nx = length(dz_topo);
+ny = length(fs_topo);
+grp = [1*ones(nx,1); -1*ones(ny,1)];
+
+topo = [dz_topo; fs_topo];
+geom = [dz_geom; fs_geom];
+
+has_data = ~isnan(topo) & ~isnan(geom);
+
+topo = rankdata(topo(has_data));
+geom = rankdata(geom(has_data));
+grp = grp(has_data);
+
+env_rsn_ddz = geom(grp > 0) - topo(grp > 0);
+env_rsn_dfs = geom(grp < 0) - topo(grp < 0);
+
+disp('DZ vs. FS x Geometry vs. Topography (RSN):')
+[P,H,STATS] = ranksum(env_rsn_ddz,env_rsn_dfs,'tail','right')
+U = STATS.ranksum - length(env_rsn_ddz)*(length(env_rsn_ddz) + 1)/2
+AUC = U/(length(env_rsn_ddz)*length(env_rsn_dfs))
+
+%% Plot task x geom genetic interactions 
+%{
+f5 = figure(103);
+t0 = tiledlayout(f5,2,1,'Padding','none','TileSpacing','compact');
+%}
+ax17 = nexttile(t0);
+ax17.Layout.Tile = ax11.Layout.Tile + ax11.Layout.TileSpan(2) + 1;
+ax17.Layout.TileSpan = [1,s3];
+cla
+
+y = {genes_task_dmz, genes_task_ddz};
+bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({'Genes'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel({'Topography - Geometry','(Ranks)'});
+grid on
+box off
+yl = ylim;
+set(gca,'YLim',[yl(1),yl(2)*1.2]);
+yl17 = ylim;
+
+
+ax18 = nexttile(t0);
+ax18.Layout.Tile = ax14.Layout.Tile + ax14.Layout.TileSpan(2) + 1;
+ax18.Layout.TileSpan = [1,s3];
+cla
+y = {env_task_ddz, env_task_dfs};
+bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+    'vwidth', 0.66);
+ngroups = size(y,1);
+nbars = size(y,2);
+title({'Env'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel({'Topography - Geometry','(Ranks)'});
+grid on
+box off
+yl = ylim;
+set(gca,'YLim',[yl(1),yl(2)*1.2]);
+yl18 = ylim;
+
+%{
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2),450,650])
+set(gcf,'Position',[pos(1:2),140,625]);
 
-export_fig(f1,sprintf('panels_%s/family_clusters.png',noise),'-transparent','-r300');
-export_fig(f2,sprintf('panels_%s/ACE_absolute.png',noise),'-transparent','-r300');
+f6 = figure(104);
+t1 = tiledlayout(f6,2,1,'Padding','none','TileSpacing','compact');
+%}
 
-%% Plot relative heritabilities and contrasts
-figure(100);
-t0 = tiledlayout(2,11,'Padding','none','TileSpacing','compact');
-
-ax1 = nexttile();
-ax1.Layout.TileSpan = [1,6];
+ax19 = nexttile(t1);
+ax19.Layout.Tile = ax12.Layout.Tile + ax12.Layout.TileSpan(2) + 1;
+ax19.Layout.TileSpan = [1,s3];
 cla
-y = [task_topo_B(1)/task_topo_B(end); task_geom_B(1)/task_geom_B(end)];
-CI = [task_prop_topo_ACE_CI(1,:); task_prop_geom_ACE_CI(1,:)];
-bar(y, 'grouped','EdgeAlpha',0,'FaceColor',lines_darkest(1,:));
+
+y = {genes_rsn_dmz, genes_rsn_ddz};
+bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
 hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
 ngroups = size(y,1);
 nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - CI(:,1), CI(:,2) - y(:,i), ...
-        'LineStyle','none','color',lines(1,:), 'capsize', 0);
-end
-title({'Task'},'FontWeight','normal'); 
-set(gca,'XTickLabels',[],'FontSize',14,'XTickLabelRotation', 90);
-ylabel({'Relative Heritability','(h^2/Unr)'})
+title({'Genes'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel({'Topography - Geometry','(Ranks)'});
 grid on
 box off
 yl = ylim;
-ylim([yl(1),yl(2)*1.2])
+set(gca,'YLim',[yl(1),yl(2)*1.2]);
+yl17 = ylim;
 
-ax2 = nexttile();
-ax2.Layout.TileSpan = [1,5];
+
+ax18 = nexttile(t1);
+ax18.Layout.Tile = ax16.Layout.Tile + ax16.Layout.TileSpan(2) + 1;
+ax18.Layout.TileSpan = [1,s3];
 cla
-y = [task_topo_B(i)/task_topo_B(end) - task_geom_B(i)/task_geom_B(end)];
-CI = [task_prop_herit_diff(1,:)];
-bar(y, 'grouped','EdgeAlpha',1,'EdgeColor',lines(1,:),'FaceAlpha',0);
+y = {env_rsn_ddz, env_rsn_dfs};
+bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
 hold on;
+h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+    'vwidth', 0.66);
 ngroups = size(y,1);
 nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - CI(:,1), CI(:,2) - y(:,i), ...
-        'LineStyle','none','color','bla', 'capsize', 0);
-end
-title({'Task'},'FontWeight','normal'); 
-set(gca,'XTickLabels',[],'FontSize',14,'XTickLabelRotation', 90);
-ylabel({'\Delta Relative Heritability','(\Deltah^2/Unr)'})
-grid on
-box off
-
-yl = ylim;
-ylim([yl(1),yl(2)*1.2])
-
-ax3 = nexttile();
-ax3.Layout.TileSpan = [1,6];
-cla
-y = [rsn_topo_B(1)/rsn_topo_B(end); rsn_geom_B(1)/rsn_geom_B(end)];
-CI = [rsn_prop_topo_ACE_CI(1,:); rsn_prop_geom_ACE_CI(1,:)];
-bar(y, 'grouped','EdgeAlpha',0,'FaceColor',lines_darkest(2,:));
-hold on;
-ngroups = size(y,1);
-nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - CI([1,end],1), CI([1,end],2) - y(:,i), ...
-        'LineStyle','none','color',lines(2,:), 'capsize', 0);
-end
-title({'RSN'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Topography','Geometry'},'FontSize',14,'XTickLabelRotation', 90);
-ylabel({'Relative Heritability','(h^2/Unr)'})
+title({'Env'},'FontWeight','normal'); 
+set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+ylabel({'Topography - Geometry','(Ranks)'});
 grid on
 box off
 yl = ylim;
-ylim([yl(1),yl(2)*1.2])
+set(gca,'YLim',[yl(1),yl(2)*1.2]);
+yl18 = ylim;
 
-ax4 = nexttile();
-ax4.Layout.TileSpan = [1,5];
-cla
-y = [rsn_topo_B(i)/rsn_topo_B(end) - rsn_geom_B(i)/rsn_geom_B(end)];
-CI = [rsn_prop_herit_diff(1,:)];
-bar(y, 'grouped','EdgeAlpha',1,'EdgeColor',lines(2,:),'FaceAlpha',0);
-hold on;
-ngroups = size(y,1);
-nbars = size(y,2);
-% Calculating the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    h = errorbar(x, y(:,i),...
-        y(:,i) - CI(:,1), CI(:,2) - y(:,i), ...
-        'LineStyle','none','color','bla', 'capsize', 0);
-end
-title({'RSN'},'FontWeight','normal'); 
-set(gca,'XTickLabels','Topo-Geom','FontSize',14,'XTickLabelRotation', 90);
-ylabel({'\Delta Relative Heritability','(\Deltah^2/Unr)'})
-grid on
-box off
-yl = ylim;
-ylim([yl(1),yl(2)*1.2])
+pos = get(f1,'Position');
+set(f1,'Position',[pos(1:2),605,650]);
 
-sgtitle({'Contrasts of','Relative Effects'},'FontWeight','bold','fontsize',fontsize+4)
+pos = get(f2,'Position');
+set(f2,'Position',[pos(1:2),605,650]);
 
-pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2),305,650])
+sgtitle(f1,{'Task Heritability and Environment Effects','',''},'FontSize',fontsize+4,'FontWeight','bold')
+sgtitle(f2,{'RSN Heritability and Environment Effects','',''},'FontSize',fontsize+4,'FontWeight','bold')
 
-export_fig(gcf,sprintf('panels_%s/ACE_proportional.png',noise),'-transparent','-r300');
+export_fig(f1,sprintf('panels_%s/task.png',noise),'-transparent','-r300');
+export_fig(f2,sprintf('panels_%s/rsn.png',noise),'-transparent','-r300');

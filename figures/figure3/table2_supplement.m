@@ -21,28 +21,36 @@ close(f)
 dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
+noise='whitened';
+
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
 roi_labels = {atlas_labels.name}; 
 
-atlas_cii = get_cifti_data(config.canlab2024.path);
-n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
+atlas_cii_data = get_cifti_data(config.canlab2024.path);
+n_roi = length(unique([atlas_cii_data.cortex_left, atlas_cii_data.cortex_right, atlas_cii_data.volumes])) - 1;
 
 %% import between subject similarity measures for unrelated individuals
 sid = readtable('../../resources/paired_sid.csv', 'ReadVariableNames',false);
+
+task_labels = [1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7];
+
+% multiplying by this vector will balances conditions across tasks
+balanced_mean_op = [1/7*repmat(1/2,1,10), 1/7*repmat(1/5,1,5), 1/7*repmat(1/8,1,8)];
 
 tsnr = zeros(height(sid), n_roi);
 wi_cosim = nan(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        tsnr1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var1(s)));
-        tsnr2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var2(s)));
+        tsnr1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid.Var1(s)));
+        tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim(s,:) = mean(mean(cat(3,wi_cosim1, wi_cosim2),3));
+        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
+        comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
+        wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
         warning('Could not import pair %d', s);
     end
@@ -51,18 +59,23 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/standardized_betas/cosine/%d_v_%d_wuc.tsv',sid.Var1(s), sid.Var2(s)),...
+        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
             'FileType','text','Delimiter',','));
     catch
         warning('Could not import pair %d', s);
     end
 end
+%{
+for s = 1:height(sid)
+    nan_regions = imag(wuc_md(s,:)) ~= 0;
+    wuc_md(s, nan_regions) = nan;
+end
+%}
 
 cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        cosim(s,:) = mean(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/standardized_betas/cosine/%d_v_%d_cosim.tsv',sid.Var1(s), sid.Var2(s)),...
-            'FileType','text'),1);
+        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
     catch
         warning('Could not import pair %d', s);
     end
@@ -113,13 +126,12 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[Bb, Bp, cohensD, Bb_corr, Bp_corr, cohensD_corr] = deal(zeros(length(mapvals),1));
-[Bb_CI, Bb_CI_corr] = deal(zeros(length(mapvals),2));
-[wucD, wucDStd, cosimD, cosimDStd, ...
-    wucb, wucp, wucstd, cosimb, cosimp, cosimstd] = deal(zeros(length(mapvals),1));
-[wucb_CI, wucstd_CI, cosim_CI, cosimstd_CI] = deal(zeros(length(mapvals),2));
-[mainInt, mainStd, mainD, mainDStd] = deal(zeros(length(mapvals),2));
-[mainInt_CI, mainStd_CI] = deal(zeros(length(mapvals),2,2));
+[wucb, wucp, wucD, cosimb, cosimp, cosimD] = deal(zeros(length(mapvals),1));
+[wucb_CI, cosim_CI] = deal(zeros(length(mapvals),2));
+[mainStd, mainStdP, mainDStd] = deal(zeros(length(mapvals),2));
+mainStd_CI = zeros(length(mapvals),2,2);
+[Bb, Bp, cohensf2] = deal(zeros(length(mapvals),1));
+[Bb_CI] = deal(zeros(length(mapvals),2));
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
 
@@ -149,15 +161,7 @@ for i = 1:length(mapvals)
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    % mean imputation within dyad
-    for j = 1:size(rdm,1)
-        rdm(j,isnan(rdm(j,:))) = nanmean(rdm(j,:));
-    end
-
     [Bb(i), Bb_CI(i,:), Bp(i), cohensD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
-
-    [Bb_corr(i), Bb_CI_corr(i,:), Bp_corr(i), cohensD_corr(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
-
 
     % estimate uncorrected gradient similarities
     
@@ -168,13 +172,14 @@ for i = 1:length(mapvals)
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i), sampling_var, perm_var] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:), ...
+        sampling_var, perm_var] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map);
 end
 
@@ -205,19 +210,6 @@ disp(table(cosimb_str', wucb_str', int_str', bb_str', ...
     'VariableNames', {'Topo', 'Geo', 'zGeo-zTopo', 'coupling'}))
 
 disp('Cohens Ds:');
-disp(table(cosimD(:), wucD(:), mainDStd(:,3), cohensf2(:),...
+disp(table(cosimD(:), wucD(:), mainDStd(:,2), cohensD(:),...
     'VariableNames',{'cosim', 'wuc', 'zGeo-zTopo', 'coupling'},...
-    'RowNames', abr_mapname));
-
-disp('Coupling Effects (betas, corrected):')
-bb_corr_str = {};
-for i = 1:length(Bb_corr)
-    bb_corr_str{i} = sprintf('%0.3f±%0.3f',Bb_corr(i), mean([Bb_CI_corr(i,2) - Bb_corr(i), Bb(i) - Bb_CI_corr(i,1)],2));
-end
-disp(table(bb_corr_str', ...
-    'VariableNames', {'neuromap_modulation'}))
-
-cdisp('Cohens f^2 (corrected):');
-disp(table(cohensf2_corr(:), ...
-    'VariableNames',{'neuromap_modulation'},...
     'RowNames', abr_mapname));

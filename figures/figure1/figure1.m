@@ -274,7 +274,7 @@ cbar2.Position(3) = 0.4;
 cbar2.Position(4) = 0.03;
 
 pos = get(gcf,'Position');
-set(gcf,'Position', [pos(1:2),385,315])
+set(gcf,'Position', [932,533,385,315])
 
 exportgraphics(gcf,sprintf('panels_%s/common_topographies.png',noise),'ContentType','image','Resolution',300);
 
@@ -465,7 +465,7 @@ cbar2.Position(3) = 0.4;
 cbar2.Position(4) = 0.03;
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2), 385, 380])
+set(gcf,'Position',[937,82, 385, 380])
 
 exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies.png',noise),'ContentType','image','Resolution',300);
 
@@ -737,7 +737,7 @@ set(ax2, 'view', get(ax1,'View'))
 sgtitle(uni_rdm_tile, {'Geometry of common topographies',sprintf('with common representations (%s)',regexprep(strrep(strrep(uni_label,'_',' '),'Ctx ',''),' [LR]',''))},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2), 400, 400]);
+set(gcf,'Position',[1329,566, 400, 400]);
 
 exportgraphics(gcf,sprintf('panels_%s/common_topographies_common_representations.png',noise), ...
     'ContentType','image','Resolution',300);
@@ -830,7 +830,7 @@ set(gca,'fontsize',fs)
 sgtitle(uni_clf_tile, {'Geometry measures decodability',regexprep(strrep(strrep(uni_label,'_',' '),'Ctx ',''),' [LR]','')},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2), 400, 400]);
+set(gcf,'Position',[1733, 572, 400, 400]);
 
 exportgraphics(gcf,sprintf('panels_%s/common_topographies_common_representations_sup.png',noise), ...
     'ContentType','image','Resolution',300);
@@ -995,7 +995,7 @@ set(ax2, 'view', get(ax1,'View'))
 sgtitle(trans_rdm_tile, {'Geometry of idiosyncratic topographies',sprintf('with common representations (%s)',regexprep(strrep(strrep(trans_label,'_',' '),'Ctx ',''),' [LR]',''))},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2), 400, 400]);
+set(gcf,'Position',[1322, 69, 400, 400]);
 
 exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies.png',noise), ...
     'ContentType','image','Resolution',300);
@@ -1091,7 +1091,7 @@ set(gca,'fontsize',fs)
 sgtitle(trans_clf_tile, {'Geometry measures decodability',regexprep(strrep(strrep(trans_label,'_',' '),'Ctx ',''),' [LR]','')},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2), 400, 400]);
+set(gcf,'Position',[1733, 75, 400, 400]);
 
 exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies_sup.png',noise), ...
     'ContentType','image','Resolution',300);
