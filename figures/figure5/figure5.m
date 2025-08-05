@@ -18,7 +18,7 @@ close(f)
 dc_color = config.matlab_disp_scheme.color_main;
 dc_color_light = config.matlab_disp_scheme.color_light;
 
-noise='standardized';
+noise='whitened';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
@@ -28,6 +28,7 @@ roi_labels = {atlas_labels.name};
 atlas_cii = get_cifti_data(config.canlab2024.path);
 n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
 
+atlas_cii = cifti_read(config.canlab2024.path);
 %% import between subject similarity measures for unrelated individuals
 sid = readtable('../../resources/paired_sid.csv', 'ReadVariableNames',false);
 
@@ -85,6 +86,10 @@ cmaprange(1) = eps;
 T = {'Between subject topographic similarity',['(RSN Spatial cos\theta, ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/topographic_similarity.png',noise),'ContentType','image','Resolution',300);
+for i = 1:length(good_rois)
+    new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_topo_similarity_%s.dscalar.nii',noise));
 
 B = nanmean(wuc_md(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
@@ -92,10 +97,15 @@ cmaprange(1) = eps;
 T = {'Between subject geometric similarity',['(RSN WUC, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/geometric_similarity.png',noise),'ContentType','image','Resolution',300);
+for i = 1:length(good_rois)
+    new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_geom_similarity_%s.dscalar.nii',noise));
 
 %% compute similarity of geometry and topography
-% We use these statistics in the main text of the results
-%{
+% We use these statistics in the main text of the results, but this
+% significantly slows things down and is best commented out in most cases.
+
 sid_ind = repmat(1:size(wuc_md,1)',1,length(good_rois));
 roi_ind = kron(helmertCoding(1:length(good_rois)),ones(size(wuc_md,1),1));
 nanzscore = @(x1)((x1 - nanmean(x1,2))./nanstd(x1,0,2));
@@ -138,7 +148,10 @@ cmaprange = prctile(B,[2.5,97.5]);
 
 T = {'Difference in relative geometric similarity','and relative topographic similarity',['(RSN: WUC_{std} - cos\theta_{std}, ',sprintf('N = %d)',size(d,1))]};
 plot_to_brain(B, good_rois, cmaprange, T, fs+1);
-exportgraphics(gcf,sprintf('panels_%s/relative_dif_wuc_cosim.png',noise),'ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/relative_dif_wuc_cosim.png',noise),'ContentType','image','Resolution',300);for i = 1:length(good_rois)
+    new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_zgeom_vs_ztopo_moderation_%s.dscalar.nii',noise));
 
 %% estimate neuromap associations
 

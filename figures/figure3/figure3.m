@@ -128,7 +128,7 @@ new_cii_data = nan(size(atlas_cii.cdata));
 for i = 1:length(good_rois)
     new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
 end
-cifti_write_from_template(atlas_cii, new_cii_data,'mean_topographic_similarity.dscalar.nii');
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_topo_similarity_%s.dscalar.nii',noise));
 
 
 B = mean(wuc_md(:,good_rois));
@@ -140,10 +140,10 @@ exportgraphics(gcf,sprintf('panels_%s/geometric_similarity.png',noise),'ContentT
 for i = 1:length(good_rois)
     new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
 end
-cifti_write_from_template(atlas_cii, new_cii_data,'mean_geometric_similarity.dscalar.nii');
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_geom_similarity_%s.dscalar.nii',noise));
 
 %% compute similarity of geometry and topography
-% this is slow, uncomment as needed
+% this is slow, comment/uncomment as needed
 
 % We use these statistics in the main text of the results
 sid_ind = repmat(1:size(wuc_md,1)',1,length(good_rois));
@@ -193,7 +193,7 @@ exportgraphics(gcf,sprintf('panels_%s/relative_dif_wuc_cosim.png',noise),'Conten
 for i = 1:length(good_rois)
     new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
 end
-cifti_write_from_template(atlas_cii, new_cii_data,'mean_zgeom_gt_ztopo_similarity.dscalar.nii');
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_zgeom_gt_ztopo_moderation_%s.dscalar.nii',noise));
 
 
 %% estimate neuromap associations
@@ -425,7 +425,6 @@ if any(pthresh)
     text(x, find(sig),'*','HorizontalAlignment','center');
 end
 xline(0, 'color', [0.5,0.5,0.5]);
-
 
 pos = get(gcf,'Position');
 set(gcf,'Position', [pos(1:2), 600,285]);

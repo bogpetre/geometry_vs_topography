@@ -28,6 +28,7 @@ roi_labels = {atlas_labels.name};
 atlas_cii = get_cifti_data(config.canlab2024.path);
 n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
 
+atlas_cii = cifti_read(config.canlab2024.path);
 %% import between subject similarity measures for unrelated individuals
 sid = readtable('../../resources/paired_sid.csv', 'ReadVariableNames',false);
 
@@ -118,7 +119,10 @@ cmaprange(1) = eps;
 T = {'Dependence of topographic','on geometric similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
 plot_to_brain(assocB, 1:length(assocB), cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/association_map.png',noise),'ContentType','image','Resolution',300);
-
+for i = 1:length(good_rois)
+    new_cii_data(atlas_cii.cdata == good_rois(i)) = assocB(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('regional_ztopo_regression_on_zgeom_%s.dscalar.nii',noise));
 %% estimate neuromap associations
 
 % note that the margulies gradient map from the neuromaps database
