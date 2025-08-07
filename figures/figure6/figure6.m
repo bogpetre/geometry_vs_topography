@@ -33,7 +33,7 @@ perm = 5000;
 data_root = '../../derivatives/hcp_glm_msmall_grayord_spm/';
 rsn_root = '../../derivatives/restingstate/hcp25/';
 
-noise='standardized';
+noise='whitened';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
