@@ -15,8 +15,8 @@ f = figure;
 cm = colormap(f,'hot');
 close(f)
 
-dc_color = config.matlab_disp_scheme.color_main;
-dc_color_light = config.matlab_disp_scheme.color_light;
+colors = config.matlab_disp_scheme.color_main;
+colors_light = config.matlab_disp_scheme.color_light;
 
 noise='whitened';
 
@@ -80,10 +80,43 @@ confounds = {tsnr, wi_cosim};
 
 %% plot topographic and geometric similarities
 
-B = mean(cosim(:,good_rois));
+% confound correction
+cosim_corr = nan(size(cosim));
+for i = 1:size(cosim,1)
+    Y = cosim(i,good_rois)';
+    X = [];
+    for j = 1:length(confounds)
+        X = [X, confounds{j}(i,good_rois)'];
+    end
+    X = X - nanmean(X);
+    X = [ones(length(Y),1), X];
+    good_roi = ~isnan(Y) & all(~isnan(X),2);
+    X = X(good_roi,:);
+    Y = Y(good_roi);
+    B = (X'*X)\X'*Y;
+    cosim_corr(i,good_roi) = (Y - X*B) + B(1);
+end
+
+wuc_corr = nan(size(wuc_md));
+for i = 1:size(wuc_md,1)
+    Y = wuc_md(i,good_rois)';
+    X = [];
+    for j = 1:length(confounds)
+        X = [confounds{j}(i,good_rois)'];
+    end
+    X = X - nanmean(X);
+    X = [ones(length(Y),1), X];
+    good_roi = ~isnan(Y) & all(~isnan(X),2);
+    X = X(good_roi,:);
+    Y = Y(good_roi);
+    B = (X'*X)\X'*Y;
+    wuc_corr(i,good_roi) = (Y - X*B) + B(1);
+end
+
+B = mean(cosim_corr(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
-T = {'Between subject topographic similarity',['(RSN Spatial cos\theta, ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
+T = {'Between subject topographic similarity',['(RSN Spatial cos\theta | tSNR, rel., ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/topographic_similarity.png',noise),'ContentType','image','Resolution',300);
 for i = 1:length(good_rois)
@@ -91,10 +124,10 @@ for i = 1:length(good_rois)
 end
 cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_topo_similarity_%s.dscalar.nii',noise));
 
-B = nanmean(wuc_md(:,good_rois));
+B = nanmean(wuc_corr(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
-T = {'Between subject geometric similarity',['(RSN WUC, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
+T = {'Between subject geometric similarity',['(RSN WUC | tSNR, rel., ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/geometric_similarity.png',noise),'ContentType','image','Resolution',300);
 for i = 1:length(good_rois)
@@ -105,7 +138,7 @@ cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_geom_similarity_
 %% compute similarity of geometry and topography
 % We use these statistics in the main text of the results, but this
 % significantly slows things down and is best commented out in most cases.
-
+%{
 sid_ind = repmat(1:size(wuc_md,1)',1,length(good_rois));
 roi_ind = kron(helmertCoding(1:length(good_rois)),ones(size(wuc_md,1),1));
 nanzscore = @(x1)((x1 - nanmean(x1,2))./nanstd(x1,0,2));
@@ -135,8 +168,8 @@ disp(STATS)
 
 d = nan(size(zwuc));
 for i = 1:size(zwuc,1)
-    this_wuc = wuc_md(i,:)';
-    this_cosim = cosim(i,:)';
+    this_wuc = wuc_corr(i,:)';
+    this_cosim = cosim_corr(i,:)';
 
     good_roi = ~isnan(this_wuc) & ~isnan(this_cosim);
 
@@ -146,7 +179,7 @@ end
 B = nanmean(d(:,good_rois),1);
 cmaprange = prctile(B,[2.5,97.5]);
 
-T = {'Difference in relative geometric similarity','and relative topographic similarity',['(RSN: WUC_{std} - cos\theta_{std}, ',sprintf('N = %d)',size(d,1))]};
+T = {'Difference in relative geometric similarity','and relative topographic similarity',['(RSN: WUC_{std} - cos\theta_{std} | tSNR, rel., ',sprintf('N = %d)',size(d,1))]};
 plot_to_brain(B, good_rois, cmaprange, T, fs+1);
 exportgraphics(gcf,sprintf('panels_%s/relative_dif_wuc_cosim.png',noise),'ContentType','image','Resolution',300);for i = 1:length(good_rois)
     new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
@@ -163,18 +196,18 @@ cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_zgeom_vs_ztopo_m
 % If we use Margulies' version it strengths the effect of polysynaptic 
 % depth on implementations of common representations, so using the 
 % neuromaps version is conservative with respect to our conclusions.
-maps = [{'abagen', 'genepc1','GenePC1','(-)','(+)'};...
-    {'hill2010', 'evoexp','EvoExp1','old','new'};...
-    {'xu2020', 'evoexp','EvoExp2','old','new'};...
-    {'xu2020', 'FChomology','FCHomology','diff','same'}; ...
-    {'reardon2018', 'scalinghcp','DevExp1','early','late'};...
-    {'hill2010', 'devexp','DevExp2','early','late'};...
-    {'neurosynth', 'cogpc1','CogPC1','(-)','(+)'};...
-    {'hcps1200', 'myelinmap','Myelin','min','max'};...
-    {'hcps1200', 'thickness','Thickness','thin','thick'};...
-    {'margulies2016', 'fcgradient01','NetHierarchy','uni.','trans.'};...
-    {'raichle', 'cbf', 'CBF1','low','high'};...
-    {'satterthwaite2014', 'meancbf', 'CBF2','low','high'}];
+maps = [{'hill2010', 'evoexp','EvoExp1','old','new',1};...
+    {'xu2020', 'evoexp','EvoExp2','old','new',1};...
+    {'xu2020', 'FChomology','FCHomology','diff','same',1}; ...
+    {'reardon2018', 'scalinghcp','DevExp1','early','late',2};...
+    {'hill2010', 'devexp','DevExp2','early','late',2};...
+    {'hcps1200', 'myelinmap','Myelin','min','max',3};...
+    {'hcps1200', 'thickness','Thickness','thin','thick',3};...
+    {'margulies2016', 'fcgradient01','NetHierarchy','uni.','trans.',3};...
+    {'abagen', 'genepc1','GenePC1','(-)','(+)',4};...
+    {'neurosynth', 'cogpc1','CogPC1','(-)','(+)',4};...
+    {'raichle', 'cbf', 'CBF1','low','high',4};...
+    {'satterthwaite2014', 'meancbf', 'CBF2','low','high',4}];
 
 mapvals = dir('../../resources/neuromaps/canlab2024_parcel_vals/');
 mapvals(1:2) = []; % remove '.' and '..' refs
@@ -276,9 +309,12 @@ cla
 hold on;
 pos_err = cosim_CI(:,2) - cosimb;
 neg_err = cosimb - cosim_CI(:,1);
-errorbar(cosimb, 1:length(cosimb), neg_err, pos_err, '.', 'horizontal', ...
-    'capsize', 0, 'color', dc_color_light, 'linewidth', 2)
-plot(cosimb, 1:length(cosimb),'o','MarkerFaceColor',dc_color_light,'color', dc_color);
+for i = 1:length(maps)
+    hold on;
+    errorbar(cosimb(i), i, neg_err(i), pos_err(i), '.', 'horizontal', ...
+        'capsize', 0, 'color', colors_light(maps{i,6},:), 'linewidth', 2)
+    plot(cosimb(i), i,'o','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', abr_mapname,'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
@@ -311,9 +347,12 @@ cla
 hold on;
 pos_err = wucb_CI(:,2) - wucb;
 neg_err = wucb - wucb_CI(:,1);
-errorbar(wucb, 1:length(wucb), neg_err, pos_err, '.', 'horizontal', ...
-    'capsize', 0, 'color', dc_color_light, 'linewidth', 2)
-plot(wucb, 1:length(wucb), '^','MarkerFaceColor',dc_color_light,'color', dc_color);
+for i = 1:length(maps)
+    hold on;
+    errorbar(wucb(i), i, neg_err(i), pos_err(i), '.', 'horizontal', ...
+        'capsize', 0, 'color', colors_light(maps{i,6},:), 'linewidth', 2)
+    plot(wucb(i), i,'o','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', [],'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
@@ -346,9 +385,12 @@ cla
 hold on;
 pos_err = mainStd_CI(:,2,2) - mainStd(:,2);
 neg_err = mainStd(:,2) - mainStd_CI(:,2,1);
-errorbar(mainStd(:,2), 1:size(mainStd,1), neg_err, pos_err, '.', 'horizontal', ...
-    'capsize', 0, 'color', dc_color_light, 'linewidth', 2)
-plot(mainStd(:,2),1:size(mainStd,1),'s','MarkerFaceColor',dc_color_light,'color', dc_color);
+for i = 1:length(maps)
+    hold on;
+    errorbar(mainStd(i,2), i, neg_err(i), pos_err(i), '.', 'horizontal', ...
+        'capsize', 0, 'color', colors_light(maps{i,6},:), 'linewidth', 2)
+    plot(mainStd(i,2), i,'o','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', [],'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
@@ -399,8 +441,8 @@ end
 good_rois_ctx = good_rois;
 good_rois_ctx(good_rois_ctx > 358) = [];
 
-wuc_md_ctx = wuc_md(:, good_rois_ctx);
-cosim_ctx = cosim(:, good_rois_ctx);
+wuc_md_ctx = wuc_corr(:, good_rois_ctx);
+cosim_ctx = cosim_corr(:, good_rois_ctx);
 good_grad_roi = vals(ismember(1:358, good_rois_ctx), map_ind);
 
 figure;
@@ -426,10 +468,10 @@ xlim(ax1,xl);
 ylim(ax1,yl);
 set(ax2, 'YGrid', 'on', 'box', 'off', 'fontsize', fs,...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0)
-ylabel(ax2,{'Mean regional','geometric similarity', '(WUC of RDMs)'});
+ylabel(ax2,{'Mean regional','geometric similarity', '(WUC of RDMs | tSNR, rel.)'});
 set(ax1, 'YGrid', 'on', 'box', 'off', 'fontsize', fs, ...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0);
-ylabel(ax1,{'Mean regional','topographic similarity', '(cos\theta of spatial patterns)'});
+ylabel(ax1,{'Mean regional','topographic similarity', '(cos\theta of spatial patterns | tSNR, rel.)'});
 
 % fit group level mean slope
 b_topo = zeros(size(cosim_ctx,1),2);
@@ -448,11 +490,11 @@ b_geo = mean(b_geo);
 b_topo = mean(b_topo);
 
 y = b_geo(2)*xlim' + b_geo(1);
-l = plot(ax2, xlim',y,'-','color',dc_color);
+l = plot(ax2, xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 y = b_topo(2)*xlim' + b_topo(1);
-l = plot(ax1, xlim',y,'-','color',dc_color);
+l = plot(ax1, xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 pos = get(gcf,'Position');
@@ -464,7 +506,7 @@ title(ax1, {'Topographies diverge','along cortical hierarchy'},'FontWeight','nor
 sgtitle({'Transmodal representations are similar','but implemented more idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
 
 
-% add ROI legend
+% add margulies map
 a1 = axes();
 a1.Position = [0.33,0.56,0.15,0.15];
 a1.Visible = 'off';
@@ -479,5 +521,23 @@ file_ind = find(contains({maps.name}, this_map{1}{1}) & contains({maps.name}, th
 
 grayord_surf_L = gifti(fullfile(maps(file_ind).folder, maps(file_ind).name));
 plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
+
+
+% add ROI legend
+
+atlas_cii = cifti_read(config.canlab2024.path);
+atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
+
+a2 = axes();
+a2.Position = [0.33,0.40,0.15,0.15];
+a2.Visible = 'off';
+
+overlay = canlab_get_underlay_image;
+o3 = fmridisplay('overlay', which(overlay));
+o3 = surface(o3, 'axes', a2, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
+
+atlas_cii = get_cifti_data(config.canlab2024.path);
+cdata = atlas_cii.cortex_left;
+plot_to_surf(cdata',o3.surface{1}.object_handle, 'indexmap', 'colormap', [cmap(1:358,:); [0,0,0]]);
 
 exportgraphics(gcf,sprintf('panels_%s/margulies_01.png',noise),'ContentType','image','Resolution',300);

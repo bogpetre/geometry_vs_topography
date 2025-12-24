@@ -16,8 +16,8 @@ f = figure;
 cm = colormap(f,'hot');
 close(f)
 
-dc_color = config.matlab_disp_scheme.color_main;
-dc_color_light = config.matlab_disp_scheme.color_light;
+colors = config.matlab_disp_scheme.color_main;
+colors_light = config.matlab_disp_scheme.color_light;
 
 noise = 'whitened';
 %% import atlas in cifti space and get region names
@@ -133,18 +133,18 @@ cifti_write_from_template(atlas_cii, new_cii_data,sprintf('regional_ztopo_regres
 % If we use Margulies' version it strengths the effect of polysynaptic 
 % depth on implementations of common representations, so using the 
 % neuromaps version is conservative with respect to our conclusions.
-maps = [{'abagen', 'genepc1','GenePC1','(-)','(+)'};...
-    {'hill2010', 'evoexp','EvoExp1','old','new'};...
-    {'xu2020', 'evoexp','EvoExp2','old','new'};...
-    {'xu2020', 'FChomology','FCHomology','diff','same'}; ...
-    {'reardon2018', 'scalinghcp','DevExp1','early','late'};...
-    {'hill2010', 'devexp','DevExp2','early','late'};...
-    {'neurosynth', 'cogpc1','CogPC1','(-)','(+)'};...
-    {'hcps1200', 'myelinmap','Myelin','min','max'};...
-    {'hcps1200', 'thickness','Thickness','thin','thick'};...
-    {'margulies2016', 'fcgradient01','NetHierarchy','uni.','trans.'};...
-    {'raichle', 'cbf', 'CBF1','low','high'};...
-    {'satterthwaite2014', 'meancbf', 'CBF2','low','high'}];
+maps = [{'hill2010', 'evoexp','EvoExp1','old','new',1};...
+    {'xu2020', 'evoexp','EvoExp2','old','new',1};...
+    {'xu2020', 'FChomology','FCHomology','diff','same',1}; ...
+    {'reardon2018', 'scalinghcp','DevExp1','early','late',2};...
+    {'hill2010', 'devexp','DevExp2','early','late',2};...
+    {'hcps1200', 'myelinmap','Myelin','min','max',3};...
+    {'hcps1200', 'thickness','Thickness','thin','thick',3};...
+    {'margulies2016', 'fcgradient01','NetHierarchy','uni.','trans.',3};...
+    {'abagen', 'genepc1','GenePC1','(-)','(+)',4};...
+    {'neurosynth', 'cogpc1','CogPC1','(-)','(+)',4};...    
+    {'raichle', 'cbf', 'CBF1','low','high',4};...
+    {'satterthwaite2014', 'meancbf', 'CBF2','low','high',4}];
 
 mapvals = dir('../../resources/neuromaps/canlab2024_parcel_vals/');
 mapvals(1:2) = []; % remove '.' and '..' refs
@@ -241,7 +241,7 @@ fprintf('V1: topo ~ geom \beta = %0.3f +- [%0.3f, %0.3f]\n', get_regression_B([x
 
 m = fitlm(x, y);
 y = m.predict(xlim');
-l = plot(xlim',y,'-','color',dc_color);
+l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 title([strrep(uni_label, '_',' '), ' (unimodal)'], 'fontweight','normal','fontsize',fs)
@@ -271,7 +271,7 @@ fprintf('p9-46v: topo ~ geom \beta = %0.3f +- [%0.3f, %0.3f]\n', get_regression_
 
 m = fitlm(x, y);
 y = m.predict(xlim');
-l = plot(xlim',y,'-','color',dc_color);
+l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 xlim(xl);
 
@@ -320,7 +320,7 @@ if length(I) == 0 || Bp(10) == Bp(map_ind)
     map_ind = 10;
 end
 %}
-map_ind = 10;
+map_ind = 8;
 
 % has more significant subjects than holm-sidak threshold
 good_grad_roi = vals(ismember(1:358, good_rois), map_ind);
@@ -341,7 +341,7 @@ xl = xlim;
 
 m_rep = fitlm(good_grad_roi, assocB(good_rois < 359));
 y = m_rep.predict(xlim');
-l = plot(xlim',y,'-','color',dc_color);
+l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 leg2 = legend('\beta across dyads','fontsize',fs);
 set(gca,'FontSize',fs)
@@ -355,8 +355,10 @@ hold on;
 
 pos_err = Bb_CI(:,2) - Bb;
 neg_err = Bb - Bb_CI(:,1);
-errorbar(Bb, 1:length(mapname), neg_err, pos_err, '.', 'horizontal', 'capsize', 0,'color',dc_color_light, 'linewidth',2)
-plot(Bb,1:length(mapname), 'h','MarkerFaceColor',dc_color_light,'color', dc_color,'MarkerFaceColor',dc_color_light);
+for i = 1:length(mapname)
+    errorbar(Bb(i), i, neg_err(i), pos_err(i), '.', 'horizontal', 'capsize', 0,'color',colors_light(maps{i,6},:), 'linewidth',2)
+    plot(Bb(i),i, 'h','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', abr_mapname,'FontSize',fs-1, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])

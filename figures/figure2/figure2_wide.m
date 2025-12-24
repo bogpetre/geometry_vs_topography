@@ -205,7 +205,7 @@ for s = 1:2
     if s == 2
         text(x_output + 1, y_output(3), 'Faces', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
         text(x_output + 1.4, y_output(2), 'Shapes', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
-        text(x_output + 1, y_output(1), 'Match', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
+        text(x_output + 1, y_output(1), 'Places', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
     end
 end
 
@@ -305,7 +305,7 @@ for s = 1:2
     if s == 2
         text(x_output + 1, y_output(3), 'Faces', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
         text(x_output + 1.4, y_output(2), 'Shapes', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
-        text(x_output + 1, y_output(1), 'Match', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
+        text(x_output + 1, y_output(1), 'Place', 'Rotation', 90, 'HorizontalAlignment', 'center','fontsize',fs-2)
     end
 end
 sgtitle({'A neural network can implement the same','functional representation in multiple ways'},'FontWeight','bold','fontsize',fs+1)
@@ -322,90 +322,100 @@ exportgraphics(gcf,'panels/neural_networks.png','ContentType','image','Resolutio
 %% Spatial gradients
 medial_mask_R = gifti('../../resources/100307.R.atlasroi.32k_fs_LR.shape.gii').cdata == 1;
 
-genepc1 = gifti('source-abagen_desc-genepc1_space-fsaverage_den-32k_hemi-R_feature.func.gii');
-evo_exp = gifti('source-xu2020_desc-evoexp_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+myelin_map = gifti('source-hcps1200_desc-myelinmap_space-fsLR_den-32k_hemi-R_feature.func.gii');
+thickness = gifti('source-hcps1200_desc-thickness_space-fsLR_den-32k_hemi-R_feature.func.gii');
+marg_rh_1 = gifti('source-margulies2016_desc-fcgradient01_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+
+evo_exp1 = gifti('source-hill2010_desc-evoexp_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+evo_exp2 = gifti('source-xu2020_desc-evoexp_space-fsaverage_den-32k_hemi-R_feature.func.gii');
 fchomology = gifti('source-xu2020_desc-FChomology_space-fsaverage_den-32k_hemi-R_feature.func.gii');
 
 devexp1 = gifti('source-hill2010_desc-devexp_space-fsLR_den-32k_hemi-R_feature.func.gii');
 devexp2 = gifti('source-reardon2018_desc-scalinghcp_space-fsLR_dens-32k_hemi-R_feature.func.gii');
-cogpc1 = gifti('source-neurosynth_desc-cogpc1_space-fsLR_dens-32k_hemi-R_feature.func.gii');
 
-myelin_map = gifti('source-hcps1200_desc-myelinmap_space-fsLR_den-32k_hemi-R_feature.func.gii');
-thickness = gifti('source-hcps1200_desc-thickness_space-fsLR_den-32k_hemi-R_feature.func.gii');
-marg_lh_1 = gifti('source-margulies2016_desc-fcgradient01_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+genepc1 = gifti('source-abagen_desc-genepc1_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+cogpc1 = gifti('source-neurosynth_desc-cogpc1_space-fsLR_dens-32k_hemi-R_feature.func.gii');
+cbf1 = gifti('source-raichle_desc-cbf_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+cbf2 = gifti('source-satterthwaite2014_desc-meancbf_space-fsaverage_den-32k_hemi-R_feature.func.gii');
+
 
 % zscore to have them be on a common scale
 zscore_fun = @(x)((x - nanmean(x))/nanstd(x));
 
-genepc1.cdata(medial_mask_R) = zscore_fun(genepc1.cdata(medial_mask_R));
-evo_exp.cdata(medial_mask_R) = zscore_fun(evo_exp.cdata(medial_mask_R));
+myelin_map.cdata(medial_mask_R) = zscore_fun(myelin_map.cdata(medial_mask_R));
+thickness.cdata(medial_mask_R) = zscore_fun(thickness.cdata(medial_mask_R));
+marg_rh_1.cdata(medial_mask_R) = zscore_fun(marg_rh_1.cdata(medial_mask_R));
+
+evo_exp1.cdata(medial_mask_R) = zscore_fun(evo_exp1.cdata(medial_mask_R));
+evo_exp2.cdata(medial_mask_R) = zscore_fun(evo_exp2.cdata(medial_mask_R));
 fchomology.cdata(medial_mask_R) = zscore_fun(fchomology.cdata(medial_mask_R));
 
 devexp1.cdata(medial_mask_R) = zscore_fun(devexp1.cdata(medial_mask_R));
 devexp2.cdata(medial_mask_R) = zscore_fun(devexp2.cdata(medial_mask_R));
-cogpc1.cdata(medial_mask_R) = zscore_fun(cogpc1.cdata(medial_mask_R));
 
-myelin_map.cdata(medial_mask_R) = zscore_fun(myelin_map.cdata(medial_mask_R));
-thickness.cdata(medial_mask_R) = zscore_fun(thickness.cdata(medial_mask_R));
-marg_lh_1.cdata(medial_mask_R) = zscore_fun(marg_lh_1.cdata(medial_mask_R));
+genepc1.cdata(medial_mask_R) = zscore_fun(genepc1.cdata(medial_mask_R));
+cogpc1.cdata(medial_mask_R) = zscore_fun(cogpc1.cdata(medial_mask_R));
+cbf1.cdata(medial_mask_R) = zscore_fun(cbf1.cdata(medial_mask_R));
+cbf2.cdata(medial_mask_R) = zscore_fun(cbf2.cdata(medial_mask_R));
+
 
 figure(3)
 clf
-t7 = tiledlayout(3,3,'Padding','compact','TileSpacing','tight');
-sgtitle(t7,{'Factors hypothetically associated','with biological circuit flexibility'},'FontWeight','bold','FontSize',fs+1);
+t7 = tiledlayout(2,6,'Padding','compact','TileSpacing','tight');
+sgtitle(t7,{'Factors hypothetically associated with biological circuit flexibility'},'FontWeight','bold','FontSize',fs+1);
 
 
 ax1 = nexttile(t7);
 ax1.Layout.Tile=1;
-row1 = fmridisplay();
+myelin_plot = fmridisplay();
 
 jet = colormap(ax1,'jet');
 
-row1 = surface(row1, 'axes', ax1, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
-h = plot_to_surf(genepc1.cdata(:),row1.surface{1}.object_handle,'sourcespace','MNI152NLin6Asym','targetsurface','fsLR_32k','nolegend', ...
+myelin_plot = surface(myelin_plot, 'axes', ax1, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+h = plot_to_surf(myelin_map.cdata(:),myelin_plot.surface{1}.object_handle,'sourcespace','MNI152NLin6Asym','targetsurface','fsLR_32k','nolegend', ...
     'colormap', 'turbo');
 
-title(ax1, {'GenePC1','(Transcriptomic)'},'FontWeight','normal','FontSize',fs)
+title(ax1, {'Myelination','(Wiring)'},'FontWeight','normal','FontSize',fs)
 
 
 ax2 = nexttile(t7);
 ax2.Layout.Tile=2;
-row1 = fmridisplay();
+thick_plot = fmridisplay();
 
-row1 = surface(row1, 'axes', ax2, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
-plot_to_surf(evo_exp.cdata(:), row1.surface{1}.object_handle,'colormap',colormap(ax2,'turbo'));
+thick_plot = surface(thick_plot, 'axes', ax2, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+plot_to_surf(thickness.cdata(:), thick_plot.surface{1}.object_handle,'colormap',colormap(ax2,'turbo'));
 
-title(ax2, {'Evolutionary', 'Expansion 1'},'FontWeight','normal','FontSize',fs)
+title(ax2, {'Thickness','(~Differentiation)'},'FontWeight','normal','FontSize',fs)
 
 
 ax3 = nexttile(t7);
 ax3.Layout.Tile=3;
-row1 = fmridisplay();
+net_plot = fmridisplay();
 
-row1 = surface(row1, 'axes', ax3, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
-plot_to_surf(fchomology.cdata(:), row1.surface{1}.object_handle,'nolegend',...
+net_plot = surface(net_plot, 'axes', ax3, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+plot_to_surf(marg_rh_1.cdata(:), net_plot.surface{1}.object_handle,'nolegend',...
     'colormap','turbo');
 
-title(ax3, {'Functional Conn.','Homology'},'FontWeight','normal','FontSize',fs)
+title(ax3, {'Network','Hierarchy'},'FontWeight','normal','FontSize',fs)
 
 ax4 = nexttile(t7);
 ax4.Layout.Tile=4;
-devexpansion = fmridisplay();
+evo1_plot = fmridisplay();
 
-devexpansion = surface(devexpansion, 'axes', ax4, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+evo1_plot = surface(evo1_plot, 'axes', ax4, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
     
-plot_to_surf(devexp1.cdata(:), devexpansion.surface{1}.object_handle,'colormap','turbo');
+plot_to_surf(evo_exp1.cdata(:), evo1_plot.surface{1}.object_handle,'colormap','turbo');
 
-title(ax4, {'Developmental', 'Expansion 1'},'FontWeight','normal','FontSize',fs)
+title(ax4, {'Evolutionary', 'Expansion 1'},'FontWeight','normal','FontSize',fs)
 
 
 ax5 = nexttile(t7)
 ax5.Layout.Tile = 5;
-row2 = fmridisplay();
+evo2_plot = fmridisplay();
 
-row2 = surface(row2, 'axes', ax5, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+evo2_plot = surface(evo2_plot, 'axes', ax5, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
     
-[~,cbar1,cbar2] = plot_to_surf(devexp2.cdata,row2.surface{1}.object_handle,'colormap','turbo');
+[~,cbar1,cbar2] = plot_to_surf(evo_exp2.cdata, evo2_plot.surface{1}.object_handle,'colormap','turbo');
 %{
 cbar1.Location = 'southoutside';
 cbar1.TickLabels = {'',''};
@@ -421,14 +431,14 @@ cbar2.Position(3) = 0.15;
 cbar2.Position(4) = 0.02;
 %}
 
-title(ax5, {'Developmental','Expansion 2'},'FontWeight','normal','FontSize',fs)
+title(ax5, {'Evolutionary','Expansion 2'},'FontWeight','normal','FontSize',fs)
 
 
 ax6 = nexttile(t7);
 ax6.Layout.Tile=6;
-row2 = fmridisplay();
+fchomo_plot = fmridisplay();
 
-row2 = surface(row2, 'axes', ax6, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+fchomo_plot = surface(fchomo_plot, 'axes', ax6, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
     
 % we add a small increment to the fchomology data because it's all positive
 % valued except for the medial wall and a small patch of the posterior
@@ -437,7 +447,7 @@ row2 = surface(row2, 'axes', ax6, 'direction', 'hcp inflated right', 'orientatio
 % we're looking for we increment things slightly to circumvent the mapping
 % of zero values to to grayscale
 %[~,cbar1,cbar2] = plot_to_surf(fchomology.cdata + 0.000001,fchom.surface{1}.object_handle,'colormap','turbo');
-[~,cbar1,cbar2] = plot_to_surf(cogpc1.cdata,row2.surface{1}.object_handle,'colormap','turbo');
+[~,cbar1,cbar2] = plot_to_surf(fchomology.cdata, fchomo_plot.surface{1}.object_handle,'colormap','turbo');
 %{
 cbar1.Location = 'southoutside';
 cbar1.TickLabels = {'',''};
@@ -453,43 +463,75 @@ cbar2.Position(3) = 0.15;
 cbar2.Position(4) = 0.02;
 %}
 
-title(ax6, {'CogPC1','(neurosynth)'},'FontWeight','normal','FontSize',fs)
+title(ax6, {'Funntional Conn.','Homology'},'FontWeight','normal','FontSize',fs)
 
 
 ax7 = nexttile(t7);
-ax7.Layout.Tile=7;
-myleination = fmridisplay();
+ax7.Layout.Tile=11;
+dev1_plot = fmridisplay();
 
-myleination = surface(myleination, 'axes', ax7, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+dev1_plot = surface(dev1_plot, 'axes', ax7, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
     
-plot_to_surf(double(myelin_map.cdata(:)), myleination.surface{1}.object_handle,'colormap','turbo');
+plot_to_surf(double(devexp1.cdata(:)), dev1_plot.surface{1}.object_handle,'colormap','turbo');
 
-title(ax7, {'Myelination'},'FontWeight','normal','FontSize',fs)
+title(ax7, {'Developental','Expansion 1'},'FontWeight','normal','FontSize',fs)
 
 ax8 = nexttile(t7);
-ax8.Layout.Tile=8;
-marg = fmridisplay();
+ax8.Layout.Tile=12;
+dev2_plot = fmridisplay();
 
-marg = surface(marg, 'axes', ax8, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+dev2_plot = surface(dev2_plot, 'axes', ax8, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
     
-plot_to_surf(double(marg_lh_1.cdata(:)), marg.surface{1}.object_handle,'colormap','turbo');
+plot_to_surf(double(devexp2.cdata(:)), dev2_plot.surface{1}.object_handle,'colormap','turbo');
 
-title(ax8, {'Net','Hierarchy'},'FontWeight','normal','FontSize',fs)
+title(ax8, {'Developmental','Expansion 2'},'FontWeight','normal','FontSize',fs)
 
 ax9 = nexttile(t7);
-ax9.Layout.Tile=9;
-thick = fmridisplay();
+ax9.Layout.Tile=7;
+gene_plot = fmridisplay();
 
-thick = surface(thick, 'axes', ax9, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+gene_plot = surface(gene_plot, 'axes', ax9, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
     
-plot_to_surf(double(thickness.cdata(:)), thick.surface{1}.object_handle,'colormap','turbo');
+plot_to_surf(double(genepc1.cdata(:)), gene_plot.surface{1}.object_handle,'colormap','turbo');
 
-title(ax9, {'Thickness'},'FontWeight','normal','FontSize',fs)
+title(ax9, {'GenePC1','(transcriptomic)'},'FontWeight','normal','FontSize',fs)
+
+
+ax10 = nexttile(t7);
+ax10.Layout.Tile=8;
+cog_plot = fmridisplay();
+
+cog_plot = surface(cog_plot, 'axes', ax10, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+    
+plot_to_surf(double(cogpc1.cdata(:)), cog_plot.surface{1}.object_handle,'colormap','turbo');
+
+title(ax10, {'CogPC1','(neurosynth)'},'FontWeight','normal','FontSize',fs)
+
+
+ax11 = nexttile(t7);
+ax11.Layout.Tile=9;
+cbf1_plot = fmridisplay();
+
+cbf1_plot = surface(cbf1_plot, 'axes', ax11, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+    
+plot_to_surf(double(cbf1.cdata(:)), cbf1_plot.surface{1}.object_handle,'colormap','turbo');
+
+title(ax11, {'Cerebral Blood','Flow 1'},'FontWeight','normal','FontSize',fs)
+
+
+ax12 = nexttile(t7);
+ax12.Layout.Tile=10;
+cbf2_plot = fmridisplay();
+
+cbf2_plot = surface(cbf2_plot, 'axes', ax12, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
+    
+plot_to_surf(double(cbf2.cdata(:)), cbf2_plot.surface{1}.object_handle,'colormap','turbo');
+
+title(ax12, {'Cerebral','Blood Flow 2'},'FontWeight','normal','FontSize',fs)
 
 %
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2),415,465]);
+set(gcf,'Position',[pos(1:2),750,288]);
 
-
-exportgraphics(gcf,'panels/gradients.png','ContentType','image','Resolution',300);
+export_fig(gcf,'panels/gradients_wide.png','-png','-r300','-transparent')
