@@ -1419,7 +1419,7 @@ ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Env'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel({'Topography - Geometry','(Ranks)'});
 grid on
 box off
