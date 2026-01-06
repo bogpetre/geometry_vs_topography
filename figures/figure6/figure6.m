@@ -566,25 +566,38 @@ lines = colormap('lines');
 lines_dark = tanh(atanh(2*(lines - 0.5)) - 0.3)/2 + 0.5;
 lines_darkest = tanh(atanh(2*(lines - 0.5)) - 0.8)/2 + 0.5;
 
+colors = config.matlab_disp_scheme.color_light([5,4,2,3,1],:);
+%colors(4:5,:) = [colors(4,:); colors(4,:)];
+colors_dark = tanh(atanh(2*(colors - 0.5)) - 0.3)/2 + 0.5;
+colors_darkest = tanh(atanh(2*(colors - 0.5)) - 0.8)/2 + 0.5;
+
 clf
 w = 56;
 t0 = tiledlayout(f1,2,w,'Padding','none','TileSpacing','tight');
 t1 = tiledlayout(f2,2,w,'Padding','none','TileSpacing','tight');
 s1 = 18;
-s2 = 12;
+s2 = 11;
 s3 = 13;
 
 ax1 = nexttile(t0);
 ax1.Layout.TileSpan = [1,s1]
 cla
-bar(task_topo_clusters, 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-violinplot({task_topo_r_mz, task_topo_r_dz, task_topo_r_fs, task_topo_r_hs, task_topo_r_unr}, ...
-    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
-h = errorbar(1:5, task_topo_clusters(:),...
-    task_topo_clusters(:) - task_topo_clusters_CI(:,1),task_topo_clusters(:) - task_topo_clusters_CI(:,2), ...
-    'LineStyle','none','color',lines_darkest(1,:),'linewidth',2);
+obs = {task_topo_r_mz, task_topo_r_dz, task_topo_r_fs, task_topo_r_hs, task_topo_r_unr};
+yl = [0,0];
+for i = 1:size(task_topo_clusters,2)
+    hold on;
+    bar(i, task_topo_clusters(:,i),'FaceColor', colors(i,:), 'FaceAlpha', 0.5);
+    violinplot(obs{i}, 'x',i, ...
+        'pointsize', 3, 'facecolor', colors(i,:), 'edgecolor', colors_dark(i,:), ...
+        'vwidth', 0.66);
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    h = errorbar(i, task_topo_clusters(i),...
+        task_topo_clusters(i) - task_topo_clusters_CI(i,1),task_topo_clusters(i) - task_topo_clusters_CI(i,2), ...
+        'LineStyle','none','color',colors_darkest(i,:),'linewidth',2);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 title({'Task'},'FontWeight','bold','fontsize',fontsize); 
 subtitle('Topography','fontsize',fontsize)
 set(gca,'FontSize',fontsize+2,'XTickLabels',[]);
@@ -596,14 +609,22 @@ yl1 = ylim;
 ax2 = nexttile(t1);
 ax2.Layout.TileSpan = [1,s1];
 cla
-bar(rsn_topo_clusters, 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-violinplot({rsn_topo_r_mz, rsn_topo_r_dz, rsn_topo_r_fs, rsn_topo_r_hs, rsn_topo_r_unr}, ...
-    'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
-h = errorbar(1:5, rsn_topo_clusters(:),...
-    rsn_topo_clusters(:) - rsn_topo_clusters_CI(:,1),rsn_topo_clusters(:) - rsn_topo_clusters_CI(:,2), ...
-    'LineStyle','none','color',lines_darkest(2,:),'linewidth',2);
+obs = {rsn_topo_r_mz, rsn_topo_r_dz, rsn_topo_r_fs, rsn_topo_r_hs, rsn_topo_r_unr};
+yl = [0,0];
+for i = 1:size(rsn_topo_clusters,2)
+    hold on;
+    bar(i, rsn_topo_clusters(:,i),'FaceColor', colors(i,:), 'FaceAlpha', 0.5);
+    violinplot(obs{i}, 'x',i, ...
+        'pointsize', 3, 'facecolor', colors(i,:), 'edgecolor', colors_dark(i,:), ...
+        'vwidth', 0.66);
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    h = errorbar(i, rsn_topo_clusters(i),...
+        rsn_topo_clusters(i) - rsn_topo_clusters_CI(i,1),rsn_topo_clusters(i) - rsn_topo_clusters_CI(i,2), ...
+        'LineStyle','none','color',colors_darkest(i,:),'linewidth',2);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 title({'RSN'},'FontWeight','bold','fontsize',fontsize); 
 subtitle('Topography','fontsize',fontsize)
 ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
@@ -616,16 +637,26 @@ ax3 = nexttile(t0);
 ax3.Layout.Tile = w+1;
 ax3.Layout.TileSpan = [1,s1];
 cla
-bar(task_geom_clusters, 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-violinplot({task_geom_r_mz, task_geom_r_dz, task_geom_r_fs, task_geom_r_hs, task_geom_r_unr}, ...
-    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
-h = errorbar(1:5, task_geom_clusters(:),...
-    task_geom_clusters(:) - task_geom_clusters_CI(:,1),task_geom_clusters(:) - task_geom_clusters_CI(:,2), ...
-    'LineStyle','none','color',lines_darkest(1,:),'linewidth',2);
+obs = {task_geom_r_mz, task_geom_r_dz, task_geom_r_fs, task_geom_r_hs, task_geom_r_unr};
+yl = [0,0];
+for i = 1:size(task_geom_clusters,2)
+    hold on;
+    bar(i, task_geom_clusters(:,i),'FaceColor', colors(i,:), 'FaceAlpha', 0.5);
+    violinplot(obs{i}, 'x',i, ...
+        'pointsize', 3, 'facecolor', colors(i,:), 'edgecolor', colors_dark(i,:), ...
+        'vwidth', 0.66);
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    h = errorbar(i, task_geom_clusters(i),...
+        task_geom_clusters(i) - task_geom_clusters_CI(i,1), task_geom_clusters(i) - task_geom_clusters_CI(i,2), ...
+        'LineStyle','none','color',colors_darkest(i,:),'linewidth',2);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 subtitle('Geometry','fontsize',fontsize)
-set(gca,'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'},'FontSize',fontsize+2,'XTickLabelRotation', 90);
+set(gca,'XTick',1:size(task_geom_clusters,2), ...
+    'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'}, ...
+    'FontSize',fontsize+2,'XTickLabelRotation', 90);
 ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
 box off
@@ -635,16 +666,26 @@ ax4 = nexttile(t1);
 ax4.Layout.Tile = w+1;
 ax4.Layout.TileSpan = [1,s1];
 cla
-bar(rsn_geom_clusters, 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-violinplot({rsn_geom_r_mz, rsn_geom_r_dz, rsn_geom_r_fs, rsn_geom_r_hs, rsn_geom_r_unr}, ...
-    'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
-h = errorbar(1:5, rsn_geom_clusters(:),...
-    rsn_geom_clusters(:) - rsn_geom_clusters_CI(:,1),rsn_geom_clusters(:) - rsn_geom_clusters_CI(:,2), ...
-    'LineStyle','none','color',lines_darkest(2,:),'linewidth',2);
+obs = {rsn_geom_r_mz, rsn_geom_r_dz, rsn_geom_r_fs, rsn_geom_r_hs, rsn_geom_r_unr};
+yl = [0,0];
+for i = 1:size(rsn_geom_clusters,2)
+    hold on;
+    bar(i, rsn_geom_clusters(:,i),'FaceColor', colors(i,:), 'FaceAlpha', 0.5);
+    violinplot(obs{i}, 'x',i, ...
+        'pointsize', 3, 'facecolor', colors(i,:), 'edgecolor', colors_dark(i,:), ...
+        'vwidth', 0.66);
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    h = errorbar(i, rsn_geom_clusters(i),...
+        rsn_geom_clusters(i) - rsn_geom_clusters_CI(i,1), rsn_geom_clusters(i) - rsn_geom_clusters_CI(i,2), ...
+        'LineStyle','none','color',colors_darkest(i,:),'linewidth',2);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 title({'Geometry'},'FontWeight','normal','fontsize',fontsize); 
-set(gca,'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'},'FontSize',fontsize+2,'XTickLabelRotation', 90);
+set(gca,'XTick',1:size(rsn_geom_clusters,2), ...
+    'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'}, ...
+    'FontSize',fontsize+2,'XTickLabelRotation', 90);
 ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
 box off
@@ -693,10 +734,10 @@ ax5 = nexttile(t0);
 ax5.Layout.TileSpan = [1,s2];
 ax5.Layout.Tile = 11;
 cla
-bar([mean(task_cosim(:)),mean(task_cosim_retest(:))], 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+bar([mean(task_cosim_retest(:))], 'FaceColor', [0.5,0.5,0.5], 'FaceAlpha', 0.5);
 hold on;
-violinplot({mean(task_cosim,2)',mean(task_cosim_retest,2)'}, ...
-    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+violinplot({mean(task_cosim_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', [0.5,0.5,0.5], 'edgecolor', [0.3,0.3,0.3], ...
     'vwidth', 0.66);
 %title({'Task'},'FontWeight','bold','fontsize',fontsize); 
 %subtitle('Topography','fontsize',fontsize)
@@ -713,10 +754,10 @@ ax6 = nexttile(t1);
 ax6.Layout.TileSpan = [1,s2];
 ax6.Layout.Tile = 11;
 cla
-bar([mean(rsn_cosim(:)),mean(rsn_cosim_retest(:))], 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
+bar([mean(rsn_cosim_retest(:))], 'FaceColor',  [0.5,0.5,0.5], 'FaceAlpha', 0.5);
 hold on;
-violinplot({mean(rsn_cosim,2)',mean(rsn_cosim_retest,2)'}, ...
-    'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+violinplot({mean(rsn_cosim_retest,2)'}, ...
+    'pointsize', 3, 'facecolor',  [0.5,0.5,0.5], 'edgecolor',  [0.3,0.3,0.3], ...
     'vwidth', 0.66);
 %title({'RSN'},'FontWeight','bold','fontsize',fontsize); 
 %subtitle('Topography','fontsize',fontsize)
@@ -734,13 +775,13 @@ ax7 = nexttile(t0);
 ax7.Layout.Tile = ax3.Layout.Tile + ax3.Layout.TileSpan(2) - 8;
 ax7.Layout.TileSpan = [1,s2];
 cla
-bar([nanmean(task_wuc(:)),nanmean(task_wuc_retest(:))], 'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
+bar([nanmean(task_wuc_retest(:))], 'FaceColor', [0.5,0.5,0.5], 'FaceAlpha', 0.5);
 hold on;
-violinplot({nanmean(task_wuc,2)',nanmean(task_wuc_retest,2)'}, ...
-    'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
+violinplot({nanmean(task_wuc_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', [0.5,0.5,0.5], 'edgecolor', [0.3,0.3,0.3], ...
     'vwidth', 0.66);
 %title({'Geometry'},'FontWeight','normal'); 
-set(gca,'FontSize',fontsize+2,'XTickLabels',{'Unrelated','Self'},'XTickLabelRotation',90);
+set(gca,'FontSize',fontsize+2,'XTickLabels',{'Test-Retest'},'XTickLabelRotation',90);
 set(get(gca,'YAxis'),'visible','off')
 %ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
@@ -753,13 +794,13 @@ ax8 = nexttile(t1);
 ax8.Layout.Tile = ax4.Layout.Tile + ax4.Layout.TileSpan(2) - 8;
 ax8.Layout.TileSpan = [1,s2];
 cla
-bar([nanmean(rsn_wuc(:)),nanmean(rsn_wuc_retest(:))], 'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
+bar([nanmean(rsn_wuc_retest(:))], 'FaceColor', [0.5,0.5,0.5], 'FaceAlpha', 0.5);
 hold on;
-violinplot({nanmean(rsn_wuc,2)',nanmean(rsn_wuc_retest,2)'}, ...
-    'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
+violinplot({nanmean(rsn_wuc_retest,2)'}, ...
+    'pointsize', 3, 'facecolor', [0.5,0.5,0.5], 'edgecolor', [0.3,0.3,0.3], ...
     'vwidth', 0.66);
 %title({'Geometry'},'FontWeight','normal'); 
-set(gca,'FontSize',fontsize+2,'XTickLabels',{'Unrelated','Self'},'XTickLabelRotation',90);
+set(gca,'FontSize',fontsize+2,'XTickLabels',{'Test-Retest'},'XTickLabelRotation',90);
 set(get(gca,'YAxis'),'visible','off')
 %ylabel({'Mean Regional Similarity',['(WUC', char(177), ' CI_{95})']});
 grid on
@@ -804,20 +845,29 @@ ax9 = nexttile(t0);
 ax9.Layout.Tile = ax5.Layout.Tile + ax5.Layout.TileSpan(2) - 2;
 ax9.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 task_topo_rank = rankdata([task_topo_r_mz(:); task_topo_r_dz(:)]);
+colors_ = colors(1:2,:);
+colors_dark_ = colors_dark(1:2,:);
 n1 = length(task_topo_r_mz);
 n2 = length(task_topo_r_dz);
 y = {task_topo_rank(1:n1), task_topo_rank(n1+1:end)};
 %y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
-bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors(i,:), 'edgecolor', colors_dark(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Genetics'},'FontWeight','bold'); 
 subtitle({'Topo'},'FontWeight','normal');
-set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
 box off
@@ -827,20 +877,26 @@ ax10 = nexttile(t1);
 ax10.Layout.Tile = ax6.Layout.Tile + ax6.Layout.TileSpan(2) - 2;
 ax10.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 rsn_topo_rank = rankdata([rsn_topo_r_mz(:); rsn_topo_r_dz(:)]);
 n1 = length(rsn_topo_r_mz);
 n2 = length(rsn_topo_r_dz);
 y = {rsn_topo_rank(1:n1), rsn_topo_rank(n1+1:end)};
-%y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
-bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Genetics'},'FontWeight','bold'); 
 subtitle({'Topo'},'FontWeight','normal');
-set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
 box off
@@ -852,20 +908,27 @@ ax11 = nexttile(t0);
 ax11.Layout.Tile = ax9.Layout.Tile + ax9.Layout.TileSpan(2) - 6;
 ax11.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 task_geom_rank = rankdata([task_geom_r_mz(:); task_geom_r_dz(:)]);
 n1 = length(task_geom_r_mz);
 n2 = length(task_geom_r_dz);
 y = {task_geom_rank(1:n1), task_geom_rank(n1+1:end)};
 %y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
-bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({''},'FontWeight','bold'); 
-subtitle({'Geo'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+subtitle({'Geo'},'FontWeight','normal');
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 set(get(gca,'YAxis'),'Visible','off')
 grid on
 box off
@@ -876,19 +939,26 @@ ax12 = nexttile(t1);
 ax12.Layout.Tile = ax10.Layout.Tile + ax10.Layout.TileSpan(2) - 6;
 ax12.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 rsn_geom_rank = rankdata([rsn_geom_r_mz(:); rsn_geom_r_dz(:)]);
 n1 = length(rsn_geom_r_mz);
 n2 = length(rsn_geom_r_dz);
 y = {rsn_geom_rank(1:n1), rsn_geom_rank(n1+1:end)};
-bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({''},'FontWeight','bold'); 
 subtitle({'Geo'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 set(get(gca,'YAxis'),'Visible','off')
 grid on
 box off
@@ -909,20 +979,29 @@ set(ax12,'YLim',yl);
 ax13 = nexttile(t0);
 ax13.Layout.Tile = ax7.Layout.Tile + ax7.Layout.TileSpan(2) - 2;
 ax13.Layout.TileSpan = [1,s3];
+colors_ = colors(2:3,:);
+colors_dark_ = colors_dark(2:3,:);
 cla
+yl = [0,0];
 task_topo_rank = rankdata([task_topo_r_dz(:); task_topo_r_fs_not_dz(:)]);
 n1 = length(task_topo_r_dz);
 n2 = length(task_topo_r_fs_not_dz);
 y = {task_topo_rank(1:n1), task_topo_rank(n1+1:end)};
-bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Environment'},'FontWeight','bold');
 subtitle({'Topo'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (DZ)','Sublings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Sublings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
 box off
@@ -932,19 +1011,26 @@ ax14 = nexttile(t0);
 ax14.Layout.Tile = ax13.Layout.Tile + ax13.Layout.TileSpan(2) - 6;
 ax14.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 task_geom_rank = rankdata([task_geom_r_dz(:); task_geom_r_fs_not_dz(:)]);
 n1 = length(task_geom_r_dz);
 n2 = length(task_geom_r_fs_not_dz);
 y = {task_geom_rank(1:n1), task_geom_rank(n1+1:end)};
-bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({' '},'FontWeight','bold');
 subtitle({'Geo'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
 box off
@@ -961,19 +1047,26 @@ ax15 = nexttile(t1);
 ax15.Layout.Tile = ax8.Layout.Tile + ax8.Layout.TileSpan(2) - 2;
 ax15.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 rsn_topo_rank = rankdata([rsn_topo_r_dz(:); rsn_topo_r_fs_not_dz(:)]);
 n1 = length(rsn_topo_r_dz);
 n2 = length(rsn_geom_r_fs_not_dz);
 y = {rsn_topo_rank(1:n1), rsn_topo_rank(n1+1:end)};
-bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Environment'},'FontWeight','bold');
 subtitle({'Topo'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
 box off
@@ -983,20 +1076,27 @@ ax16 = nexttile();
 ax16.Layout.Tile = ax15.Layout.Tile + ax15.Layout.TileSpan(2) - 6;
 ax16.Layout.TileSpan = [1,s3];
 cla
+yl = [0,0];
 rsn_geom_rank = rankdata([rsn_geom_r_dz(:); rsn_geom_r_fs_not_dz(:)]);
 n1 = length(rsn_geom_r_dz);
 n2 = length(rsn_geom_r_fs_not_dz);
 y = {rsn_geom_rank(1:n1), rsn_geom_rank(n1+1:end)};
 %y_ci = [prctile(task_geom_rank(1:n1),[2.5,97.5]), prctile(task_geom_rank(n1+1:end),[2.5,97.5])];
-bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({' '},'FontWeight','bold');
 subtitle({'Geo'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
 box off
@@ -1204,17 +1304,25 @@ t0 = tiledlayout(f5,2,1,'Padding','none','TileSpacing','compact');
 ax17 = nexttile(t0);
 ax17.Layout.Tile = ax11.Layout.Tile + ax11.Layout.TileSpan(2) + 1;
 ax17.Layout.TileSpan = [1,s3];
+colors_ = colors(1:2,:);
+colors_dark_ = colors_dark(1:2,:);
 cla
-
 y = {genes_task_dmz, genes_task_ddz};
-bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
+yl = [0,0];
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Genes'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel({'Topography - Geometry','(Ranks)'});
 grid on
 box off
@@ -1226,16 +1334,25 @@ yl17 = ylim;
 ax18 = nexttile(t0);
 ax18.Layout.Tile = ax14.Layout.Tile + ax14.Layout.TileSpan(2) + 1;
 ax18.Layout.TileSpan = [1,s3];
+colors_ = colors(2:3,:);
+colors_dark_ = colors_dark(2:3,:);
 cla
 y = {env_task_ddz, env_task_dfs};
-bar(cellfun(@mean,y),'FaceColor', lines(1,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(1,:), 'edgecolor', lines_dark(1,:), ...
-    'vwidth', 0.66);
+yl = [0,0];
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Env'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel({'Topography - Geometry','(Ranks)'});
 grid on
 box off
@@ -1254,17 +1371,25 @@ t1 = tiledlayout(f6,2,1,'Padding','none','TileSpacing','compact');
 ax19 = nexttile(t1);
 ax19.Layout.Tile = ax12.Layout.Tile + ax12.Layout.TileSpan(2) + 1;
 ax19.Layout.TileSpan = [1,s3];
+colors_ = colors(1:2,:);
+colors_dark_ = colors_dark(1:2,:);
 cla
-
 y = {genes_rsn_dmz, genes_rsn_ddz};
-bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
+yl = [0,0];
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Genes'},'FontWeight','normal'); 
-set(gca,'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
+set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel({'Topography - Geometry','(Ranks)'});
 grid on
 box off
@@ -1276,12 +1401,21 @@ yl17 = ylim;
 ax18 = nexttile(t1);
 ax18.Layout.Tile = ax16.Layout.Tile + ax16.Layout.TileSpan(2) + 1;
 ax18.Layout.TileSpan = [1,s3];
+colors_ = colors(2:3,:);
+colors_dark_ = colors_dark(2:3,:);
 cla
 y = {env_rsn_ddz, env_rsn_dfs};
-bar(cellfun(@mean,y),'FaceColor', lines(2,:), 'FaceAlpha', 0.5);
-hold on;
-h = violinplot(y, 'pointsize', 3, 'facecolor', lines(2,:), 'edgecolor', lines_dark(2,:), ...
-    'vwidth', 0.66);
+yl = [0,0];
+for i = 1:size(y,2)
+    hold on;
+    this_yl = ylim;
+    yl = [min(this_yl(1),yl(1)), max(this_yl(2), yl(2))];
+    bar(i,mean(y{i}),'FaceColor', colors_(i,:), 'FaceAlpha', 0.5);
+    h = violinplot(y(:,i), 'x', i, 'pointsize', 3, 'facecolor', colors_(i,:), 'edgecolor', colors_dark_(i,:), ...
+        'vwidth', 0.66);
+end
+xlim([0.5,i+0.5])
+ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({'Env'},'FontWeight','normal'); 
