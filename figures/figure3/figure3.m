@@ -150,6 +150,21 @@ for i = 1:size(wuc_md,1)
     wuc_corr(i,good_roi) = (Y - X*B) + B(1);
 end
 
+
+mean(mean(cosim_corr(:,[EVC_rois])));
+mean(mean(cosim_corr(:,somatomotor_rois)))
+mean(mean(cosim_corr(:,[TPOJ])));
+mean(mean(cosim_corr(:,[dlPFC])));
+mean(mean(cosim_corr(:,[cblm_crus])));
+mean(mean(cosim_corr(:,[cblm_sensory])));
+
+mean(mean(wuc_corr(:,[EVC_rois])));
+mean(mean(wuc_corr(:,[somatomotor_rois])));
+mean(mean(wuc_corr(:,[TPOJ])));
+mean(mean(wuc_corr(:,[dlPFC])));
+mean(mean(wuc_corr(:,[cblm_crus])));
+mean(mean(wuc_corr(:,[cblm_sensory]),2));
+
 B = mean(cosim_corr(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
@@ -550,9 +565,9 @@ pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),642,345]);
 
 title(ax2, {'Representations converge','across cortical hierarchy'},'FontWeight','normal');
-title(ax1, {'Topographies diverge','along cortical hierarchy'},'FontWeight','normal')
+title(ax1, {'Topographic trends','along cortical hierarchy'},'FontWeight','normal')
 
-sgtitle({'Transmodal representations are similar','but implemented more idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
+sgtitle({'Transmodal representations are most similar','but least consistent topographically'},'FontWeight','bold','fontsize',fs+1)
 
 
 % add gradient
