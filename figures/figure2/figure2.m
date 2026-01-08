@@ -1095,3 +1095,68 @@ set(gcf,'Position',[1733, 75, 400, 400]);
 
 exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies_sup.png',noise), ...
     'ContentType','image','Resolution',300);
+
+%% Estimate mean clf-dist correlation across the sample
+[r_u, r_t] = deal(nan(height(sid),2));
+lbls = [1,262];
+%lbls = randperm(518,2);
+uni = lbls(1); % 1
+trans = lbls(2); % 262
+uni_label = roi_labels(lbls(1));
+trans_label = roi_labels(lbls(2));
+for i = 1:height(sid)
+    try
+        rdm_root = '../../derivatives/hcp_glm_msmall_grayord_spm/results/';
+        
+        if strcmp(noise,'standardized')
+            standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var1(i)));
+            standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var2(i)));
+        elseif strcmp(noise,'whitened')
+            standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var1(i)));
+            standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var2(i)));
+        else
+            error('Did not understand noise model choice "%s"',noise)
+        end
+        
+        conf_mats1 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', sid.Var1(i),noise),'ReadRowNames',true,'ReadVariableNames',true);
+        conf_mats2 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv',sid.Var2(i),noise),'ReadRowNames',true,'ReadVariableNames',true);
+        
+        uni_rdm1 = squareform(standardized1(:, uni));
+        uni_rdm2 = squareform(standardized2(:, uni));
+        
+        trans_rdm1 = squareform(standardized1(:, trans));
+        trans_rdm2 = squareform(standardized2(:, trans));
+        
+        uni_confmat1 = squareform(conf_mats1(contains(conf_mats1.Properties.RowNames, strrep(uni_label,'-','_')),:).Variables);
+        uni_confmat2 = squareform(conf_mats2(contains(conf_mats2.Properties.RowNames, strrep(uni_label,'-','_')),:).Variables);
+        
+        trans_confmat1 = squareform(conf_mats1(contains(conf_mats1.Properties.RowNames, strrep(trans_label,'-','_')),:).Variables);
+        trans_confmat2 = squareform(conf_mats2(contains(conf_mats2.Properties.RowNames, strrep(trans_label,'-','_')),:).Variables);
+        
+        % resort order to match RDMs
+        uni_confmat1 = uni_confmat1(clf_resort, clf_resort);
+        uni_confmat2 = uni_confmat2(clf_resort, clf_resort);
+        trans_confmat1 = trans_confmat1(clf_resort, clf_resort);
+        trans_confmat2 = trans_confmat2(clf_resort, clf_resort);
+    
+        ltri = tril(true(size(uni_confmat1)),-1);
+        
+        % vectorize lower triangles
+        uni_clf1 = uni_confmat1(ltri);
+        uni_clf2 = uni_confmat2(ltri);
+        trans_clf1 = trans_confmat1(ltri);
+        trans_clf2 = trans_confmat2(ltri);
+    
+        uni_rdm1 = uni_rdm1(ltri);
+        uni_rdm2 = uni_rdm2(ltri);
+        trans_rdm1 = trans_rdm1(ltri);
+        trans_rdm2 = trans_rdm2(ltri);
+    
+        r_u(i,1) = corr(uni_clf1, uni_rdm1);
+        r_u(i,2) = corr(uni_clf2, uni_rdm2);
+        r_t(i,1) = corr(trans_clf1, trans_rdm1);
+        r_t(i,2) = corr(trans_clf2, trans_rdm2);
+    catch
+        fprintf('Skipped %d\n',i)
+    end
+end
