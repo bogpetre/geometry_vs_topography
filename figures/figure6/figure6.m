@@ -706,16 +706,10 @@ set(f2,'Position',[pos(1:2),200,650])
 %}
 
 disp('tSNR')
-disp('Task Topography:')
+disp('Task Topography | Task Geometry:')
 disp([task_topo_clusters'./diff(task_topo_clusters_CI,[],2), task_geom_clusters'./diff(task_geom_clusters_CI,[],2)])
 
-disp('Task Geometry:')
-disp([task_topo_clusters'./diff(task_topo_clusters_CI,[],2), task_geom_clusters'./diff(task_geom_clusters_CI,[],2)])
-
-disp('RSN Topography:')
-disp([rsn_topo_clusters'./diff(rsn_topo_clusters_CI,[],2), rsn_geom_clusters'./diff(rsn_geom_clusters_CI,[],2)])
-
-disp('RSN Geometry:')
+disp('RSN Topography | RSN Geometry:')
 disp([rsn_topo_clusters'./diff(rsn_topo_clusters_CI,[],2), rsn_geom_clusters'./diff(rsn_geom_clusters_CI,[],2)])
 
 %% Plot test-retest reliability of geometry and topography for tasks and RSNs
