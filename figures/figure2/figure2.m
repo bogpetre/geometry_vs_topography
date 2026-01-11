@@ -1,4 +1,4 @@
-close all; clear all;
+%close all; clear all;
 
 config = jsondecode(fileread('../../config.json'));
 
@@ -22,8 +22,8 @@ qvarargin = {'MaxHeadSize', 0.5, 'LineWidth', 2};
 
 fs=config.matlab_disp_scheme.fontsize;
 
-dc_color = config.matlab_disp_scheme.color_main;
-dc_color_light = config.matlab_disp_scheme.color_light;
+dc_color = config.matlab_disp_scheme.color_main(3,:);
+dc_color_light = config.matlab_disp_scheme.color_light(3,:);
 
 noise = 'whitened';
 
@@ -276,14 +276,14 @@ cbar2.Position(4) = 0.03;
 pos = get(gcf,'Position');
 set(gcf,'Position', [932,533,385,315])
 
-exportgraphics(gcf,sprintf('panels_%s/common_topographies.png',noise),'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/common_topographies.png',noise),'-transparent','-r300');
 
 % print descriptive statistics
 cosim_uni = zeros(size(mtopo1_uni,1),1);
 for i = 1:size(mtopo1_uni,1)
     cosim_uni(i) = mtopo1_uni(i,:)*mtopo2_uni(i,:)'/(norm(mtopo1_uni(i,:))*norm(mtopo2_uni(i,:)));
 end
-sprintf('Mean unimodal similarity: %0.3f (cosim, all tasks)',mean(cosim_uni))
+%sprintf('Mean unimodal similarity: %0.3f (cosim, all tasks)',mean(cosim_uni))
 sprintf('Mean unimodal similarity: %0.3f (cosim, 6 tasks)',mean(cosim_uni(these_task_ind)))
     
 
@@ -294,8 +294,8 @@ for i = 1:size(mtopo1_uni,1)
         cosim_x_task_uni_A(i,j) = mtopo1_uni(i,:)*mtopo1_uni(j,:)'/(norm(mtopo1_uni(i,:))*norm(mtopo1_uni(j,:)));
     end
 end
-disp('Unimodal similarity across tasks, participant A:');
-disp(cosim_x_task_uni_A(these_task_ind,these_task_ind))
+%disp('Unimodal similarity across tasks, participant A:');
+%disp(cosim_x_task_uni_A(these_task_ind,these_task_ind))
 
 
 cosim_x_task_uni_B = zeros(size(mtopo2_uni,1));
@@ -304,8 +304,8 @@ for i = 1:size(mtopo2_uni,1)
         cosim_x_task_uni_B(i,j) = mtopo2_uni(i,:)*mtopo2_uni(j,:)'/(norm(mtopo2_uni(i,:))*norm(mtopo2_uni(j,:)));
     end
 end
-disp('Unimodal similarity across tasks, participant B:');
-disp(cosim_x_task_uni_B(these_task_ind,these_task_ind))
+%disp('Unimodal similarity across tasks, participant B:');
+%disp(cosim_x_task_uni_B(these_task_ind,these_task_ind))
 
 %% Transmodal topographies
 
@@ -467,14 +467,14 @@ cbar2.Position(4) = 0.03;
 pos = get(gcf,'Position');
 set(gcf,'Position',[937,82, 385, 380])
 
-exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies.png',noise),'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/idiosyncratic_topographies.png',noise),'-transparent','-r300');
 
 % print descriptive statistics
 cosim_trans = zeros(size(mtopo1_trans,1),1);
 for i = 1:size(mtopo1_trans,1)
     cosim_trans(i) = mtopo1_trans(i,:)*mtopo2_trans(i,:)'/(norm(mtopo1_trans(i,:))*norm(mtopo2_trans(i,:)));
 end
-sprintf('Mean transmodal similarity: %0.3f (cosim, all tasks)',mean(cosim_trans))
+%sprintf('Mean transmodal similarity: %0.3f (cosim, all tasks)',mean(cosim_trans))
 sprintf('Mean transmodal similarity: %0.3f (cosim, 6 tasks)',mean(cosim_trans(these_task_ind)))
 
 
@@ -485,8 +485,8 @@ for i = 1:size(mtopo1_trans,1)
         cosim_x_task_trans_A(i,j) = mtopo1_trans(i,:)*mtopo1_trans(j,:)'/(norm(mtopo1_trans(i,:))*norm(mtopo1_trans(j,:)));
     end
 end
-disp('Transmodal similarity across tasks, participant A:');
-disp(cosim_x_task_trans_A(these_task_ind,these_task_ind))
+%disp('Transmodal similarity across tasks, participant A:');
+%disp(cosim_x_task_trans_A(these_task_ind,these_task_ind))
 
 
 cosim_x_task_trans_B = zeros(size(mtopo2_trans,1));
@@ -495,10 +495,11 @@ for i = 1:size(mtopo2_trans,1)
         cosim_x_task_trans_B(i,j) = mtopo2_trans(i,:)*mtopo2_trans(j,:)'/(norm(mtopo2_trans(i,:))*norm(mtopo2_trans(j,:)));
     end
 end
-disp('Transmodal similarity across tasks, participant B:');
-disp(cosim_x_task_trans_B(these_task_ind,these_task_ind))
+%disp('Transmodal similarity across tasks, participant B:');
+%disp(cosim_x_task_trans_B(these_task_ind,these_task_ind))
 
 
+%{
 %% compute unimodal projections
 % solve procrustes problem rotating topo1 onto topo2, ignoring vector
 % magnitudes (to balance across conditions for visualization purposes)
@@ -531,7 +532,7 @@ rot_ntopo1 = (rot*ntopo1_trans(cond,:)')';
 % compute projections based on unnormalized data
 proj1_trans = mtopo1_trans(cond,:)*rot'*v2;
 proj2_trans = mtopo2_trans(cond,:)*v2;
-
+%}
 %% import rdms and binary clf performances
 
 rdm_root = '../../derivatives/hcp_glm_msmall_grayord_spm/results/';
@@ -567,7 +568,7 @@ uni_confmat2 = uni_confmat2(clf_resort, clf_resort);
 trans_confmat1 = trans_confmat1(clf_resort, clf_resort);
 trans_confmat2 = trans_confmat2(clf_resort, clf_resort);
 
-
+%{
 disp('Unimodal Std Distances Participant A:')
 disp(uni_rdm1(these_task_ind,these_task_ind))
 
@@ -579,12 +580,33 @@ disp(trans_rdm1(these_task_ind,these_task_ind))
 
 disp('Transmodal Std Distances Participant B:')
 disp(trans_rdm2(these_task_ind,these_task_ind))
+%}
+%% Compute unimodal MDS
+% Let's stick to the mds of the 6 tasks we show and just rotate in that 
+% space. It's a 2D projection of the 6x6 distance matrix
+uni_mds1 = cmdscale(real(sqrt(uni_rdm1(cond,cond))));
+uni_mds2 = cmdscale(real(sqrt(uni_rdm2(cond,cond))));
 
+d1 = size(uni_mds1,2);
+d2 = size(uni_mds2,2);
+if d2 > d1
+    [d,Z,transform] = procrustes(uni_mds2, uni_mds1);
+    
+    proj1_uni = Z;
+    proj2_uni = uni_mds2;
+else
+    [d,Z,transform] = procrustes(uni_mds1, uni_mds2);
+    
+    proj1_uni = uni_mds1;
+    proj2_uni = Z;
+end
 %% plot unimodal geometry
+
+dim = 2;
 
 figure(4);
 clf
-uni_rdm_tile = tiledlayout(2,2,'TileSpacing','compact','padding','tight');
+uni_rdm_tile = tiledlayout(2,2,'TileSpacing','compact','padding','normal');
 
 v = [-43.2446, 10.7065];
 
@@ -620,127 +642,80 @@ set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks, 'FontSize',fs-2);
 title({'', '','Participant B'},'FontWeight','normal','fontsize',fs)
 
 ax1 = nexttile(uni_rdm_tile);
-view(3)
-view(v);
 hold on;
-
-% construct faces
-shp = alphaShape(proj1_uni(:,1:3), convexity*norm(proj1_uni(:,1:3)));
-p = shp.plot();
-p.FaceAlpha = 0.3;
-p.EdgeColor = [0,0.5,0];
-lightRestoreSingle; 
-axis image; 
-material dull
-
 these_tasks = task_labels(ismember(task_labels, tasks));
+[xl1, yl1] = deal([0,0]);
 for i = 1:length(tasks)
     this_task = find(these_tasks == tasks(i));
+    these_names = task_names(task_labels == tasks(i));
     assert(length(this_task) == 2); % colormapping won't work otherwise
     for j = 1:2
         if j == 1
             this_color = 0.75*cmlines(i,:);
+            name = these_names{1};
         else
             this_color = min(1.25*cmlines(i,:),1);
+            name = these_names{2};
         end
-    
-        this_data = proj1_uni(this_task(j),1:3);
-    
-        x = this_data(:,1)*vector_scale;
-        y = this_data(:,2)*vector_scale;
-        z = this_data(:,3)*vector_scale;
-    
-        zero = zeros(size(this_data,1),1);
-        quiver3(zero, zero, zero, x, y, z, qvarargin{:}, 'color', this_color);
+
+        this_data = proj1_uni(this_task(j),1:2);
+        x = this_data(1);
+        y = this_data(2);
+
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        
+        xl1 = [min([xl1,x]), max([xl1, x])];
+        yl1 = [min([yl1,y]), max([yl1, y])];
     end
 end
 
-xl1 = xlim;
-yl1 = ylim;
-zl1 = zlim;
-
 grid on;
-
-camlight(135,-60);
-camlight(-135,-60);
-camlight(0,135);
-
+axis square
+xlabel(' ')
 
 ax2 = nexttile(uni_rdm_tile);
-view(3);
-view(v);
 hold on;
-
-shp = alphaShape(proj2_uni(:,1:3), convexity*norm(proj2_uni(:,1:3)));
-p = shp.plot();
-p.FaceAlpha = 0.3;
-p.EdgeColor = [0,0,0.5];
-p.FaceColor = p.FaceColor([3,2,1]);
-lightRestoreSingle; 
-axis image; 
-material dull
-
 these_tasks = task_labels(ismember(task_labels, tasks));
 for i = 1:length(tasks)
     this_task = find(these_tasks == tasks(i));
+    these_names = task_names(task_labels == tasks(i));
     assert(length(this_task) == 2); % colormapping won't work otherwise
     for j = 1:2
         if j == 1
             this_color = 0.75*cmlines(i,:);
+            name = these_names{1};
         else
             this_color = min(1.25*cmlines(i,:),1);
+            name = these_names{2};
         end
     
-        this_data = proj2_uni(this_task(j),1:3);
-    
-        x = this_data(:,1)*vector_scale;
-        y = this_data(:,2)*vector_scale;
-        z = this_data(:,3)*vector_scale;
-    
-        zero = zeros(size(this_data,1),1);
-        quiver3(zero, zero, zero, x, y, z, qvarargin{:}, 'color', this_color);
+        this_data = proj2_uni(this_task(j),1:2);
+        x = this_data(1);
+        y = this_data(2);
+
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        
+        xl1 = [min([xl1,x]), max([xl1, x])];
+        yl1 = [min([yl1,y]), max([yl1, y])];
     end
 end
 
-
-xl2 = xlim;
-yl2 = ylim;
-zl2 = zlim;
-
-xl = [min([xl1,xl2]), max([xl1, xl2])];
-yl = [min([yl1,yl2]), max([yl1, yl2])];
-zl = [min([zl1,zl2]), max([zl1, zl2])];
-
 grid on;
+axis square;
 
-xlabel(ax1, 'EV_1','FontSize',fs-3)
-ylabel(ax1, 'EV_2','FontSize',fs-3)
-zlabel(ax1, 'EV_3','FontSize',fs-3)
+title(ax1,{'Subspace Projection (MDS)'},'FontWeight','normal','fontsize',fs)
 
-xlabel(ax2, 'R*EV_1','FontSize',fs-3)
-ylabel(ax2, 'R*EV_2','FontSize',fs-3)
-zlabel(ax2, 'R*EV_3','FontSize',fs-3)
-
-title(ax1,{'Evoked Response', 'Subspace Projection'},'FontWeight','normal','fontsize',fs)
-title(ax2,{'','Evoked Response', 'Rotated Subspace Projection'},'FontWeight','normal','fontsize',fs)
-
-
-set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'ZTickLabels', [], 'Xlim', xl, 'YLim', yl, 'Zlim', zl);
-set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'ZTickLabels', [], 'Xlim', xl, 'YLim', yl, 'Zlim', zl);
-
-camlight(135,-60);
-camlight(-135,-60);
-camlight(0,135);
-
-set(ax2, 'view', get(ax1,'View'))
+set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
+set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
+xlabel(' ')
 
 sgtitle(uni_rdm_tile, {'Geometry of common topographies',sprintf('with common representations (%s)',regexprep(strrep(strrep(uni_label,'_',' '),'Ctx ',''),' [LR]',''))},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[1329,566, 400, 400]);
+set(gcf,'Position',[1329,566, 455, 463]);
 
-exportgraphics(gcf,sprintf('panels_%s/common_topographies_common_representations.png',noise), ...
-    'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/common_topographies_common_representations.png',noise), ...
+    '-transparent','-r300');
 
 
 % compute unbiased cosine similarity
@@ -777,7 +752,7 @@ axis square
 set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
     'XTickLabelRotation',90,'FontSize',fs-2);
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks,'FontSize',fs-2);
-title({'Clf Perf', '(Bal. Accuracy)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+title({'', '', 'Participant A'},'FontWeight','normal','fontsize',fs)
 
 
 nexttile(uni_clf_tile);
@@ -790,7 +765,7 @@ this_clf_vec = this_clf(tril_ind);
 
 plot(this_rdm_vec, this_clf_vec, 'o', 'color', cmap(uni,:));
 h = lsline;
-set(h,'color', dc_color, 'LineWidth',3);
+set(h,'Color', dc_color, 'LineWidth',3);
 ylim([0.4,1.1]);
 ylabel({'Clf Perf', '(Bal. Acc.)'},'fontsize',fs)
 switch noise
@@ -800,6 +775,7 @@ switch noise
         xlabel({'t-distance'},'fontsize',fs)
 end
 box off;
+axis square;
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
 set(gca,'fontsize',fs)
 
@@ -824,23 +800,67 @@ switch noise
         xlabel({'t-distance'},'fontsize',fs)
 end
 box off;
+axis square
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
 set(gca,'fontsize',fs)
 
 sgtitle(uni_clf_tile, {'Geometry measures decodability',regexprep(strrep(strrep(uni_label,'_',' '),'Ctx ',''),' [LR]','')},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[1733, 572, 400, 400]);
+set(gcf,'Position',[1733, 572, 417, 450]);
 
-exportgraphics(gcf,sprintf('panels_%s/common_topographies_common_representations_sup.png',noise), ...
-    'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/common_topographies_common_representations_sup.png',noise), ...
+    '-transparent','-r300');
 
+%% compute transmodal MDS
+% we perform mds in the full response space, but only align the 6 tasks of 
+% interest (cond) into alignent, with the rotation performed in the space 
+% of all tasks.
+%{
+trans_mds1 = cmdscale(real(sqrt(trans_rdm1)));
+trans_mds2 = cmdscale(real(sqrt(trans_rdm2)));
 
+[d,Z,transform] = procrustes(trans_mds1(cond,:), trans_mds2(cond,:));
+proj1_trans = trans_mds1(cond,1:2);
+proj2_trans = Z(:,1:2);
+%}
+
+% the above is overdetermined, and not fair. Let's stick to the mds of the
+% 6 tasks we show and just rotate in that space. It's a 2D projection of
+% the 6x6 distance matrix
+trans_mds1 = cmdscale(real(sqrt(trans_rdm1(cond,cond))));
+trans_mds2 = cmdscale(real(sqrt(trans_rdm2(cond,cond))));
+
+d1 = size(trans_mds1,2);
+d2 = size(trans_mds2,2);
+if d2 > d1
+    [d,Z,transform] = procrustes(trans_mds2, trans_mds1);
+    
+    proj1_trans = Z;
+    proj2_trans = trans_mds2;
+else
+    [d,Z,transform] = procrustes(trans_mds1, trans_mds2);
+    
+    proj1_trans = trans_mds1;
+    proj2_trans = Z;
+end
+
+%{
+% this is the mds and rotation in the full manifold space. It's not useful
+% for the cartoon, but it's more representative of the actual data
+trans_mds1 = cmdscale(real(sqrt(trans_rdm1)));
+trans_mds2 = cmdscale(real(sqrt(trans_rdm2)));
+
+[d,Z,transform] = procrustes(trans_mds1, trans_mds2);
+
+proj1_trans = trans_mds1(cond,1:2);
+proj2_trans = Z(cond,1:2);
+%}
 %% transmodal geometry
 
 figure(5);
 clf
-trans_rdm_tile = tiledlayout(2,2, 'TileSpacing', 'compact', 'padding', 'none');
+trans_rdm_tile = tiledlayout(2,2, 'TileSpacing', 'compact', 'padding', 'normal');
 
 v = [-43.2446, 10.7065];
 
@@ -878,127 +898,80 @@ end
 
 
 ax1 = nexttile(trans_rdm_tile);
-view(3)
-view(v);
 hold on;
-
-% construct faces
-shp = alphaShape(proj1_trans(:,1:3), convexity*norm(proj1_trans(:,1:3)));
-p = shp.plot();
-p.FaceAlpha = 0.3;
-p.EdgeColor = [0,0.5,0];
-lightRestoreSingle; 
-axis image; 
-material dull
-
 these_tasks = task_labels(ismember(task_labels, tasks));
+[xl1, yl1] = deal([0,0]);
 for i = 1:length(tasks)
     this_task = find(these_tasks == tasks(i));
+    these_names = task_names(task_labels == tasks(i));
     assert(length(this_task) == 2); % colormapping won't work otherwise
     for j = 1:2
         if j == 1
             this_color = 0.75*cmlines(i,:);
+            name = these_names{1};
         else
             this_color = min(1.25*cmlines(i,:),1);
+            name = these_names{2};
         end
-    
-        this_data = proj1_trans(this_task(j),1:3);
-    
-        x = this_data(:,1)*vector_scale;
-        y = this_data(:,2)*vector_scale;
-        z = this_data(:,3)*vector_scale;
-    
-        zero = zeros(size(this_data,1),1);
-        quiver3(zero, zero, zero, x, y, z, qvarargin{:}, 'color', this_color);
+
+        this_data = proj1_trans(this_task(j),1:2);
+        x = this_data(1);
+        y = this_data(2);
+
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        
+        xl1 = [min([xl1,x]), max([xl1, x])];
+        yl1 = [min([yl1,y]), max([yl1, y])];
     end
 end
 
-xl1 = xlim;
-yl1 = ylim;
-zl1 = zlim;
-
 grid on;
-
-camlight(135,-60);
-camlight(-135,-60);
-camlight(0,135);
-
+axis square
+xlabel(' ')
 
 ax2 = nexttile(trans_rdm_tile);
-view(3);
-view(v);
 hold on;
-
-shp = alphaShape(proj2_trans(:,1:3), convexity*norm(proj2_trans(:,1:3)));
-p = shp.plot();
-p.FaceAlpha = 0.3;
-p.EdgeColor = [0,0,0.5];
-p.FaceColor = p.FaceColor([3,2,1]);
-lightRestoreSingle; 
-axis image; 
-material dull
-
 these_tasks = task_labels(ismember(task_labels, tasks));
 for i = 1:length(tasks)
     this_task = find(these_tasks == tasks(i));
+    these_names = task_names(task_labels == tasks(i));
     assert(length(this_task) == 2); % colormapping won't work otherwise
     for j = 1:2
         if j == 1
             this_color = 0.75*cmlines(i,:);
+            name = these_names{1};
         else
             this_color = min(1.25*cmlines(i,:),1);
+            name = these_names{2};
         end
     
-        this_data = proj2_trans(this_task(j),1:3);
-    
-        x = this_data(:,1)*vector_scale;
-        y = this_data(:,2)*vector_scale;
-        z = this_data(:,3)*vector_scale;
-    
-        zero = zeros(size(this_data,1),1);
-        quiver3(zero, zero, zero, x, y, z, qvarargin{:}, 'color', this_color);
+        this_data = proj2_trans(this_task(j),1:2);
+        x = this_data(1);
+        y = this_data(2);
+
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        
+        xl1 = [min([xl1,x]), max([xl1, x])];
+        yl1 = [min([yl1,y]), max([yl1, y])];
     end
 end
 
-
-xl2 = xlim;
-yl2 = ylim;
-zl2 = zlim;
-
-xl = [min([xl1,xl2]), max([xl1, xl2])];
-yl = [min([yl1,yl2]), max([yl1, yl2])];
-zl = [min([zl1,zl2]), max([zl1, zl2])];
-
 grid on;
+axis square;
 
-xlabel(ax1, 'EV_1')
-ylabel(ax1, 'EV_2')
-zlabel(ax1, 'EV_3')
+title(ax2,{'Subspace Projection (MDS)'},'FontWeight','normal','fontsize',fs)
 
-xlabel(ax2, 'R*EV_1')
-ylabel(ax2, 'R*EV_2')
-zlabel(ax2, 'R*EV_3')
-
-title(ax1,{'Evoked Responses', 'Subspace Projection'},'FontWeight','normal','fontsize',fs)
-title(ax2,{'', 'Evoked Responses', 'Rotated Subspace Projection'},'FontWeight','normal','fontsize',fs)
-
-
-set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'ZTickLabels', [], 'Xlim', xl, 'YLim', yl, 'Zlim', zl);
-set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'ZTickLabels', [], 'Xlim', xl, 'YLim', yl, 'Zlim', zl);
-
-camlight(135,-60);
-camlight(-135,-60);
-camlight(0,135);
-
-set(ax2, 'view', get(ax1,'View'))
+set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
+set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
+xlabel(' ')
 
 sgtitle(trans_rdm_tile, {'Geometry of idiosyncratic topographies',sprintf('with common representations (%s)',regexprep(strrep(strrep(trans_label,'_',' '),'Ctx ',''),' [LR]',''))},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[1322, 69, 400, 400]);
+set(gcf,'Position',[1322, 69, 455, 463]);
 
-exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies.png',noise), ...
-    'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies.png',noise), ...
+    '-transparent','-r300');
 
 
 % compute unbiased cosine similarity
@@ -1007,7 +980,7 @@ y = trans_rdm2(rdm_ind, rdm_ind);
 tril_ind = tril(true(size(x)),-1);
 x = x(tril_ind);
 y = y(tril_ind);
-sprintf('Cosine of unimodal RDMs: %0.3f\n', x'*y/(norm(x)*norm(y)))
+sprintf('Cosine of transmodal RDMs: %0.3f\n', x'*y/(norm(x)*norm(y)))
 
 
 %% plot classifiers
@@ -1036,7 +1009,7 @@ axis square
 set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
     'XTickLabelRotation',90,'FontSize',fs-2);
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks,'FontSize',fs-2);
-title({'Clf Perf', '(Bal. Accuracy)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+title({'', '', 'Participant B'},'FontWeight','normal','fontsize',fs)
 
 
 nexttile(trans_clf_tile);
@@ -1059,6 +1032,7 @@ switch noise
         xlabel({'t-distance'},'fontsize',fs)
 end
 box off;
+axis square
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
 set(gca,'fontsize',fs)
 
@@ -1085,16 +1059,18 @@ end
 xl = xlim;
 xlim([xl(1),xl(2)*1.1])
 box off;
+axis square
 title(sprintf('r = %0.3f', corr(this_rdm_vec, this_clf_vec)),'fontsize',fs)
-set(gca,'fontsize',fs)
+xl = xlim;
+set(gca,'fontsize',fs,'XTickLabelRotation',0,'XTick',0:0.3:0.6)
 
 sgtitle(trans_clf_tile, {'Geometry measures decodability',regexprep(strrep(strrep(trans_label,'_',' '),'Ctx ',''),' [LR]','')},'FontWeight','bold','fontsize',fs+2)
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[1733, 75, 400, 400]);
+set(gcf,'Position',[1733, 75, 417, 450]);
 
-exportgraphics(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies_sup.png',noise), ...
-    'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_representations_sup.png',noise), ...
+    '-transparent','-r300');
 
 %% Estimate mean clf-dist correlation across the sample
 [r_u, r_t] = deal(nan(height(sid),2));
