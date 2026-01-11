@@ -424,7 +424,7 @@ xline(0, 'color', [0.5,0.5,0.5]);
 pos = get(gcf,'Position');
 set(gcf,'Position', [pos(1:2), 600,285]);
 
-sgtitle({'Specific factors are associated with','flexible implementation of shared representations'},'fontweight','bold','fontsize',fs+1)
+sgtitle({'Specific factors dissociate resting-state network','topographic and representational similarity'},'fontweight','bold','fontsize',fs+1)
 
 exportgraphics(gcf,sprintf('panels_%s/gradient_barplots_nostd.png',noise),'ContentType','image','Resolution',300);
 
@@ -504,7 +504,7 @@ set(gcf,'Position',[pos(1:2),642,345]);
 title(ax2, {'Representations converge','across cortical hierarchy'},'FontWeight','normal');
 title(ax1, {'Topographic trends','along cortical hierarchy'},'FontWeight','normal')
 
-sgtitle({'Transmodal representations are similar','but implemented more idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
+sgtitle({'Transmodal representations are most similar','but also implemented most idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
 
 
 % add margulies map
