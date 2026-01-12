@@ -16,8 +16,8 @@ f = figure;
 cm = colormap(f,'hot');
 close(f)
 
-dc_color = config.matlab_disp_scheme.color_main;
-dc_color_light = config.matlab_disp_scheme.color_light;
+dc_color = config.matlab_disp_scheme.color_main(3,:);
+dc_color_light = config.matlab_disp_scheme.color_light(3,:);
 
 noise = 'whitened';
 
@@ -147,9 +147,9 @@ B = nanmean(wuc);
 cmaprange = prctile(B,[2.5,97.5]);
 switch noise
     case 'whitened'
-        T = {'Geometry Test-Retest Reliability',['(Whitened \beta, cos\theta, ', sprintf('N=%d)',size(wuc,1))]};
+        T = {'Task Geometry Test-Retest Reliability',['(Whitened \beta, cos\theta, ', sprintf('N=%d)',size(wuc,1))]};
     case 'standardized'
-        T = {'Geometry Test-Retest Reliability',['(t-stat, cos\theta, ', sprintf('N=%d)',size(wuc,1))]};
+        T = {'Task Geometry Test-Retest Reliability',['(t-stat, cos\theta, ', sprintf('N=%d)',size(wuc,1))]};
 end
 plot_to_brain(B,1:length(B),cmaprange,T,fs+2);
 exportgraphics(gcf,sprintf('panels_%s/test_retest_wu.png',noise),'ContentType','image','Resolution',300);
