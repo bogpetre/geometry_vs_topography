@@ -19,7 +19,8 @@ close(f)
 colors = config.matlab_disp_scheme.color_main;
 colors_light = config.matlab_disp_scheme.color_light;
 
-noise = 'whitened';
+%noise = 'whitened';
+noise='standardized';
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -415,7 +416,7 @@ file_ind = find(contains({map_files.name}, map_tokens{map_ind}{1}{1}) & ...
 grayord_surf_L = gifti(fullfile(map_files(file_ind).folder, map_files(file_ind).name));
 plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 
-sgtitle({'Topographic similarity only indicates','geometric similarity in architecturally constrained areas'},'FontWeight','Bold','fontsize',fs+2)
+sgtitle({'Topographic similarity is only sensitive to','geometric similarity in architecturally constrained areas'},'FontWeight','Bold','fontsize',fs+2)
 
 
 export_fig(gcf,sprintf('panels_%s/second_level_associations.png',noise),'-transparent','-r300');
