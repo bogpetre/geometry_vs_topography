@@ -1,4 +1,4 @@
-%close all; clear all;
+close all; clear all;
 
 config = jsondecode(fileread('../../config.json'));
 
@@ -85,7 +85,7 @@ uni_mask = atlas_cii.cortex_left == uni;
 trans_mask = atlas_cii.cortex_right == trans;
 
 %% plot regions of interest and atlas
-%{
+
 figure(1);
 clf
 t0 = tiledlayout(1,2,'Padding','none','TileSpacing','compact');
@@ -124,7 +124,7 @@ pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 380,143]);
 
 exportgraphics(gcf,sprintf('panels_%s/atlas.png',noise),'ContentType','image','Resolution',300);
-%}
+
 %% Unimodal topographies
 
 topo1_uni = topo1.cortex_left;
@@ -662,7 +662,8 @@ for i = 1:length(tasks)
         x = this_data(1);
         y = this_data(2);
 
-        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs, ...
+            'HorizontalAlign','center')
         
         xl1 = [min([xl1,x]), max([xl1, x])];
         yl1 = [min([yl1,y]), max([yl1, y])];
@@ -693,7 +694,7 @@ for i = 1:length(tasks)
         x = this_data(1);
         y = this_data(2);
 
-        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs,'HorizontalAlign','center')
         
         xl1 = [min([xl1,x]), max([xl1, x])];
         yl1 = [min([yl1,y]), max([yl1, y])];
@@ -703,10 +704,14 @@ end
 grid on;
 axis square;
 
-title(ax1,{'Subspace Projection (MDS)'},'FontWeight','normal','fontsize',fs)
+title2 = title(ax1,{'Subspace Projection (MDS)'},'FontWeight','normal','fontsize',fs)
 
-set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
-set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
+set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], ...
+    'Xlim', xl1, 'YLim', yl1, ...
+    'XColor','none','YColor','none');
+set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], ...
+    'Xlim', xl1, 'YLim', yl1, ...
+    'XColor','none','YColor','none');
 xlabel(' ')
 
 sgtitle(uni_rdm_tile, {'Geometry of common topographies',sprintf('with common representations (%s)',regexprep(strrep(strrep(uni_label,'_',' '),'Ctx ',''),' [LR]',''))},'FontWeight','bold','fontsize',fs+2)
@@ -891,9 +896,9 @@ set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks);
 switch noise
     case 'whitened'
-        title({'Response Dissimilarity', '(Crossnobis Dist)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+        title({'r', '', 'Participant B'},'FontWeight','normal','fontsize',fs)
     case 'standardized'
-        title({'Response Dissimilarity', '(Unbiased t-Dist)', 'Participant B'},'FontWeight','normal','fontsize',fs)
+        title({'', '', 'Participant B'},'FontWeight','normal','fontsize',fs)
 end
 
 
@@ -918,7 +923,8 @@ for i = 1:length(tasks)
         x = this_data(1);
         y = this_data(2);
 
-        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs, ...
+            'HorizontalAlign','center')
         
         xl1 = [min([xl1,x]), max([xl1, x])];
         yl1 = [min([yl1,y]), max([yl1, y])];
@@ -949,7 +955,8 @@ for i = 1:length(tasks)
         x = this_data(1);
         y = this_data(2);
 
-        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs)
+        text(x,y,name,'Color',this_color,'FontWeight','bold','FontSize',fs, ...
+            'HorizontalAlign','center')
         
         xl1 = [min([xl1,x]), max([xl1, x])];
         yl1 = [min([yl1,y]), max([yl1, y])];
@@ -961,8 +968,12 @@ axis square;
 
 title(ax2,{'Subspace Projection (MDS)'},'FontWeight','normal','fontsize',fs)
 
-set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
-set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], 'Xlim', xl1, 'YLim', yl1);
+set(ax1,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], ...
+    'Xlim', xl1, 'YLim', yl1, ...
+    'XColor','none','YColor','none');
+set(ax2,'TickLength',[0,0], 'XTickLabels',[], 'YTickLabels', [], ...
+    'Xlim', xl1, 'YLim', yl1, ...
+    'XColor','none','YColor','none');
 xlabel(' ')
 
 sgtitle(trans_rdm_tile, {'Geometry of idiosyncratic topographies',sprintf('with common representations (%s)',regexprep(strrep(strrep(trans_label,'_',' '),'Ctx ',''),' [LR]',''))},'FontWeight','bold','fontsize',fs+2)
@@ -970,7 +981,7 @@ sgtitle(trans_rdm_tile, {'Geometry of idiosyncratic topographies',sprintf('with 
 pos = get(gcf,'Position');
 set(gcf,'Position',[1322, 69, 455, 463]);
 
-export_fig(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_topographies.png',noise), ...
+export_fig(gcf,sprintf('panels_%s/idiosyncratic_topographies_common_representations.png',noise), ...
     '-transparent','-r300');
 
 
@@ -1136,3 +1147,6 @@ for i = 1:height(sid)
         fprintf('Skipped %d\n',i)
     end
 end
+
+nanmean([r_u(:), r_t(:)])
+nanstd([r_u(:), r_t(:)])
