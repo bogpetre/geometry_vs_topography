@@ -415,10 +415,10 @@ file_ind = find(contains({map_files.name}, map_tokens{map_ind}{1}{1}) & ...
 grayord_surf_L = gifti(fullfile(map_files(file_ind).folder, map_files(file_ind).name));
 plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 
-sgtitle({'Topographic similarity only indicates','geometric similarity in unimodal areas'},'FontWeight','Bold','fontsize',fs+2)
+sgtitle({'Topographic similarity only indicates','geometric similarity in architecturally constrained areas'},'FontWeight','Bold','fontsize',fs+2)
 
 
-exportgraphics(gcf,sprintf('panels_%s/second_level_associations.png',noise),'ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/second_level_associations.png',noise),'-transparent','-r300');
 
 %% post hoc eval of cerebellum
 ind = find(contains({atlas_labels.name},{'Cblm_V_','Cblm_VI_'}));

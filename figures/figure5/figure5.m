@@ -5,6 +5,7 @@ config = jsondecode(fileread('../../config.json'));
 addpath(config.matlab_libraries.spm12);
 addpath(genpath(config.matlab_libraries.cifti_matlab));
 addpath(genpath(fullfile(config.matlab_libraries.canlabCore, 'CanlabCore')));
+addpath(genpath(fullfile(config.matlab_libraries.npm)));
 
 addpath('../../matlab_libraries');
 addpath('../../resources/neuromaps');
@@ -18,7 +19,8 @@ close(f)
 colors = config.matlab_disp_scheme.color_main;
 colors_light = config.matlab_disp_scheme.color_light;
 
-noise='whitened';
+%noise='whitened';
+noise='standardized';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
@@ -423,7 +425,7 @@ xline(0, 'color', [0.5,0.5,0.5]);
 pos = get(gcf,'Position');
 set(gcf,'Position', [pos(1:2), 600,285]);
 
-sgtitle({'Specific factors are associated with','flexible implementation of shared representations'},'fontweight','bold','fontsize',fs+1)
+sgtitle({'Specific factors dissociate resting-state network','topographic and representational similarity'},'fontweight','bold','fontsize',fs+1)
 
 exportgraphics(gcf,sprintf('panels_%s/gradient_barplots_nostd.png',noise),'ContentType','image','Resolution',300);
 
@@ -501,9 +503,9 @@ pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),642,345]);
 
 title(ax2, {'Representations converge','across cortical hierarchy'},'FontWeight','normal');
-title(ax1, {'Topographies diverge','along cortical hierarchy'},'FontWeight','normal')
+title(ax1, {'Topographic trends','along cortical hierarchy'},'FontWeight','normal')
 
-sgtitle({'Transmodal representations are similar','but implemented more idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
+sgtitle({'Transmodal representations are most similar','but also implemented most idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
 
 
 % add margulies map
