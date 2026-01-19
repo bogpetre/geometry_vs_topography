@@ -757,7 +757,7 @@ axis square
 set(gca,'XTick',1:length(rdm_ind), 'XTickLabels', task_names(rdm_ind),...
     'XTickLabelRotation',90,'FontSize',fs-2);
 set(gca,'YTick',1:length(rdm_ind), 'YTickLabels', ax_ticks,'FontSize',fs-2);
-title({'', '', 'Participant A'},'FontWeight','normal','fontsize',fs)
+title({'', '', 'Participant B'},'FontWeight','normal','fontsize',fs)
 
 
 nexttile(uni_clf_tile);

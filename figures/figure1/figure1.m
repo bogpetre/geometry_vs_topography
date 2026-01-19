@@ -700,7 +700,7 @@ dev1_plot = surface(dev1_plot, 'axes', ax7, 'direction', 'hcp inflated right', '
     
 plot_to_surf(double(devexp1.cdata(:)), dev1_plot.surface{1}.object_handle,'colormap','turbo');
 
-title(ax7, {'Developental','Expansion 1'},'FontWeight','normal','FontSize',fs)
+title(ax7, {'Developmental','Expansion 1'},'FontWeight','normal','FontSize',fs)
 
 ax8 = nexttile(t7);
 ax8.Layout.Tile=12;
