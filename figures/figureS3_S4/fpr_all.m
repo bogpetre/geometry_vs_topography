@@ -28,7 +28,7 @@ unrestricted = readtable(config.hcp_participant_data.unrestricted);
 noise = 'whitened';
 
 bootstrap_sample_size = 207;
-n_bs = 100;
+n_bs = 1000;
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -114,6 +114,7 @@ mapvals = mapvals(keep);
 
 [Bp_null_grd, Bp_int_null_grd, spin_var_null_grd, spin_var_int_null_grd, ...
     jk_var_null_grd, jk_var_int_null_grd] = deal(zeros(length(mapvals), n_bs));
+load('stats.mat')
 k = 1;
 while k <= n_bs
     try
@@ -149,7 +150,7 @@ while k <= n_bs
             
             %eval wuc_md
             obs_val = atanh(geom_bs(:, these_good_rois))';
-            [~, ~, Bp_null(i,k), ~, jk_var_null_grd(i,k), ...
+            [~, ~, Bp_null_grd(i,k), ~, jk_var_null_grd(i,k), ...
                 spin_var_null_grd(i,k)] = neuromaps_corr_fx(obs_val, ...
                 map_val, perm_map, {tsnr_bs(:,these_good_rois)', wi_cosim_bs(:,these_good_rois)'});
         
@@ -168,7 +169,7 @@ while k <= n_bs
         warning('Iteration %d failed, repeating', k)
     end
 end
-
+%{
 
 %% FPR analysis using sampling CI alone (gradient test)
 
@@ -441,7 +442,7 @@ while k <= n_bs
         warning('Iteration %d failed, repeating', k)
     end
 end
-
+%}
 fprintf('Runtime: %0.3f min\n', toc(t0)/60);
 save('stats.mat',...
     'Bp_null_grd', 'Bp_int_null_grd', ...
