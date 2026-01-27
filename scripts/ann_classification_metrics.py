@@ -7,7 +7,8 @@
 # <repo_root>/derivatives/models/
 #
 # Note, this script must be run from a conda environment in which the TDANN repo has been installed.
-# This differs from the conda environment used for the rest of this project.
+# This differs from the conda environment used for the rest of this project. You will also need the
+# model checkpoints from OSF.
 
 
 from __future__ import annotations
@@ -39,8 +40,6 @@ config_path = repo_root / 'config.json'
 
 with open(config_path) as f:
     config = json.load(f)
-
-analysisRoot = repo_root / '..'
 
 ST_BASE_FS = repo_root / 'resources' / 'ann_data'
 os.environ['ST_BASE_FS'] = str(ST_BASE_FS)
