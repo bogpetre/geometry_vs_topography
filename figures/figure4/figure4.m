@@ -19,8 +19,8 @@ close(f)
 colors = config.matlab_disp_scheme.color_main;
 colors_light = config.matlab_disp_scheme.color_light;
 
-%noise = 'whitened';
-noise='standardized';
+noise = 'whitened';
+%noise='standardized';
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -117,7 +117,7 @@ assocB(good_rois) = B0(1:p);
 cmaprange = prctile(assocB(~isnan(assocB)),[2.5,90]);
 cmaprange(1) = eps;
 
-T = {'Dependence of topographic','on geometric similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
+T = {'Dependence of topographic','on representational similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
 plot_to_brain(assocB, 1:length(assocB), cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/association_map.png',noise),'ContentType','image','Resolution',300);
 for i = 1:length(good_rois)
@@ -246,8 +246,8 @@ l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 title([strrep(uni_label, '_',' '), ' (unimodal)'], 'fontweight','normal','fontsize',fs)
-xlabel('geo (WUC)')
-ylabel({'topo','(cos\theta)'})
+xlabel({'RepSim (WUC)'})
+ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs)
 box off;
 axis image
@@ -277,8 +277,8 @@ l.LineWidth = 2;
 xlim(xl);
 
 title({[strrep(trans_label, '_',' '), ' (transmodal)']}, 'fontweight','normal','fontsize',fs)
-xlabel({'geo (WUC)'})
-ylabel({'topo','(cos\theta)'})
+xlabel({'RepSim','(WUC)'})
+ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs,'YTick', [0.2,0.4])
 box off;
 axis image
@@ -291,10 +291,10 @@ set(gcf,'Position',[pos(1:2),326,407]);
 t2.Position(2) = 0.18;
 t2.Position(4) = 0.635;
 
-leg1.Position(1) = -0.09;
-leg1.Position(2) = -0.02;
+leg1.Position(1) = -0.05;
+leg1.Position(2) = 0.025;
 
-sgtitle({'Topography is an inconsistent','measure of geometry'},'FontWeight','bold','fontsize',fs+2)
+sgtitle({'Topography is an inconsistent','measure of representations'},'FontWeight','bold','fontsize',fs+2)
 
 exportgraphics(gcf,sprintf('panels_%s/scatterplots.png',noise),'ContentType','image','Resolution',300);
 
@@ -335,8 +335,8 @@ for i = 1:length(good_grad_roi)
     end
 end
 set(gca, 'YGrid', 'on', 'box', 'off', 'fontsize', fs);
-ylabel({'\beta','topo ~ geo'});
-title({'Topographic sensitivity ', 'to geometric similarity'},'FontWeight','normal','fontsize',fs-1);
+ylabel({'\beta','TopoSim ~ RepSim'});
+title({'Topographic sensitivity ', 'to representational similarity'},'FontWeight','normal','fontsize',fs-1);
 set(gca,'XTick',[-5,6],'XTickLabels',{'Uni','Trans'},'FontSize',fs)
 xl = xlim;
 
@@ -365,7 +365,7 @@ set(gca,'YTick',1:length(mapname), 'YTickLabels', abr_mapname,'FontSize',fs-1, '
 ylim([0.5,length(mapname)+0.5])
 
 title({'Cortical gradients associated with','coupled geometry and topography'},'fontweight','normal', 'fontsize', fs+1);
-xlabel({'\beta_1','topo ~ \beta_0geo + \beta_1geo*map'}, 'fontsize', fs)
+xlabel({'\beta_1','topo ~ \beta_0rep + \beta_1rep*map'}, 'fontsize', fs)
 box off
 xl = xlim;
 xlim([buffer*xl(1), xl(2)*buffer])
@@ -394,13 +394,14 @@ t2.Position(4) = 0.53;
 t2.Position(1) = 0.15;
 
 leg2.Position(1) = 0.15;
-leg2.Position(2) = 0.036;
+leg2.Position(2) = 0.03;
 
 
 
 % add ROI legend
 a1 = axes();
-a1.Position = [0.28,0.61,0.15,0.15];
+%a1.Position = [0.285,0.61,0.15,0.15];
+a1.Position = [0.2,0.07,0.15,0.15];
 a1.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
@@ -416,7 +417,24 @@ file_ind = find(contains({map_files.name}, map_tokens{map_ind}{1}{1}) & ...
 grayord_surf_L = gifti(fullfile(map_files(file_ind).folder, map_files(file_ind).name));
 plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 
-sgtitle({'Topographic similarity is only sensitive to','geometric similarity in architecturally constrained areas'},'FontWeight','Bold','fontsize',fs+2)
+
+atlas_cii = cifti_read(config.canlab2024.path);
+atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
+
+a2 = axes();
+%a2.Position = [0.165,0.61,0.15,0.15];
+a2.Position = [0.285,0.61,0.15,0.15];
+a2.Visible = 'off';
+
+overlay = canlab_get_underlay_image;
+o3 = fmridisplay('overlay', which(overlay));
+o3 = surface(o3, 'axes', a2, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
+
+atlas_cii = get_cifti_data(config.canlab2024.path);
+cdata = atlas_cii.cortex_left;
+plot_to_surf(cdata',o3.surface{1}.object_handle, 'indexmap', 'colormap', [cmap(1:358,:); [0,0,0]]);
+
+sgtitle({'Topographic similarity is only sensitive to representational','similarity in architecturally constrained areas'},'FontWeight','Bold','fontsize',fs+2)
 
 
 export_fig(gcf,sprintf('panels_%s/second_level_associations.png',noise),'-transparent','-r300');
