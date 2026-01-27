@@ -46,7 +46,7 @@ t1 = text(0.6,100,'Conservative','FontSize',16','FontWeight','normal');
 t2 = text(0.1,950,'Liberal','FontSize',16','FontWeight','normal');
 axis square
 set(gca,'FontSize',fs)
-title({'Spatially Permuted Maps','(trad) Spin Test'},'FontSize',fs+4,'FontWeight','normal');
+title({'Spatially Permuted Maps','Bootstrapped Sample','(trad) Spin Test'},'FontSize',fs+4,'FontWeight','normal');
 
 nexttile()
 cla
@@ -60,7 +60,7 @@ t1 = text(0.6,100,'Conservative','FontSize',16','FontWeight','normal');
 t2 = text(0.1,950,'Liberal','FontSize',16','FontWeight','normal');
 axis square
 set(gca,'FontSize',fs)
-title({'Spatially Permuted Maps','Jackknife-adjusted spin test'},'FontSize',fs+4,'FontWeight','normal')
+title({'Spatially Permuted Maps','Bootstrapped Sample','Jackknife-adjusted spin test'},'FontSize',fs+4,'FontWeight','normal')
 
 nexttile()
 cla
@@ -75,12 +75,12 @@ t1 = text(0.6,100,'Conservative','FontSize',16','FontWeight','normal');
 t2 = text(0.1,950,'Liberal','FontSize',16','FontWeight','normal');
 axis square
 set(gca,'FontSize',fs)
-title({'Spatially Permuted Maps','shuffled topo ROIs','Jackknife-adjusted spin test'},'FontSize',fs+4,'FontWeight','normal')
+title({'Spatially Permuted Maps','Bootstrapped Sample','Shuffled Topo ROIs','Jackknife-adjusted spin test'},'FontSize',fs+4,'FontWeight','normal')
 
 sgtitle('Sensitivity of topographic to representational similarity within-region across-participants: neuromap interactions','FontSize',fs+4,'FontWeight','bold')
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2),1400,480]);
+set(gcf,'Position',[pos(1:2),1400,507]);
 
 exportgraphics(gcf,'fpr_coupling.png','ContentType','image','Resolution',300);
 
@@ -149,7 +149,7 @@ t1 = text(0.6,100,'Conservative','FontSize',16','FontWeight','normal');
 t2 = text(0.1,800,'Liberal','FontSize',16','FontWeight','normal');
 axis square
 set(gca,'FontSize',fs)
-title({'Spatially Permuted Maps','Bootstrapped Sample','Confidence Interval Test'},'FontSize',fs+4,'FontWeight','normal')
+title({'Spatially Permuted Maps','Bootstrapped Sample','Bootstrapped Confidence Interval Test'},'FontSize',fs+4,'FontWeight','normal')
 
 nexttile()
 cla
@@ -205,7 +205,7 @@ t1 = text(0.6,100,'Conservative','FontSize',16','FontWeight','normal');
 t2 = text(0.1,800,'Liberal','FontSize',16','FontWeight','normal');
 axis square
 set(gca,'FontSize',fs)
-title({'Spatially Permuted Maps','Bootstrapped Sample','Confidence Interval Test'},'FontSize',fs+4,'FontWeight','normal')
+title({'Spatially Permuted Maps','Bootstrapped Sample','Bootstrapped Confidence Interval Test'},'FontSize',fs+4,'FontWeight','normal')
 
 nexttile()
 cla

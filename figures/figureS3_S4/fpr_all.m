@@ -114,7 +114,7 @@ mapvals = mapvals(keep);
 
 [Bp_null_grd, Bp_int_null_grd, spin_var_null_grd, spin_var_int_null_grd, ...
     jk_var_null_grd, jk_var_int_null_grd] = deal(zeros(length(mapvals), n_bs));
-load('stats.mat')
+
 k = 1;
 while k <= n_bs
     try
@@ -169,7 +169,6 @@ while k <= n_bs
         warning('Iteration %d failed, repeating', k)
     end
 end
-%{
 
 %% FPR analysis using sampling CI alone (gradient test)
 
