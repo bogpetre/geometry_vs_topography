@@ -34,4 +34,6 @@
     "HCP_Resources": "/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/HCP_Resources/"
   },
   "exemplary_dyad": 1
+  "TDANN_repo_path": "/home/bogdan/MyDocuments/canlab/ann_scratch/libraries/TDANN",
+  "imagenet_path": "/home/bogdan/MyDocuments/canlab/hcp_hyperalignment/papers/git_paper/resources/imagenet"
 }
