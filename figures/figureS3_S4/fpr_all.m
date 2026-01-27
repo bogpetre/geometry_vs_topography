@@ -29,6 +29,8 @@ noise = 'whitened';
 
 bootstrap_sample_size = 207;
 n_bs = 1000;
+parpool(64)
+
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -118,6 +120,7 @@ mapvals = mapvals(keep);
 k = 1;
 while k <= n_bs
     try
+        fprintf('Evaluating gradient effect jackknife-spin test null %d\n',k)
         [topo_bs, geom_bs, tsnr_bs, wi_cosim_bs] = get_bs_sample(bootstrap_sample_size, roi_topo, roi_geom, tsnr, wi_cosim);
         
         mapname = {};
@@ -176,6 +179,7 @@ end
 k = 1;
 while k <= n_bs
     try
+        fprintf('Evaluating gradient effect jackknife CI null %d\n',k)
         [topo_bs, geom_bs, tsnr_bs, wi_cosim_bs] = get_bs_sample(bootstrap_sample_size, roi_topo, roi_geom, tsnr, wi_cosim);
         
         mapname = {};
@@ -234,6 +238,7 @@ end
 k = 1;
 while k <= n_bs
     try
+        fprintf('Evaluating gradient effect spin-test null %d\n',k)
         [topo_bs, geom_bs, tsnr_bs, wi_cosim_bs] = get_bs_sample(bootstrap_sample_size, roi_topo, roi_geom, tsnr, wi_cosim);
         
         mapname = {};
@@ -291,8 +296,11 @@ end
 
 [Bp_null_cpl, spin_var_null_cpl, jk_var_null_cpl] = deal(zeros(length(mapvals), n_bs));
 k = 1;
+
+%load('partial_run.mat')
 while k <= n_bs
     try
+        fprintf('Evaluating coupling effect jackknife spin test moderator null %d\n',k)
         [topo_bs, geom_bs, tsnr_bs, wi_cosim_bs] = get_bs_sample(bootstrap_sample_size, roi_topo, roi_geom, tsnr, wi_cosim);
         
         mapname = {};
@@ -345,6 +353,7 @@ end
 k = 1;
 while k <= n_bs
     try
+        fprintf('Evaluating coupling effect jackknife spin test main-effect null %d\n',k)
         [topo_bs, geom_bs, tsnr_bs, wi_cosim_bs] = get_bs_sample(bootstrap_sample_size, roi_topo, roi_geom, tsnr, wi_cosim);
         
         reorder_ind = randperm(size(topo_bs,1),size(topo_bs,1));
@@ -397,6 +406,7 @@ Bp_null_cpl_basic = zeros(length(mapvals), n_bs);
 k = 1;
 while k <= n_bs
     try
+        fprintf('Evaluating coupling effect spin test moderator null %d\n',k)
         [topo_bs, geom_bs, tsnr_bs, wi_cosim_bs] = get_bs_sample(bootstrap_sample_size, roi_topo, roi_geom, tsnr, wi_cosim);
         
         mapname = {};
@@ -443,7 +453,7 @@ while k <= n_bs
 end
 %}
 fprintf('Runtime: %0.3f min\n', toc(t0)/60);
-save('stats.mat',...
+save('stats2b.mat',...
     'Bp_null_grd', 'Bp_int_null_grd', ...
     'spin_var_null_grd', 'spin_var_int_null_grd', 'jk_var_null_grd', 'jk_var_int_null_grd', ...
     'Bp_null_grd_jk', 'Bp_int_null_grd_jk', 'Bp_null_spin', 'Bp_int_null_spin', ...
