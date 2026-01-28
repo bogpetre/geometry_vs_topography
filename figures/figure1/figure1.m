@@ -58,9 +58,8 @@ layer_names = {'layer1.0','layer1.1','layer2.0','layer2.1',...
 
 figure(1);
 
-tdann_ind = find(strcmp(tbl.df_key,'Spatial') & strcmp(tbl.metric,'cos'));
-resnet_ind = find(strcmp(tbl.df_key,'Nonspatial') & strcmp(tbl.metric,'cos'));
-%cross_ind = find(strcmp(tbl.df_key,'cross') & strcmp(tbl.metric,'cos'));
+tdann_ind = find(strcmp(tbl.type,'TDANN') & strcmp(tbl.metric,'cosim'));
+resnet_ind = find(strcmp(tbl.type,'ResNet') & strcmp(tbl.metric,'cosim'));
 
 subplot(1,2,1);
 cla
@@ -82,9 +81,8 @@ title({'Topographic','Similarity'},'fontweight','normal','fontsize',fs)
 box off
 legend off
 
-tdann_ind = find(strcmp(tbl.df_key,'Spatial') & strcmp(tbl.metric,'cka'));
-resnet_ind = find(strcmp(tbl.df_key,'Nonspatial') & strcmp(tbl.metric,'cka'));
-%cross_ind = find(strcmp(tbl.df_key,'cross') & strcmp(tbl.metric,'cka'));
+tdann_ind = find(strcmp(tbl.type,'TDANN') & strcmp(tbl.metric,'CKA'));
+resnet_ind = find(strcmp(tbl.type,'ResNet') & strcmp(tbl.metric,'CKA'));
 
 subplot(1,2,2);
 cla
@@ -120,23 +118,22 @@ sgtitle({'Representations (geometries) are similar despite','idiosyncratic topog
 export_fig(gcf,'panels/similarity_metrics.png','-png','-r300','-transparent')
 
 %% do inferential stats using mixed models
-[seed1, seed2] = deal({});
-[arch, selfsimilar, val, layer, metric] = deal([]);
+[arch, seed1, seed2, selfsimilar, val, layer, metric] = deal([]);
 col_names = tbl.Properties.VariableNames;
 layer_cols = find(contains(col_names,'layer'));
 for i = 1:height(tbl)
     for j = 1:length(layer_cols)
-        if strcmp(tbl.df_key(i),'Spatial')
+        if strcmp(tbl.type(i),'TDANN')
             arch(end+1) = 1/2;
             selfsimilar(end+1) = 1/3;
-        elseif strcmp(tbl.df_key(i),'Nonspatial')
+        elseif strcmp(tbl.type(i),'ResNet')
             arch(end+1) = -1/2;
             selfsimilar(end+1) = 1/3;
         else
             arch(end+1) = 0;
             selfsimilar(end+1) = -2/3;
         end
-        if strcmp(tbl.metric(i),'cos')
+        if strcmp(tbl.metric(i),'cosim')
             metric(end+1) = -0.5;
         else
             metric(end+1) = 0.5;
@@ -163,7 +160,7 @@ networks = unique(tbl_short.seed1);
 n_networks = length(networks);
 zval = nan(height(tbl_short),1);
 for i = 1:n_networks
-    this_net_ind = strcmp(tbl_short.seed1,networks(i));
+    this_net_ind = tbl_short.seed1 == networks(i);
     this_net_topo_ind = this_net_ind & tbl_short.metric == 0.5;
     this_net_geom_ind = this_net_ind & tbl_short.metric == -0.5;
     zval(this_net_topo_ind) = zscore(tbl_short.val(this_net_topo_ind)); 
@@ -208,7 +205,7 @@ m = fitlme(tbl2,'val ~ spatial*layer + selfsimilar*layer + (spatial*layer + self
     geom_layer_B, geom_spatial_B, ...
     layer_metric_int_B, spatial_metric_int_B] = deal([]);
 for i = 1:n_networks
-    this_subj = tbl_long(strcmp(networks{i}, tbl_long.seed1),:);
+    this_subj = tbl_long(networks(i) == tbl_long.seed1,:);
 
     topo = this_subj(this_subj.metric == -0.5,:);
     topo_within_arch = topo(topo.spatial ~= 0,:);
@@ -283,7 +280,7 @@ fprintf('loss (TDANN > ResNet): B = %0.3f, t(%d) = %0.3f, p = %0.2e\n', mean(geo
 fprintf('layer (1.0 > 4.1): B = %0.3f, t(%d) = %0.3f, p = %0.2e\n', mean(geom_layer_B), STATS.df, STATS.tstat, geom_layer_p);
 
 fprintf('\nGeometric vs. Topographic Similarity (standardized siimlarities)\n')
-% compare the below with short_layer_int_STATS
+% compare the below with short_layer_int_STATSt
 [~,p,~,STATS] = ttest(layer_metric_int_B);
 fprintf('metric x layer (geom > topo): B = %0.3f, t(%d) = %0.3f, p = %0.2e\n', mean(layer_metric_int_B), STATS.df, STATS.tstat, p);
 % compare the below with short_spatial_int_STATS
@@ -327,7 +324,7 @@ h2 = barplot_columns({geom_spatial_B(:), geom_layer_B(:)}, 'nofig', ...
     'colors',dc_color_light, ...
     'MarkerSize',5);
 set(h2.star_handles,'fontsize',fs-3,'horizontalalign','center')
-set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'})
+set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'},'XTickLabelRotation',45)
 xlabel([])
 ylabel({'\Deltasimilarity (\beta)'})
 yl = ylim;
@@ -350,7 +347,7 @@ h3 = barplot_columns({spatial_metric_int_B(:), layer_metric_int_B(:)}, 'nofig',.
     'colors',dc_color_light, ...
     'MarkerSize',5);
 set(h3.star_handles,'fontsize',fs-3,'horizontalalign','center')
-set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'})
+set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'},'XTickLabelRotation',45)
 xlabel([])
 ylabel({'\Deltasimilarity (\beta_{std})'})
 yl = ylim;
@@ -693,7 +690,7 @@ title(ax6, {'Funntional Conn.','Homology'},'FontWeight','normal','FontSize',fs)
 
 
 ax7 = nexttile(t7);
-ax7.Layout.Tile=11;
+ax7.Layout.Tile=7;
 dev1_plot = fmridisplay();
 
 dev1_plot = surface(dev1_plot, 'axes', ax7, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
@@ -703,7 +700,7 @@ plot_to_surf(double(devexp1.cdata(:)), dev1_plot.surface{1}.object_handle,'color
 title(ax7, {'Developmental','Expansion 1'},'FontWeight','normal','FontSize',fs)
 
 ax8 = nexttile(t7);
-ax8.Layout.Tile=12;
+ax8.Layout.Tile=8;
 dev2_plot = fmridisplay();
 
 dev2_plot = surface(dev2_plot, 'axes', ax8, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
@@ -713,7 +710,7 @@ plot_to_surf(double(devexp2.cdata(:)), dev2_plot.surface{1}.object_handle,'color
 title(ax8, {'Developmental','Expansion 2'},'FontWeight','normal','FontSize',fs)
 
 ax9 = nexttile(t7);
-ax9.Layout.Tile=7;
+ax9.Layout.Tile=9;
 gene_plot = fmridisplay();
 
 gene_plot = surface(gene_plot, 'axes', ax9, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
@@ -724,7 +721,7 @@ title(ax9, {'GenePC1','(transcriptomic)'},'FontWeight','normal','FontSize',fs)
 
 
 ax10 = nexttile(t7);
-ax10.Layout.Tile=8;
+ax10.Layout.Tile=10;
 cog_plot = fmridisplay();
 
 cog_plot = surface(cog_plot, 'axes', ax10, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
@@ -735,7 +732,7 @@ title(ax10, {'CogPC1','(neurosynth)'},'FontWeight','normal','FontSize',fs)
 
 
 ax11 = nexttile(t7);
-ax11.Layout.Tile=9;
+ax11.Layout.Tile=11;
 cbf1_plot = fmridisplay();
 
 cbf1_plot = surface(cbf1_plot, 'axes', ax11, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
@@ -746,7 +743,7 @@ title(ax11, {'Cerebral Blood','Flow 1'},'FontWeight','normal','FontSize',fs)
 
 
 ax12 = nexttile(t7);
-ax12.Layout.Tile=10;
+ax12.Layout.Tile=12;
 cbf2_plot = fmridisplay();
 
 cbf2_plot = surface(cbf2_plot, 'axes', ax12, 'direction', 'hcp inflated right', 'orientation', 'medial', 'disableVis3d');
