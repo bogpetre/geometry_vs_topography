@@ -36,7 +36,7 @@ d=25 # number of ICA components to use. Options: 15, 25, 50, 100, 150, 200, 300.
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/restingstate2/hcp${d}/
+OUT_DIR=../derivatives/restingstate/hcp${d}/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
@@ -58,7 +58,7 @@ if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
 	SCRATCH_DIR=$TMPDIR/$(uuidgen)
 else
         # slower, but much less of a problem running out of space
-        SCRATCH_DIR=/dartfs-hpc/scratch/f0042vm/$(uuidgen)
+        SCRATCH_DIR=/dartfs-hpc/scratch/$(whoami)/$(uuidgen)
 fi
 cleanup() {
     rm -rf $SCRATCH_DIR

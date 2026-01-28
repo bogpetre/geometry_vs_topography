@@ -9,7 +9,7 @@
 #SBATCH --hint=nomultithread
 #SBATCH --output single_blk_grayord_spm2.logs/firstlvl_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1
+#SBATCH --array 3-416
 
 hostname
 
@@ -48,19 +48,21 @@ if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
 	SCRATCH_DIR=$TMPDIR/$(uuidgen)
 else
         # slower, but much less of a problem running out of space
-        SCRATCH_DIR=/dartfs-hpc/scratch/f0042vm/$(uuidgen)
+        SCRATCH_DIR=/dartfs-hpc/scratch/$(whoami)/$(uuidgen)
 fi
 cleanup() {
     rm -rf $SCRATCH_DIR
 }
-#trap cleanup EXIT # comment to retain intermediate analysis files
-SCRATCH_DIR=$OUT_DIR/workdir/$SID # uncomment to retain intermediate analysis files
+trap cleanup EXIT # comment to retain intermediate analysis files
+#SCRATCH_DIR=$OUT_DIR/workdir/$SID # uncomment to retain intermediate analysis files
 mkdir -p $SCRATCH_DIR
 
 
 TASKS=('EMOTION' 'GAMBLING' 'SOCIAL' 'LANGUAGE' 'RELATIONAL' 'MOTOR' 'WM')
 directions=('LR' 'RL')
 
-python -u ../scripts/hcp_glm_msmall_grayord_spm_single_blocks.py --subject_ids ${SID1} --out $OUT_DIR \
-    --scratch $SCRATCH_DIR --atlas $ATLAS --tasks ${TASKS[@]} --n_cpus 1 \
-    --config ../config.json
+if [ ! -e results/${SID}/all_tasks/whitened_contrasts/binary_clf_performance.csv ]; then
+    python -u ../scripts/hcp_glm_msmall_grayord_spm_single_blocks.py --subject_ids ${SID1} --out $OUT_DIR \
+        --scratch $SCRATCH_DIR --atlas $ATLAS --tasks ${TASKS[@]} --n_cpus 1 \
+        --config ../config.json
+fi
