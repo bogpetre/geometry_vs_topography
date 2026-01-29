@@ -19,8 +19,8 @@ close(f)
 colors = config.matlab_disp_scheme.color_main;
 colors_light = config.matlab_disp_scheme.color_light;
 
-%noise='whitened';
-noise='standardized';
+noise='whitened';
+%noise='standardized';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
@@ -53,8 +53,8 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise, sid.Var1(s), sid.Var2(s)),...
-            'FileType','text','Delimiter',','));
+        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise, sid.Var1(s), sid.Var2(s)),...
+            'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
     end
