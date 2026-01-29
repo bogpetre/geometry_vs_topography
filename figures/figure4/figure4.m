@@ -46,8 +46,8 @@ for s = 1:height(sid)
         tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
+        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
         comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
         wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
@@ -58,8 +58,8 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
-            'FileType','text','Delimiter',','));
+        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
+            'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
     end
