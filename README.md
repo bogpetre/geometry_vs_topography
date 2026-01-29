@@ -3,7 +3,8 @@ This repo contains code for "Common representations underlie idiosyncratic neura
 
 ## Setup
 
-From the same level of this directory as this README file, invoke the following 
+From all analyses except training neural nets, go to the same level of the
+directory tree as where this README file is, and invoke the following 
 to compile rdm_similarty and install python packages
 
 ```
@@ -31,6 +32,15 @@ PATH=$PATH:<connectome_workbench_binary_directory>
 
 Finally, copy config_template.json to config.json and update the paths within to
 point to the location of your copy of the necessary dependencies (below).
+
+For training neural networks you will need the TDANN library from the neuroAI lab, which
+uses a different python version and is best run from a different conda environment. For
+details refer to https://github.com/neuroailab/TDANN. you will additionally need
+nltk for semantic superseting ImageNet categories. Note that if you need to run this on
+more modern hardware (e.g. H200 GPUs), you may need to update pytorch, torchvision and
+patch some minor things in VISSL, the self-supervised learning framework that TDANN
+uses. Thankfully, none of this should be necessary if you're just using our pretrained
+model weights from OSF.
 
 ### Dependencies
 
@@ -102,8 +112,9 @@ CANLab2024
 ## Usage
 
 Scripts to reproduce first level analysis are available in scripts/. 
-* hcp_glm_msmall_grayord_spm.py: fits firstlevel models and estimates geometires using task data
+* hcp_glm_msmall_grayord_spm.py: fits first level models and estimates geometires using task data
 * hcp_dual_regression_msmall_grayord_spm.py: estimates individualized ICA networks and geometries.
+* hcp_glm_msmall_grayord_spm_single_blocks.py: fits first level models and estimates nearest centroid classification classification performance
 
 These need to be run iteratively over participants. Macros to do this on a SLURM HPC system are
 in macros/. It should be simple to adapt these to other job scheduling systems like torque or SGE.
