@@ -15,6 +15,8 @@
 # This script will check if ImageNet data has been copied to scratch yet and if not
 # will copy it there based on settings specified in config.json. To avoid file
 # collisions, don't run these concurrently on the same compute node.
+#
+# This should take ~7 minutes to run on an A100 GPU with 32 CPUs/GPU
 
 import os
 import shutil
@@ -361,7 +363,7 @@ if TDANN:
 else:
     network_type = 'ResNet'
 
-header = ['TDANN','metric','seed1','seed2'] + list(target_layers)
+header = ['type','metric','seed1','seed2'] + list(target_layers)
 cka_row = [network_type, 'CKA', NET1, NET2] + [CKA_est[layer_name] for layer_name in target_layers]
 cosim_row = [network_type, 'cosim', NET1, NET2] + [cosim[layer_name] for layer_name in target_layers]
 
@@ -372,3 +374,5 @@ with open(out_file, "a", newline="") as f:
         w.writerow(header)
     w.writerow(cosim_row)
     w.writerow(cka_row)
+
+print(f'Wrote similarity metrics to {out_file}')

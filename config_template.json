@@ -33,7 +33,11 @@
     "S1200_imaging": "/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/HCP1200/",
     "HCP_Resources": "/dartfs/rc/lab/D/DBIC/DBIC/archive/HCP/HCP_Resources/"
   },
-  "exemplary_dyad": 1
+  "exemplary_dyad": -1,
+  "ann_dyad": 3,
   "TDANN_repo_path": "/home/bogdan/MyDocuments/canlab/ann_scratch/libraries/TDANN",
-  "imagenet_path": "/home/bogdan/MyDocuments/canlab/hcp_hyperalignment/papers/git_paper/resources/imagenet"
+  "TDANN_data_path": "/home/bogdan/MyDocuments/canlab/ann_scratch/libraries/tdann_data",
+  "imagenet_path": "/home/bogdan/MyDocuments/canlab/hcp_hyperalignment/papers/git_paper/resources/imagenet",
+  "scratch": "/dartfs-hpc/scratch/f0042vm",
+  "scratch_ssd": "/scratch/f0042vm"
 }

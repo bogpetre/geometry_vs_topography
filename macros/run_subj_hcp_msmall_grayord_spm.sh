@@ -54,7 +54,7 @@ if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
 	SCRATCH_DIR=$TMPDIR/$(uuidgen)
 else
         # slower, but much less of a problem running out of space
-        SCRATCH_DIR=/dartfs-hpc/scratch/f0042vm/$(uuidgen)
+        SCRATCH_DIR=/dartfs-hpc/scratch/$(whoami)/$(uuidgen)
 fi
 SCRATCH_DIR=$OUT_DIR/workdir/$SID1
 
