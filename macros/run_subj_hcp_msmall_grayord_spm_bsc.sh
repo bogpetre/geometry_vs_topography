@@ -7,9 +7,9 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --mem=48G
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_grayord_spm.logs/bsc_%a.out
+#SBATCH --output hcp_glm_grayord_spm1.logs/bsc_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-416
+#SBATCH --array 1-208
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -29,12 +29,12 @@ date
 
 set -x
 
-OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm3/
+OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm2/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
 
-HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print files('hcp_utils')")
+HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print(files('hcp_utils'))")
 SURF_LEFT=$HCP_DIR/data/S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii
 SURF_RIGHT=$HCP_DIR/data/S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii
 
@@ -75,7 +75,7 @@ wb_command -cifti-all-labels-to-rois $ATLAS 1 $SCRATCH_DIR/parcels.dscalar.nii
 
 # whitened betas
 mkdir -p $OUT_DIR/bsc/whitened_betas/cosine/
-python -u -m pairwise_parcel_op $OUT_DIR/results/$SID1/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii \
+pairwise_parcel_op $OUT_DIR/results/$SID1/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii \
     $OUT_DIR/results/$SID2/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii \
     $SCRATCH_DIR/${SID1}_v_${SID2}_wh.dscalar.nii \
     -s $SURF_LEFT $SURF_RIGHT \
@@ -101,7 +101,7 @@ cp $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/whitening_matrix_out.bin $S
 
 # standardized betas
 mkdir -p $OUT_DIR/bsc/standardized_betas/cosine
-python -u -m pairwise_parcel_op $OUT_DIR/results/$SID1/all_tasks/standardized_contrasts/merged_cifti.dscalar.nii \
+pairwise_parcel_op $OUT_DIR/results/$SID1/all_tasks/standardized_contrasts/merged_cifti.dscalar.nii \
     $OUT_DIR/results/$SID2/all_tasks/standardized_contrasts/merged_cifti.dscalar.nii \
     $SCRATCH_DIR/${SID1}_v_${SID2}_std.dscalar.nii \
     -s $SURF_LEFT $SURF_RIGHT \
