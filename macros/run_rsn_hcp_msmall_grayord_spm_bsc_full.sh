@@ -53,7 +53,7 @@ HCP_RESOURCES=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['HCP_Resources'])")
 RSN_TEMPLATE=$HCP_RESOURCES/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d${d}.ica/melodic_IC.dscalar.nii
 
-HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print files('hcp_utils')")
+HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print(files('hcp_utils'))")
 SURF_LEFT=$HCP_DIR/data/S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii
 SURF_RIGHT=$HCP_DIR/data/S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii
 
@@ -108,7 +108,7 @@ for SID2 in ${sid_list2[@]}; do
             $SCRATCH_DIR/whitened/${SID2}/
 
         mkdir -p $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}/
-        time $ROOT/bin/rdm_similarity \
+        time ../bin/rdm_similarity32 \
             $SCRATCH_DIR/whitened/crossnobis_distance.csv \
             $SCRATCH_DIR/whitened/${SID2}/crossnobis_distance.csv \
             $SCRATCH_DIR/whitened/whitening_matrix_out.bin \
@@ -127,7 +127,7 @@ for SID2 in ${sid_list2[@]}; do
            $SCRATCH_DIR/standard/$SID2/
 
         mkdir -p $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/
-        time $ROOT/bin/rdm_similarity \
+        time ../bin/rdm_similarity32 \
             $SCRATCH_DIR/standard/standardized_distance.csv \
             $SCRATCH_DIR/standard/${SID2}/standardized_distance.csv \
             $SCRATCH_DIR/standard/whitening_matrix_out.bin \
