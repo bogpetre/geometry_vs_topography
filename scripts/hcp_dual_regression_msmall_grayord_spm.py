@@ -100,6 +100,9 @@ fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
 hp_cutoff=200 # HCP default, already applied to *hp2000* data
 TR = 0.72
 
+precision='double'
+normmode='partwise'
+
 #####################
 # Custom Interfaces #
 #####################
@@ -151,6 +154,10 @@ class RDMInputSpec(BaseInterfaceInputSpec):
         estimates to compute similarity measures (e.g. WUC), but individual 'whitened' RDMs \
         can also be compared directly if you're comfortable assuming that the two RDMs \
         being compared have similar covariance structure.")
+
+    precision = Enum('single','double',
+        usedefault=True,
+        desc="datatype precision to use when saving whitening matrix")
 
 class RDMOutputSpec(TraitedSpec):
     rdm = File(exists=True)
@@ -216,6 +223,7 @@ class RDM(BaseInterface):
                  save_whitening_matrix=int(bool(self.inputs.save_whitening_matrix)),
                  whitening_matrix_out=whitening_matrix,
                  whitening_matrix_json=whitening_matrix_metadata,
+                 precision=self.inputs.precision,
                  names_out='betanames.csv')
 
         script = Template(
@@ -227,6 +235,7 @@ class RDM(BaseInterface):
                 target = '$target';
                 nonlinearshrink = $nonlinearshrink;
                 save_whitening_matrix = $save_whitening_matrix;
+                precision='$precision';
 
                 if isnan(shrinkage), shrinkage = []; end
                 
@@ -299,7 +308,12 @@ class RDM(BaseInterface):
                             V = eye(nCovElem);
 
                             tril_ind = tril(true(size(V)));
-                            fwrite(fid_whitening, single(V(tril_ind)), 'float32');
+                            switch precision
+                                case 'single'
+                                    fwrite(fid_whitening, single(V(tril_ind)), 'float32');
+                                case 'double'
+                                    fwrite(fid_whitening, double(V(tril_ind)), 'float64');
+                            end
                         end
                         continue
                     end
@@ -307,33 +321,32 @@ class RDM(BaseInterface):
                         'shrinkage', shrinkage, 'target', target,'nonlinearshrink',nonlinearshrink);
 
                     V = (C*Sig*C').^2;
-                    % V should be symmetric positive and semidefinite so we can exploit that.
-                    % it's not perfect, but fairly close based on norm(d*(V^-0.5) - d/R)
-                    % and much faster. Suitable for development purposes.
-                    try
-                        % add a tiny ridge in case numerical noise makes V only semi-definite
-                        R = chol(V + 1e-10*eye(size(V)), 'upper');   % V = R'*R
-                        whitened_d = d/R;
-                    catch
-                        % using this exclusively would take ~2 days for crossnobis, and we 
-                        % compute 3x kinds of RDMs (MD, std distance, euc distance based), 
-                        % so 6 days. Not viable except as a final run.
-                        regV = (V + 1e-10*eye(size(V))); % regularize in case it's small
-                        whitened_d = d*(regV^-0.5);
-                    end
+                    regV = (V + 1e-10*eye(size(V))); % regularize in case it's small
+                    whitened_d = d*(regV^-0.5);
 
                     rdm(:,i) = d;
                     whitened_rdm(:,i) = whitened_d;
                     if save_whitening_matrix
                         tril_ind = tril(true(size(V)));
-                        fwrite(fid_whitening, single(V(tril_ind)), 'float32');
+                        switch precision
+                            case 'single'
+                                fwrite(fid_whitening, single(V(tril_ind)), 'float32');
+                            case 'double'
+                                fwrite(fid_whitening, double(V(tril_ind)), 'float64');
+                        end
+
                     end
                 end
 
                 if save_whitening_matrix, 
                     fclose(fid_whitening); 
 
-                    meta.format = 'float32';
+                    switch precision
+                        case 'single'
+                            meta.format = 'float32';
+                        case 'double'
+                            meta.format = 'float64';
+                    end
                     meta.shape = int32([ncon, ncon]);
                     meta.n_regions = size(rdm, 2);
                     meta.storage = 'lower_triangle';
@@ -942,7 +955,7 @@ def init_betas(name='whitenbetas', normmethod='multivariate', normmode='partwise
     return betaswf
 
 
-def init_rsawf(name='rsa', normmethod='multivariate', save_whitening_matrix=False):
+def init_rsawf(name='rsa', normmethod='multivariate', normmode='partwise', save_whitening_matrix=False, precision='double'):
 
     rsawf = pe.Workflow(name=name)
 
@@ -962,11 +975,12 @@ def init_rsawf(name='rsa', normmethod='multivariate', save_whitening_matrix=Fals
     rsa = pe.Node(
         interface=RDM(
             normmethod=normmethod,
-            normmode='partwise',
+            normmode=normmode,
+            precision=precision,
             save_whitening_matrix=save_whitening_matrix),
         name="rsa")
 
-    betas_l1 = init_betas(name='betas_l1', normmethod=normmethod, normmode='partwise')
+    betas_l1 = init_betas(name='betas_l1', normmethod=normmethod, normmode=normmode)
     
     betas_l2 = init_betas(name='betas_l2', normmethod=normmethod, normmode='overall')
 
@@ -1027,8 +1041,8 @@ def init_rsawf(name='rsa', normmethod='multivariate', save_whitening_matrix=Fals
 
     return rsawf
 
-stddistwf = init_rsawf(name='stddist',normmethod='univariate', save_whitening_matrix=True)
-crossnobiswf = init_rsawf(name='crossnobis', save_whitening_matrix=True)
+stddistwf = init_rsawf(name='stddist', normmethod='univariate', normmode=normmode, save_whitening_matrix=True, precision=precision)
+crossnobiswf = init_rsawf(name='crossnobis', normmode=normmode, save_whitening_matrix=True, precision=precision)
 
 
 # ############################################## #
