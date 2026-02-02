@@ -104,6 +104,7 @@ hp_cutoff = 200
 TR = 0.72
 
 normmode='partwise'
+precision='double'
 if normmode == 'legacy':
     # Note: actual legacy would require remove Bcov scaling of univariate distanceLDCraw distances, 
     # but not multivariate distance calculations. This was a bug even in the legacy version though,
@@ -111,10 +112,8 @@ if normmode == 'legacy':
     normmode1='runwise'
     normmode2='partwise'
     normmode3='overall'
-    precision='single'
 else:
     normmode1, normmode2 = normmode, normmode
-    precision='double'
     if normmode == 'partwise':
         normmode3 = 'poolparts'
     elif normmode == 'runwise':
@@ -333,20 +332,8 @@ class MultiTaskRDM(BaseInterface):
                     [d, Sig, names] = distanceLDCrawMultTask(this_Y, SPM, conditions(:), 'normmethod', normmethod, 'normmode', normmode);
 
                     V = (C*Sig*C').^2;
-                    % V should be symmetric positive and semidefinite so we can exploit that.
-                    % it's not perfect, but fairly close based on norm(d*(V^-0.5) - d/R)
-                    % and much faster. Suitable for development purposes.
-                    try
-                        % add a tiny ridge in case numerical noise makes V only semi-definite
-                        R = chol(V + 1e-10*eye(size(V)), 'upper');   % V = R'*R
-                        whitened_d = d/R;
-                    catch
-                        % using this exclusively would take ~2 days for crossnobis, and we 
-                        % compute 3x kinds of RDMs (MD, std distance, euc distance based), 
-                        % so 6 days. Not viable except as a final run.
-                        regV = (V + 1e-10*eye(size(V))); % regularize in case it's small
-                        whitened_d = d*(regV^-0.5);
-                    end
+                    regV = (V + 1e-10*eye(size(V))); % regularize in case it's small
+                    whitened_d = d*(regV^-0.5);
 
                     rdm(:,i) = d;
                     whitened_rdm(:,i) = whitened_d;
@@ -356,7 +343,7 @@ class MultiTaskRDM(BaseInterface):
                             case 'single'
                                 fwrite(fid_whitening, single(V(tril_ind)), 'float32');
                             case 'double'
-                                fwrite(fid_whitening, single(V(tril_ind)), 'float64');
+                                fwrite(fid_whitening, double(V(tril_ind)), 'float64');
                         end
                     end
                 end
@@ -1120,7 +1107,6 @@ eucdist = pe.Node(
 stddist = pe.Node(
     interface=MultiTaskRDM(
         normmethod='univariate',
-        normmode=normmode1,
         save_whitening_matrix=True,
         precision=precision),
     name="stddist")
@@ -1128,7 +1114,6 @@ stddist = pe.Node(
 crossnobis = pe.Node(
     interface=MultiTaskRDM(
         normmethod='multivariate',
-        normmode=normmode1,
         save_whitening_matrix=True,
         precision=precision),
     name="crossnobis")
