@@ -7,9 +7,9 @@
 #SBATCH --cpus-per-task 4
 #SBATCH --mem=48G
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_grayord_spm2.logs/firstlvl_%a.out
+#SBATCH --output hcp_glm_grayord_spm3.logs/firstlvl_%a.out
 #SBATCH --account dbic
-#SBATCH --array 2
+#SBATCH --array 1-1114
 #SBATCH --exclude=
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
@@ -36,7 +36,7 @@ DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
 # this is where your files get saved
-OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm3/
+OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
@@ -47,7 +47,7 @@ SID1=${sid_list[$[$SLURM_ARRAY_TASK_ID-1]]}
 # The $TMPDIR env variable points to local scratch space, which is sometimes full.
 # In the event there's not enough space we fall back to NFS scratch space. Substitute
 # with your own equivalents.
-space_avail=$(df -kT /scratch | tail -n 1 | awk '{print $5}')
+space_avail=$(df -kT $TMPDIR | tail -n 1 | awk '{print $5}')
 disk_space_req=400 # scratch space required in gigabytes, each run takes 22, and we might run 20 on a node
 if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
         # faster but more resource constrained
@@ -56,13 +56,12 @@ else
         # slower, but much less of a problem running out of space
         SCRATCH_DIR=/dartfs-hpc/scratch/$(whoami)/$(uuidgen)
 fi
-SCRATCH_DIR=$OUT_DIR/workdir/$SID1
 
 # Garbage collection
 cleanup() {
     rm -rf $SCRATCH_DIR
 }
-#trap cleanup EXIT
+trap cleanup EXIT
 
 mkdir -p $SCRATCH_DIR
 
