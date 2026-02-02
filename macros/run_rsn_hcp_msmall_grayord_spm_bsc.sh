@@ -9,7 +9,7 @@
 #SBATCH --hint=nomultithread
 #SBATCH --output hcp25_4.logs/bsc_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-416
+#SBATCH --array 1-208
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -45,7 +45,7 @@ HCP_RESOURCES=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['HCP_Resources'])")
 RSN_TEMPLATE=$HCP_RESOURCES/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d${d}.ica/melodic_IC.dscalar.nii
 
-HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print files('hcp_utils')")
+HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print(files('hcp_utils'))")
 SURF_LEFT=$HCP_DIR/data/S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii
 SURF_RIGHT=$HCP_DIR/data/S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii
 
@@ -72,7 +72,7 @@ mkdir -p $SCRATCH_DIR
 wb_command -cifti-all-labels-to-rois $ATLAS 1 $SCRATCH_DIR/parcels.dscalar.nii
 
 mkdir -p $OUT_DIR/bsc/whitened_betas/cosine/
-python -u -m pairwise_parcel_op $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii \
+pairwise_parcel_op $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/results/$SID2/whitened_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/bsc/whitened_betas/cosine/${SID1}_v_${SID2}.dscalar.nii \
     -s $SURF_LEFT $SURF_RIGHT \
@@ -84,7 +84,7 @@ wb_command -cifti-stats $OUT_DIR/bsc/whitened_betas/cosine/${SID1}_v_${SID2}.dsc
     -roi $SCRATCH_DIR/parcels.dscalar.nii \
     > $OUT_DIR/bsc/whitened_betas/cosine/${SID1}_v_${SID2}_cosim.tsv
 
-$ROOT/bin/rdm_similarity \
+../bin/rdm_similarity32 \
     $OUT_DIR/results/${SID1}/whitened_betas/crossnobis_distance.csv \
     $OUT_DIR/results/${SID2}/whitened_betas/crossnobis_distance.csv \
     $OUT_DIR/results/${SID1}/whitened_betas/whitening_matrix_out.bin \
@@ -94,7 +94,7 @@ $ROOT/bin/rdm_similarity \
     $OUT_DIR/bsc/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0
 
 mkdir -p $OUT_DIR/bsc/whitened_betas/correlation/
-python -u -m pairwise_parcel_op $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii \
+pairwise_parcel_op $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/results/$SID2/whitened_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/bsc/whitened_betas/correlation/${SID1}_v_${SID2}.dscalar.nii \
     -s $SURF_LEFT $SURF_RIGHT \
@@ -107,7 +107,7 @@ wb_command -cifti-stats $OUT_DIR/bsc/whitened_betas/correlation/${SID1}_v_${SID2
     > $OUT_DIR/bsc/whitened_betas/correlation/${SID1}_v_${SID2}_r.tsv
     
 mkdir -p $OUT_DIR/bsc/standardized_betas/cosine
-python -u -m pairwise_parcel_op $OUT_DIR/results/$SID1/standardized_betas/cifti_math_results.dscalar.nii \
+pairwise_parcel_op $OUT_DIR/results/$SID1/standardized_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/results/$SID2/standardized_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/bsc/standardized_betas/cosine/${SID1}_v_${SID2}.dscalar.nii \
     -s $SURF_LEFT $SURF_RIGHT \
@@ -119,7 +119,7 @@ wb_command -cifti-stats $OUT_DIR/bsc/standardized_betas/cosine/${SID1}_v_${SID2}
     -roi $SCRATCH_DIR/parcels.dscalar.nii \
     > $OUT_DIR/bsc/standardized_betas/cosine/${SID1}_v_${SID2}_cosim.tsv
 
-$ROOT/bin/rdm_similarity \
+../bin/rdm_similarity32 \
     $OUT_DIR/results/${SID1}/standardized_betas/standardized_distance.csv \
     $OUT_DIR/results/${SID2}/standardized_betas/standardized_distance.csv \
     $OUT_DIR/results/${SID1}/standardized_betas/whitening_matrix_out.bin \
@@ -129,7 +129,7 @@ $ROOT/bin/rdm_similarity \
     $OUT_DIR/bsc/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0
 
 mkdir -p $OUT_DIR/bsc/standardized_betas/correlation
-python -u -m pairwise_parcel_op $OUT_DIR/results/$SID1/standardized_betas/cifti_math_results.dscalar.nii \
+pairwise_parcel_op $OUT_DIR/results/$SID1/standardized_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/results/$SID2/standardized_betas/cifti_math_results.dscalar.nii \
     $OUT_DIR/bsc/standardized_betas/correlation/${SID1}_v_${SID2}.dscalar.nii \
     -s $SURF_LEFT $SURF_RIGHT \
