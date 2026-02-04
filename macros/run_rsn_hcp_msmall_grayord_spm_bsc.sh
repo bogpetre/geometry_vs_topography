@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --mem=64G
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp25_4.logs/bsc_%a.out
+#SBATCH --output rsn25.logs/bsc_%a.out
 #SBATCH --account dbic
 #SBATCH --array 1-208
 
@@ -17,6 +17,9 @@
 #
 # This script assumes you've already run "first" (subject) level GLMs and corresponding RSA, e.g.
 # by invoking the run_rsn_hcp_msmall_grayord_spm.sh macro
+#
+# This script performs RSA and computes topographic similarities of resting state networks for 
+# our main analyses
 
 hostname
 

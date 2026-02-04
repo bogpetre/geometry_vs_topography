@@ -7,9 +7,10 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --mem=64G
 #SBATCH --hint=nomultithread
-#SBATCH --output rsn25.logs/rsn25_%a.out
+#SBATCH --output rsn25_3c.logs/rsn25_%a.out
 #SBATCH --account dbic
-#SBATCH --array 2
+#SBATCH --array 1-1114
+#SBATCH --dependency=7195283
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -36,7 +37,7 @@ d=25 # number of ICA components to use. Options: 15, 25, 50, 100, 150, 200, 300.
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/restingstate/hcp${d}/
+OUT_DIR=../derivatives/restingstate3/hcp${d}/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
@@ -51,7 +52,7 @@ SID1=${sid_list[$[$SLURM_ARRAY_TASK_ID-1]]}
 # The $TMPDIR env variable points to local scratch space, which is sometimes full.
 # In the event there's not enough space we fall back to NFS scratch space. Substitute
 # with your own equivalents.
-space_avail=$(df -kT /scratch | tail -n 1 | awk '{print $5}')
+space_avail=$(df -kT $TMPDIR | tail -n 1 | awk '{print $5}')
 disk_space_req=400 # scratch space required in gigabytes, each run takes 22, and we might run 20 on a node
 if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
         # faster but more resource constrained
@@ -63,11 +64,10 @@ fi
 cleanup() {
     rm -rf $SCRATCH_DIR
 }
-#trap cleanup EXIT # comment to retain analysis intermediaries
-SCRATCH_DIR=$OUT_DIR/workdir/$SID # uncomment to retain analysis intermediaries
+trap cleanup EXIT # comment to retain analysis intermediaries
 mkdir -p $SCRATCH_DIR
 
-if [ ! -e $OUT_DIR/results/$SID1/cifti_average_parcellated.txt ]; then
+if [ ! -e $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii ]; then
     python -u ../scripts/hcp_dual_regression_msmall_grayord_spm.py \
         --subject_ids ${SID1} --out $OUT_DIR \
         --scratch $SCRATCH_DIR/${SID1} --n_cpus 1 \

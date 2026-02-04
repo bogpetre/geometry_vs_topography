@@ -6,11 +6,11 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp25.logs/all_bsc_%a.out
+#SBATCH --output rsn25_3b.logs/all_bsc_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-1114%200
+#SBATCH --array 1-1114
 #SBATCH --exclude=
-#SBATCH --dependency=5276580
+#SBATCH --dependency=7195285
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -44,7 +44,7 @@ ROOT=/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/restingstate2/hcp${d}/
+OUT_DIR=../derivatives/restingstate3/hcp${d}/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
@@ -62,7 +62,7 @@ iter=$[$SLURM_ARRAY_TASK_ID-1]
 sid_list2=${sid_list1[@]:$[${iter}+1]:${#sid_list1[@]}}
 SID1=${sid_list1[$[$SLURM_ARRAY_TASK_ID-1]]}
 
-space_avail=$(df -kT /scratch | tail -n 1 | awk '{print $5}')
+space_avail=$(df -kT $TMPDIR | tail -n 1 | awk '{print $5}')
 disk_space_req=20 # scratch space required in gigabytes, each run takes 22, and we might run 20 on a node
 if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
         # faster but more resource constrained
@@ -78,7 +78,7 @@ trap cleanup EXIT
 mkdir -p $SCRATCH_DIR
 
 
-if [ ! -e $OUT_DIR/results/$SID1/cifti_average_parcellated.txt ]; then
+if [ ! -e $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii ]; then
     exit
 fi
 

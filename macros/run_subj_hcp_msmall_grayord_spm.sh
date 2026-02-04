@@ -4,13 +4,13 @@
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 1
 #SBATCH --ntasks 1
-#SBATCH --cpus-per-task 4
+#SBATCH --cpus-per-task 1
 #SBATCH --mem=48G
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_grayord_spm3.logs/firstlvl_%a.out
+#SBATCH --output hcp_glm_grayord_spm3d.logs/firstlvl_%a.out
 #SBATCH --account dbic
 #SBATCH --array 1-1114
-#SBATCH --exclude=
+#SBATCH --dependency=7194045
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -68,11 +68,11 @@ mkdir -p $SCRATCH_DIR
 TASKS=('EMOTION' 'GAMBLING' 'SOCIAL' 'LANGUAGE' 'RELATIONAL' 'MOTOR' 'WM')
 directions=('LR' 'RL')
 
-#if [ ! -e $OUT_DIR/results/$SID1/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii ]; then
+if [ ! -e $OUT_DIR/results/$SID1/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii ]; then
     python -u ../scripts/hcp_glm_msmall_grayord_spm.py --subject_ids ${SID1} --out $OUT_DIR \
         --scratch $SCRATCH_DIR --atlas $ATLAS --tasks ${TASKS[@]} --n_cpus 1 \
         --config ../config.json
-#fi
+fi
 
 echo "End time:"
 date
