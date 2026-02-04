@@ -1336,6 +1336,9 @@ if __name__ == '__main__':
                         help='Path to HCP data directory immediately above subject folders, e.g. HCP1200')
     parser.add_argument('--config', type=str, required=True, default=os.path.abspath('../config.json'),
                         help='Path to json file containing local environment paths')
+    parser.add_argument('--anatomical', required=False, default=False, action='store_true',
+                        help='If flag is set, analysis will be run using anatomically aligned data only, \
+                        not MSMAll data')
 
     args = parser.parse_args()
 
@@ -1348,6 +1351,9 @@ if __name__ == '__main__':
     else:
         datasource.inputs.base_directory = config['hcp_participant_data']['S1200_imaging']
         subjectlevel.inputs.modelfit.runinfo_node.data_dir = config['hcp_participant_data']['S1200_imaging']
+
+    if args.anatomical:
+       datasource.inputs.field_template['func_surf'] = datasource.inputs.field_template['func_surf'].replace('_MSMAll','')
 
     print(f'Using {datasource.inputs.base_directory} as input directory')
 
