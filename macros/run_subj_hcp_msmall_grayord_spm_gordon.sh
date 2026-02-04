@@ -42,7 +42,7 @@ DATA_SRC=$(cat ../config.json | \
 # this is where your files get saved
 OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm_gordon/
 
-ATLAS=$(../resources/Gordon_333Cort.32k.dlabel.nii)
+ATLAS=../resources/Gordon_333Cort.32k.dlabel.nii
 
 sid_list=($(cat ../resources/paired_sid.csv | awk -F, '{print $1"\n"$2}'))
 SID1=${sid_list[$[$SLURM_ARRAY_TASK_ID-1]]}
