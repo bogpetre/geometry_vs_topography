@@ -220,11 +220,31 @@ preproc = preproc_surf_hcp(hp_cutoff, TR)
 # task specific event configuration
 
 def runinfo(subject_id, task, direction, data_dir):
-    from geometry_vs_topography.glm.designs import block_events
+    from geometry_vs_topography.glm.designs import hcp_events
     from nipype.interfaces.base import Bunch
     from copy import deepcopy
 
-    names, onsets, dur = block_events(subject_id, task, direction, data_dir)
+    _names, _onsets, _dur = hcp_events(subject_id, task, direction, data_dir)
+
+    # convert hcp events (multiple blocks per event) into one block per event
+    names, onsets, dur = [], [], []
+    for n, _ons, _t in zip(_names, _onsets, _dur):
+        for i, (ons, t) in enumerate(zip(_ons, _t)):
+            names.append(f'Task-{task}-' + n.replace('Task-','') + '-' + direction)
+            onsets.append([ons])
+            dur.append([t])
+
+    # sort temporally
+    argsort = sorted(range(len(onsets)), key=onsets.__getitem__)
+    names = [names[i] + f'-{ind:02d}' for ind,i in enumerate(argsort)]
+    onsets = [onsets[i] for i in argsort]
+    dur = [dur[i] for i in argsort]
+
+    if task == 'LANGUAGE':
+        # drop final onsets since they are not part of the scan and blow up VIFs
+        onsets = onsets[:12]
+        dur = dur[:12]
+        names = names[:12]
 
     output = Bunch(conditions=names,
                     onsets=deepcopy(onsets),
