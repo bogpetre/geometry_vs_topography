@@ -57,8 +57,8 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
-            'FileType','text','Delimiter',','));
+        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
+            'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
     end
