@@ -60,8 +60,8 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
-            'FileType','text','Delimiter',','));
+        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm_gordon/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
+            'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
     end
@@ -479,11 +479,11 @@ b_geo = mean(b_geo);
 b_topo = mean(b_topo);
 
 y = b_geo(2)*xlim' + b_geo(1);
-l = plot(ax2, xlim',y,'-','color',dc_color);
+l = plot(ax2, xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 y = b_topo(2)*xlim' + b_topo(1);
-l = plot(ax1, xlim',y,'-','color',dc_color);
+l = plot(ax1, xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 pos = get(gcf,'Position');
