@@ -53,8 +53,12 @@ class NearestCentroidClfInputSpec(BaseInterfaceInputSpec):
 
 
 class NearestCentroidClfOutputSpec(TraitedSpec):
-    out_file=File(
-        desc="Output CSV file.",
+    clf_file=File(
+        desc="Output clf values.",
+        exists=True)
+
+    label_file=File(
+        desc="Output labels.",
         exists=True)
 
 
@@ -90,16 +94,22 @@ class NearestCentroidClf(BaseInterface):
         df = pd.DataFrame.from_dict(scores, orient='index')
 
         outputs = self._list_outputs()
-        df.to_csv(outputs['out_file'], index_label='label')
+
+        df.to_csv(outputs['clf_file'], index_label='label')
+        np.savetxt(outputs['label_file'], y_set, fmt='%s', delimiter=',')
 
     def _gen_filename(self, name):
         import os
 
-        if name == 'out_file':
+        if name == 'clf_file':
             return os.path.join(os.getcwd(), 'binary_clf_performance.csv')
+        elif name == 'label_file':
+            return os.path.join(os.getcwd(), 'binary_clf_labels.csv')
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        if not isdefined(outputs['out_file']):
-            outputs['out_file'] = self._gen_filename('out_file')
+        if not isdefined(outputs['clf_file']):
+            outputs['clf_file'] = self._gen_filename('clf_file')
+        if not isdefined(outputs['label_file']):
+            outputs['label_file'] = self._gen_filename('label_file')
         return outputs

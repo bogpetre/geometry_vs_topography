@@ -217,7 +217,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
         ])
     else:
         wf.connect([
-            (inputnode, noiseNormalizeBetas, [('spm_mat_file', 'spm_mat_files')])
+            (inputnode, noiseNormalizeBetas, [('spm_mat_file', 'spm_mat_files')]),
         ])
     
     wf.connect([
@@ -230,7 +230,7 @@ def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinka
             ('out_files', 'beta_images')]),
         (noiseNormalizeBetas, selectBetasOfInterest, [
             ('betanames','betanames_file')]),
-            
+        
         (selectBetasOfInterest, mergebetas, [('beta_images', 'in_files')]),
         (mergebetas, beta2cifti, [('merged_file', 'nifti_in')]),
         (inputnode, beta2cifti, [(('atlas', pickfirst), 'cifti_template')]),

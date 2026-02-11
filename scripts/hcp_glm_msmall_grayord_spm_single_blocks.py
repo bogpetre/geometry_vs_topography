@@ -220,31 +220,11 @@ preproc = preproc_surf_hcp(hp_cutoff, TR)
 # task specific event configuration
 
 def runinfo(subject_id, task, direction, data_dir):
-    from geometry_vs_topography.glm.designs import hcp_events
+    from geometry_vs_topography.glm.designs import block_events
     from nipype.interfaces.base import Bunch
     from copy import deepcopy
 
-    _names, _onsets, _dur = hcp_events(subject_id, task, direction, data_dir)
-
-    # convert hcp events (multiple blocks per event) into one block per event
-    names, onsets, dur = [], [], []
-    for n, _ons, _t in zip(_names, _onsets, _dur):
-        for i, (ons, t) in enumerate(zip(_ons, _t)):
-            names.append(f'Task-{task}-' + n.replace('Task-','') + '-' + direction)
-            onsets.append([ons])
-            dur.append([t])
-
-    # sort temporally
-    argsort = sorted(range(len(onsets)), key=onsets.__getitem__)
-    names = [names[i] + f'-{ind:02d}' for ind,i in enumerate(argsort)]
-    onsets = [onsets[i] for i in argsort]
-    dur = [dur[i] for i in argsort]
-
-    if task == 'LANGUAGE':
-        # drop final onsets since they are not part of the scan and blow up VIFs
-        onsets = onsets[:12]
-        dur = dur[:12]
-        names = names[:12]
+    names, onsets, dur = block_events(subject_id, task, direction, data_dir)
 
     output = Bunch(conditions=names,
                     onsets=deepcopy(onsets),
@@ -449,7 +429,7 @@ modelfit.connect([
 
     # run SPM design
     (level1design, modelestimate, [('spm_mat_file', 'spm_mat_file')]),
-    (modelestimate, vifs, [('spm_mat_file', 'spm_mat_file')]),
+    #(modelestimate, vifs, [('spm_mat_file', 'spm_mat_file')]),
 
 
     (inputnode_modelfit, joinRuns, [(('func', pickfirst), 'cifti_template')]),
@@ -500,11 +480,16 @@ mergeWhitenedBetasAcrossSessions = pe.Node(interface=wb_cifti.CiftiMerge(),
     name="mergewhitenedbetasacrosssessions")
 
 stdwf = init_spatial_whitening_wf(
-    name='std', joinsource='tasksource', shrinkage=1.0, normmode=normmode)
+    name='std', joinsource=None, shrinkage=1.0, normmode=normmode)
 
 whitenwf = init_spatial_whitening_wf(
-    name='whiten', joinsource='tasksource', shrinkage=-1, normmode=normmode)
+    name='whiten', joinsource=None, shrinkage=-1, normmode=normmode)
 
+joinTaskBetas = pe.JoinNode(util.IdentityInterface(
+        fields=['standardized_betas', 'whitened_betas']),
+    joinsource='tasksource',
+    joinfield=['standardized_betas', 'whitened_betas'],
+    name='jointaskbetas')
 
 ########################################
 # Nearest centroid classifier workflow #
@@ -524,14 +509,15 @@ def init_clfwf(name='clf'):
 
     outputnode = pe.Node(
         interface=util.IdentityInterface(fields=[
-            'clf_perf_csv']),
+            'clf_perf_csv', 'clf_label_csv']),
         name='outputspec')
 
     wf.connect([
         (inputnode, clf, [('cifti', 'cifti'),
                           ('atlas', 'atlas')]),
 
-        (clf, outputnode, [('out_file', 'clf_perf_csv')]),
+        (clf, outputnode, [('clf_file', 'clf_perf_csv'),
+                           ('label_file', 'clf_label_csv')]),
     ])
 
     return wf
@@ -564,8 +550,13 @@ subjectlevel.connect([
     (modelfit, stdwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
     (modelfit, whitenwf, [('modelestimate.spm_mat_file', 'inputspec.spm_mat_file')]),
 
-    (stdwf, mergeStdBetasAcrossSessions, [('outputspec.out_file', 'cifti')]),
-    (whitenwf, mergeWhitenedBetasAcrossSessions, [('outputspec.out_file', 'cifti')]),
+    (stdwf, joinTaskBetas, [('outputspec.out_file', 'standardized_betas')]),
+    (joinTaskBetas, mergeStdBetasAcrossSessions, [(('standardized_betas', mergelists), 'cifti')]),
+    #(stdwf, mergeStdBetasAcrossSessions, [('outputspec.out_file', 'cifti')]),
+
+    (whitenwf, joinTaskBetas, [('outputspec.out_file', 'whitened_betas')]),
+    (joinTaskBetas, mergeWhitenedBetasAcrossSessions, [(('whitened_betas', mergelists), 'cifti')]),
+    #(whitenwf, mergeWhitenedBetasAcrossSessions, [('outputspec.out_file', 'cifti')]),
 
     (mergeStdBetasAcrossSessions, stdclfwf, [('out_file', 'inputspec.cifti')]),
     (mergeWhitenedBetasAcrossSessions, whclfwf, [('out_file', 'inputspec.cifti')]),
@@ -575,9 +566,9 @@ subjectlevel.connect([
 
                           ('mergetstatsacrosstasks.out_file', 'results.all_tasks.tstats'),
                           
-                          ('vifs.vifs', 'results.@vifs'),
-                          ('vifs.png', 'results.@png'),
-                          ('vifs.hpfilt', 'results.@hpfilt'),
+                          #('vifs.vifs', 'results.@vifs'),
+                          #('vifs.png', 'results.@png'),
+                          #('vifs.hpfilt', 'results.@hpfilt'),
                           
                           ('modelestimate.spm_mat_file', 'results.@spm_mat_file'),
                           ]),
@@ -586,8 +577,10 @@ subjectlevel.connect([
     (mergeStdBetasAcrossSessions, datasink, [('out_file', 'results.all_tasks.standardized_contrasts')]),
     (mergeWhitenedBetasAcrossSessions, datasink, [('out_file', 'results.all_tasks.whitened_contrasts')]),
 
-    (stdclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf')]),
-    (whclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf')]),
+    (stdclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.standardized_contrasts.@clf_perf'),
+                          ('outputspec.clf_label_csv', 'results.all_tasks.standardized_contrasts.@clf_lbls')]),
+    (whclfwf, datasink, [('outputspec.clf_perf_csv', 'results.all_tasks.whitened_contrasts.@clf_perf'),
+                         ('outputspec.clf_label_csv', 'results.all_tasks.whitened_contrasts.@clf_lbls')]),
 ])
 
 
