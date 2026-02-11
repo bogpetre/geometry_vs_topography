@@ -1,5 +1,5 @@
 # Geometry vs Topography
-This repo contains code for "Common representations underlie idiosyncratic neural topographies"
+This repo contains code for "Cortical maps diverge, representations converge along cortical hierarchy"
 
 ## Setup
 
