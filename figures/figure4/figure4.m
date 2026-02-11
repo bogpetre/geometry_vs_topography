@@ -19,6 +19,8 @@ close(f)
 colors = config.matlab_disp_scheme.color_main;
 colors_light = config.matlab_disp_scheme.color_light;
 
+data_root = '../../derivatives/hcp_glm_msmall_grayord_spm';
+
 noise = 'whitened';
 %noise='standardized';
 %% import atlas in cifti space and get region names
@@ -35,19 +37,19 @@ sid = readtable('../../resources/paired_sid.csv', 'ReadVariableNames',false);
 
 task_labels = [1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7];
 
-% multiplying by this vector will balances conditions across tasks
+% multiplying by this vector balances conditions across tasks
 balanced_mean_op = [1/7*repmat(1/2,1,10), 1/7*repmat(1/5,1,5), 1/7*repmat(1/8,1,8)];
 
 tsnr = zeros(height(sid), n_roi);
 wi_cosim = nan(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        tsnr1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid.Var1(s)));
-        tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid.Var2(s)));
+        tsnr1 = readmatrix(sprintf('%s/results/%d/tsnr.csv',data_root,sid.Var1(s)));
+        tsnr2 = readmatrix(sprintf('%s/results/%d/tsnr.csv',data_root,sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
+        wi_cosim1 = readmatrix(sprintf('%s/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',data_root,sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('%s/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',data_root,sid.Var2(s),noise,noise),'FileType','text');
         comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
         wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
@@ -58,7 +60,7 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s), sid.Var2(s)),...
+        wuc_md(s,:) = readmatrix(sprintf('%s/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',data_root,noise,sid.Var1(s), sid.Var2(s)),...
             'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
@@ -74,7 +76,7 @@ end
 cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
+        cosim(s,:) = balanced_mean_op*dlmread(sprintf('%s/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', data_root, noise, sid.Var1(s), sid.Var2(s)), '\t');
     catch
         warning('Could not import pair %d', s);
     end
@@ -208,11 +210,6 @@ end
 disp(table(bb_str', ...
     'VariableNames', {'neuromap_modulation'}))
 
-disp('Cohens D:');
-disp(table(cohensD(:), ...
-    'VariableNames',{'neuromap_modulation'},...
-    'RowNames', abr_mapname));
-
 cmap = zeros(length(atlas_labels),3);
 for i = 1:length(atlas_labels)
     cmap(i,:) = atlas_labels(i).rgba(1:3);
@@ -223,7 +220,7 @@ clf
 
 t2 = tiledlayout(2,1,'TileSpacing','compact');
 
-nexttile()
+tile1 = nexttile()
 cla
 uni_label = 'Ctx_V1_L';
 uni = find(contains(roi_labels, uni_label),1,'first');
@@ -245,14 +242,14 @@ y = m.predict(xlim');
 l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
-title([strrep(uni_label, '_',' '), ' (unimodal)'], 'fontweight','normal','fontsize',fs)
+title([' ', strrep(uni_label, '_',' '), ' (unimodal)'], 'fontweight','normal','fontsize',fs)
 xlabel({'RepSim (WUC)'})
 ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs)
 box off;
 axis image
 
-nexttile()
+tile2 = nexttile()
 cla
 
 trans_label = 'Ctx_p9_46v_R';
@@ -276,7 +273,10 @@ l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 xlim(xl);
 
-title({[strrep(trans_label, '_',' '), ' (transmodal)']}, 'fontweight','normal','fontsize',fs)
+trans_label = strrep(trans_label,'Ctx_','Ctx ');
+trans_label = strrep(trans_label,'_R',' R');
+trans_label = strrep(trans_label,'_L',' L');
+title({[strrep(trans_label, '_','-'), ' (transmodal)']}, 'fontweight','normal','fontsize',fs)
 xlabel({'RepSim','(WUC)'})
 ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs,'YTick', [0.2,0.4])
@@ -288,13 +288,13 @@ leg1 = legend([p1,p2],{'V1 dyad', 'p9-46v dyad'},'fontsize',fs);
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),326,407]);
 
-t2.Position(2) = 0.18;
-t2.Position(4) = 0.635;
+%t2.Position(2) = 0.18;
+%t2.Position(4) = 0.635;
 
-leg1.Position(1) = -0.05;
+leg1.Position(1) = 0.02;
 leg1.Position(2) = 0.025;
 
-sgtitle({'Topography is an inconsistent','measure of representations'},'FontWeight','bold','fontsize',fs+2)
+sgtitle({'Topography is an inconsistent','measure of representations',''},'FontWeight','bold','fontsize',fs+2)
 
 exportgraphics(gcf,sprintf('panels_%s/scatterplots.png',noise),'ContentType','image','Resolution',300);
 
