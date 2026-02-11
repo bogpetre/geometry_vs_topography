@@ -7,14 +7,20 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --mem=48G
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_msmall_grayord_spm3d.logs/firstlvl_%a.out
+#SBATCH --output hcp_glm_msmall_grayord_spm_retest.logs/firstlvl_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-1114
+#SBATCH --array 1-24
 #SBATCH --dependency=7194045
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
 # and have equivalent configuration options you could substitute for the above.
+#
+# This script runs first level GLMs using retest data from participants that returned to repeat
+# the full HCP protocol. Runs very similarly to run_subj_hcp_msmall_grayord_spm.sh except with
+# a different DATA_SRC path. We also incorporate some parallelization since we have fewer of 
+# these jobs and can use more CPUs/job before saturating our allocation, but modify to taste.
+# Change the n_cpus argument to hcp_glm_msmall_grayord_spm.py below accordingly.
 
 hostname
 
@@ -33,15 +39,15 @@ date
 set -x
 
 DATA_SRC=$(cat ../config.json | \
-    python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
+    python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['retest_imaging'])")
 
 # this is where your files get saved
-OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm/
+OUT_DIR=../derivatives/retest/hcp_glm_msmall_grayord_spm/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
 
-sid_list=($(ls $DATA_SRC/))
+sid_list=($(../resources/paired_retest_iid_sid.csv | awk -F, '{print $1"\n"$2}'))
 SID1=${sid_list[$[$SLURM_ARRAY_TASK_ID-1]]}
 
 # The $TMPDIR env variable points to local scratch space, which is sometimes full.
@@ -70,8 +76,8 @@ directions=('LR' 'RL')
 
 if [ ! -e $OUT_DIR/results/$SID1/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii ]; then
     python -u ../scripts/hcp_glm_msmall_grayord_spm.py --subject_ids ${SID1} --out $OUT_DIR \
-        --scratch $SCRATCH_DIR --atlas $ATLAS --tasks ${TASKS[@]} --n_cpus 1 \
-        --config ../config.json
+        --scratch $SCRATCH_DIR --atlas $ATLAS --tasks ${TASKS[@]} --n_cpus 4 \
+        --data $DATA_SRC --config ../config.json
 fi
 
 echo "End time:"

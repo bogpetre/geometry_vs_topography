@@ -25,6 +25,8 @@
 # not deleted from scratch upon completion, nor copied over a second time if it is already
 # there, so you can safely run multiple instances of this script concurrently once the imagenet
 # data is copied over to scratch space.
+#
+# This job takes around 72 hours to run on an A100 GPU or 42 hours on an H200
 
 hostname
 date

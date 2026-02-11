@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name 7SPM_GLMs
+#SBATCH --job-name RSA
 #SBATCH --time 2-00:00:00
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 1
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_grayord_spm.logs/all_bsc_%a.out
+#SBATCH --output hcp_glm_msmall_grayord_spm3d.logs/all_bsc_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-1114%200
+#SBATCH --array 1-1114
 #SBATCH --exclude=
-#SBATCH --dependency=5097215
+#SBATCH --dependency=7195282
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -42,12 +42,12 @@ ROOT=/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm3/
+OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
 
-HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print files('hcp_utils')")
+HCP_DIR=$(python3 -c "import hcp_utils; from importlib_resources import files; print(files('hcp_utils'))")
 SURF_LEFT=$HCP_DIR/data/S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii
 SURF_RIGHT=$HCP_DIR/data/S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii
 
@@ -56,8 +56,8 @@ iter=$[$SLURM_ARRAY_TASK_ID-1]
 sid_list2=${sid_list1[@]:$[${iter}+1]:${#sid_list1[@]}}
 SID1=${sid_list1[$[$SLURM_ARRAY_TASK_ID-1]]}
 
-space_avail=$(df -kT /scratch | tail -n 1 | awk '{print $5}')
-disk_space_req=20 # scratch space required in gigabytes, each run takes 22, and we might run 20 on a node
+space_avail=$(df -kT $TMPDIR | tail -n 1 | awk '{print $5}')
+disk_space_req=400 # scratch space required in gigabytes, each run takes 22, and we might run 20 on a node
 if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
         # faster but more resource constrained
 	SCRATCH_DIR=$TMPDIR/$(uuidgen)
@@ -90,6 +90,17 @@ cp $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/standardized_distance.csv \
 # Topographic similarity is estimated using python scripts which are slow to spin up, so we do it on demand instead
 # in matlab
 mkdir -p $OUT_DIR/bsc_all/whitened_betas/cosine/
+if [ -e $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}/ ]; then # take a count of how many files are within
+    wcnt=$(ls $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}/ | wc -w);
+else
+    wcnt=0
+fi
+if [ -e $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/ ]; then # take a count of how many files are within
+    scnt=$(ls $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/ | wc -w);
+else
+    scnt=0
+fi
+
 for SID2 in ${sid_list2[@]}; do 
     if [ ! -e $OUT_DIR/results/$SID2/all_tasks/whitened_contrasts/merged_cifti.dscalar.nii ]; then
         continue
@@ -102,7 +113,7 @@ for SID2 in ${sid_list2[@]}; do
             $SCRATCH_DIR/whitened/${SID2}/
 
         mkdir -p $OUT_DIR/bsc_all/whitened_betas/cosine/$SID1/
-        time $ROOT/bin/rdm_similarity \
+        time ../bin/rdm_similarity64 \
             $SCRATCH_DIR/whitened/crossnobis_distance.csv \
             $SCRATCH_DIR/whitened/${SID2}/crossnobis_distance.csv \
             $SCRATCH_DIR/whitened/whitening_matrix_out.bin \
@@ -120,7 +131,7 @@ for SID2 in ${sid_list2[@]}; do
            $SCRATCH_DIR/standard/$SID2/
 
         mkdir -p $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/
-        time $ROOT/bin/rdm_similarity \
+        time ../bin/rdm_similarity64 \
             $SCRATCH_DIR/standard/standardized_distance.csv \
             $SCRATCH_DIR/standard/${SID2}/standardized_distance.csv \
             $SCRATCH_DIR/standard/whitening_matrix_out.bin \
@@ -132,8 +143,20 @@ for SID2 in ${sid_list2[@]}; do
     fi
 done
 
-cat $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}/* > $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}_v_all.tsv
-cat $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/* > $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}_v_all.tsv
+if [ $wcnt -lt $(ls $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}/ | wc -w) ]; then
+    cat $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}/* > $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}_v_all.tsv
+fi
+
+if [ $scnt -lt $(ls $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/ | wc -w) ]; then
+    cat $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}/* > $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}_v_all.tsv
+fi
+
+if [ ! -e $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}_v_all.tsv ]; then
+    touch $OUT_DIR/bsc_all/standardized_betas/cosine/${SID1}_v_all.tsv
+fi
+if [ ! -e $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}_v_all.tsv ]; then
+    touch $OUT_DIR/bsc_all/whitened_betas/cosine/${SID1}_v_all.tsv
+fi
 
 echo "End time:"
 date

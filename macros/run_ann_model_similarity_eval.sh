@@ -11,7 +11,7 @@
 #SBATCH --gres gpu:1
 #SBATCH --requeue
 #SBATCH --partition a100_preemptable
-#SBATCH --array 2-13
+#SBATCH --array 0-13
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles

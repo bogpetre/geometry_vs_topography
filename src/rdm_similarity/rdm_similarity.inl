@@ -294,9 +294,148 @@ vector<int> parse_task_ids(const string& arg) {
 
 /* END: Task Balancing Code */
 
+
+// ---- Permutation helpers ----
+
+// Parse comma-separated ints like "0,5,2,1" (optionally with whitespace)
+vector<int> parse_index_list(const string& arg) {
+    vector<int> result;
+    stringstream ss(arg);
+    string token;
+    while (getline(ss, token, ',')) {
+        // trim whitespace
+        token.erase(0, token.find_first_not_of(" \t\r\n"));
+        token.erase(token.find_last_not_of(" \t\r\n") + 1);
+        if (token.empty()) continue;
+        try {
+            result.push_back(stoi(token));
+        } catch (...) {
+            throw runtime_error("Invalid index in permutation list: " + token);
+        }
+    }
+    return result;
+}
+
+// Infer n from triangular vector length: len = n*(n-1)/2
+int infer_n_conditions_from_vec_len(int len) {
+    double disc = 1.0 + 8.0 * static_cast<double>(len); // Note, 8*len = -4*a*c = -4(1)(-2*len) from quadratic equation
+    double n_real = (1.0 + std::sqrt(disc)) / 2.0;
+    int n = static_cast<int>(std::llround(n_real));
+    if (n < 2 || n * (n - 1) / 2 != len) {
+        throw runtime_error("Cannot infer n_conditions from vector length (not triangular): " + to_string(len));
+    }
+    return n;
+}
+
+// Validate a permutation. Allows 0-based [0..n-1] or 1-based [1..n] (auto-converts to 0-based).
+vector<int> normalize_and_validate_perm(vector<int> perm, int n) {
+    if ((int)perm.size() != n) {
+        throw runtime_error("Permutation length must equal n_conditions. Got " + to_string(perm.size()) +
+                            ", expected " + to_string(n));
+    }
+
+    int mn = *min_element(perm.begin(), perm.end());
+    int mx = *max_element(perm.begin(), perm.end());
+
+    // Allow 1-based indexing
+    if (mn == 1 && mx == n) {
+        for (auto& v : perm) v -= 1;
+        mn = *min_element(perm.begin(), perm.end());
+        mx = *max_element(perm.begin(), perm.end());
+    }
+
+    if (mn != 0 || mx != n - 1) {
+        throw runtime_error("Permutation indices must cover [0, n-1] (or [1, n] for 1-based).");
+    }
+
+    vector<char> seen(n, 0);
+    for (int v : perm) {
+        if (v < 0 || v >= n) throw runtime_error("Permutation index out of range: " + to_string(v));
+        if (seen[v]) throw runtime_error("Permutation contains duplicates: " + to_string(v));
+        seen[v] = 1;
+    }
+    return perm;
+}
+
+// Permute a square matrix by applying the same permutation to rows and cols: out(i,j)=in(perm[i],perm[j])
+MatrixT permute_square(const MatrixT& M, const vector<int>& perm) {
+    int n = (int)perm.size();
+    if (M.rows() != n || M.cols() != n) {
+        throw runtime_error("permute_square: matrix dim mismatch");
+    }
+    MatrixT out(n, n);
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j < n; ++j)
+            out(i, j) = M(perm[i], perm[j]);
+    return out;
+}
+
+// Lift a condition-level permutation (size n_conditions) to an expanded permutation (size replicate_ids.size()).
+// replicate_ids[k] tells you which original condition occupies expanded index k. :contentReference[oaicite:2]{index=2}
+vector<int> lift_perm_to_expanded(const vector<int>& perm_orig,
+                                  const vector<int>& replicate_ids,
+                                  int n_conditions)
+{
+    vector<vector<int>> positions(n_conditions);
+    for (int k = 0; k < (int)replicate_ids.size(); ++k) {
+        int c = replicate_ids[k];
+        if (c < 0 || c >= n_conditions) throw runtime_error("Bad replicate_ids value: " + to_string(c));
+        positions[c].push_back(k);
+    }
+
+    vector<int> perm_exp;
+    perm_exp.reserve(replicate_ids.size());
+    for (int c : perm_orig) {
+        perm_exp.insert(perm_exp.end(), positions[c].begin(), positions[c].end());
+    }
+
+    if ((int)perm_exp.size() != (int)replicate_ids.size()) {
+        throw runtime_error("lift_perm_to_expanded: wrong size after lifting");
+    }
+
+    // Validate it's a permutation of [0..n_exp-1]
+    vector<char> seen(replicate_ids.size(), 0);
+    for (int v : perm_exp) {
+        if (v < 0 || v >= (int)replicate_ids.size()) throw runtime_error("lift_perm_to_expanded: out of range");
+        if (seen[v]) throw runtime_error("lift_perm_to_expanded: duplicate expanded index");
+        seen[v] = 1;
+    }
+    return perm_exp;
+}
+
+// Apply a condition-level permutation to an RDM vector in either unbalanced or balanced (replicated) space.
+// - If task_ids is empty: interpret vec as length rdm_dim = n*(n-1)/2, permute in n×n space.
+// - If task_ids is non-empty: interpret vec as expanded vector (after patch_block_diagonals), permute in n_exp×n_exp space,
+//   where n_exp = replicate_ids.size(), using lifted perm.
+VectorT permute_rdm_vector_after_balancing(const VectorT& vec,
+                                           const vector<int>& perm_cond,   // size n_conditions (0-based)
+                                           const vector<int>& task_ids,
+                                           const ReplicationPlan& plan)
+{
+    if (task_ids.size() == 0) {
+        int n = infer_n_conditions_from_vec_len((int)vec.size());
+        MatrixT M = vector_to_matrix(vec, n);
+        MatrixT Mp = permute_square(M, perm_cond);
+        return matrix_to_vector(Mp);
+    } else {
+        int n_conditions = (int)task_ids.size();
+        int n_exp = (int)plan.replicate_ids.size();
+        if ((int)vec.size() != n_exp * (n_exp - 1) / 2) {
+            throw runtime_error("permute_rdm_vector_after_balancing: vec has wrong size for expanded dim");
+        }
+        vector<int> perm_exp = lift_perm_to_expanded(perm_cond, plan.replicate_ids, n_conditions);
+        MatrixT Mexp = vector_to_matrix(vec, n_exp);
+        MatrixT Mexp_p = permute_square(Mexp, perm_exp);
+        return matrix_to_vector(Mexp_p);
+    }
+}
+
+
 int main(int argc, char** argv) {
     if (argc < 9) {
-        cerr << "Usage: " << argv[0] << " <sub1.csv> <sub2.csv> <cov1.bin> <cov2.bin> <meta1.json> <meta2.json> <output.csv> <full_matrix:0|1> <comma_separate_task_ids>\n";
+        cerr << "Usage: " << argv[0]
+             << " <sub1.csv> <sub2.csv> <cov1.bin> <cov2.bin> <meta1.json> <meta2.json> <output.csv>"
+             << " <full_matrix:0|1> [task_ids_csv|'-'] [perm_target:1|2 perm_indices_csv]\n";
         return 1;
     }
 
@@ -308,9 +447,40 @@ int main(int argc, char** argv) {
     MetaData meta2 = parse_metadata(argv[6]);
     string out_file = argv[7];
     bool full_matrix = stoi(argv[8]) != 0;
+    
+    // Optional task IDs
     vector<int> task_ids;
     if (argc > 9) {
-        task_ids = parse_task_ids(argv[9]);
+        string task_arg = argv[9];
+        if (task_arg != "-") task_ids = parse_task_ids(task_arg);
+    }
+
+    // Optional permutation
+    bool do_perm = false;
+    int perm_target = 0;             // 1 => permute x1, 2 => permute x2
+    vector<int> perm_cond;           // condition-level permutation (size n_conditions)
+
+    if (argc > 10) {
+        do_perm = true;
+        perm_target = stoi(argv[10]);
+        if (!(perm_target == 1 || perm_target == 2))
+            throw runtime_error("perm_target must be 1 or 2");
+
+        if (argc < 12)
+            throw runtime_error("If perm_target is provided, perm_indices_csv must also be provided.");
+
+        // Determine n_conditions to validate permutation length
+        int n_conditions = 0;
+        if (task_ids.size() > 0) {
+            n_conditions = (int)task_ids.size();
+        } else {
+            // No task ids given; infer n from rdm_dim after meta parsing below.
+            // We'll parse raw list now and validate after we compute rdm_dim.
+        }
+
+        perm_cond = parse_index_list(argv[11]);
+        // If we already know n_conditions, validate now; else validate later once rdm_dim known.
+        if (n_conditions > 0) perm_cond = normalize_and_validate_perm(perm_cond, n_conditions);
     }
 
     int rdm_dim = meta1.shape_per_matrix_0;
@@ -325,6 +495,12 @@ int main(int argc, char** argv) {
         throw runtime_error("Invalid task ID length for rdm size");
     } else if (task_ids.size() > 0) {
         plan = make_replication_plan(task_ids);
+    }
+
+    // If no task_ids were given but permutation was requested, validate against inferred n_conditions.
+    if (do_perm && task_ids.size() == 0) {
+        int n_conditions = infer_n_conditions_from_vec_len(rdm_dim);
+        perm_cond = normalize_and_validate_perm(perm_cond, n_conditions);
     }
 
     MatrixT similarity_matrix;
@@ -376,6 +552,21 @@ int main(int argc, char** argv) {
                     MatrixT x2_whitened_sq = vector_to_matrix(x2_whitened.col(0), task_ids.size());
                     MatrixT x2_whitened_sq_exp = apply_replication(x2_whitened_sq, plan.replicate_ids);
                     x2_whitened = patch_block_diagonals(x2_whitened_sq, x2_whitened_sq_exp, task_ids, plan.replicate_ids, plan.block_labels);
+                }
+                
+                // Optional: permute one comparator after balancing/patching.
+                // Permutation is specified over ORIGINAL conditions; if balancing expanded the matrix,
+                // we lift it to expanded indices using plan.replicate_ids.
+                if (do_perm) {
+                    if (perm_target == 1) {
+                        VectorT v = x1_whitened.col(0);
+                        v = permute_rdm_vector_after_balancing(v, perm_cond, task_ids, plan);
+                        x1_whitened = v;
+                    } else { // perm_target == 2
+                        VectorT v = x2_whitened.col(0);
+                        v = permute_rdm_vector_after_balancing(v, perm_cond, task_ids, plan);
+                        x2_whitened = v;
+                    }
                 }
 
                 similarity_matrix(i,j) = (x1_whitened.transpose() * x2_whitened)(0,0);
@@ -433,6 +624,22 @@ int main(int argc, char** argv) {
                 MatrixT x2_whitened_sq_exp = apply_replication(x2_whitened_sq, plan.replicate_ids);
                 x2_whitened = patch_block_diagonals(x2_whitened_sq, x2_whitened_sq_exp, task_ids, plan.replicate_ids, plan.block_labels);
             }
+            
+            // Optional: permute one comparator after balancing/patching.
+            // Permutation is specified over ORIGINAL conditions; if balancing expanded the matrix,
+            // we lift it to expanded indices using plan.replicate_ids.
+            if (do_perm) {
+                if (perm_target == 1) {
+                    VectorT v = x1_whitened.col(0);
+                    v = permute_rdm_vector_after_balancing(v, perm_cond, task_ids, plan);
+                    x1_whitened = v;
+                } else {
+                    VectorT v = x2_whitened.col(0);
+                    v = permute_rdm_vector_after_balancing(v, perm_cond, task_ids, plan);
+                    x2_whitened = v;
+                }
+            }
+
 
             similarity_matrix(0,i) = (x1_whitened.transpose() * x2_whitened)(0,0);
 

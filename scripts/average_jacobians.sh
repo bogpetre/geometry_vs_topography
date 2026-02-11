@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script computes jacobians for each acquisition direction for unrelated HCP participants. We use this as a sanity
+# check that LR and RL acquisitions can be treated as test-retest samples for unbiased RSA
+
 set -x
 
 SCRATCH_DIR=$TMPDIR/$(uuidgen)

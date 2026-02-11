@@ -82,6 +82,7 @@ def get_clf_mat(model, cv, scorer,
 
     # extract region and evaluate model
     scores = {parcellation.labels[key]: [] for key in parcellation.labels}
+    y_set = sorted(list(dict.fromkeys(y_label)))
 
     for ind in region_ind:
         this_label = parcellation.labels[ind]
@@ -91,7 +92,6 @@ def get_clf_mat(model, cv, scorer,
         if np.all(np.isnan(X)):
             continue
 
-        y_set = list(dict.fromkeys(y_label))
         for i,cond1 in enumerate(y_set):
             for cond2 in y_set[(i+1):]:
                 cond_ind = np.array([j for j,lbl in enumerate(y_label) if cond1 == lbl or cond2 == lbl], dtype=int)
