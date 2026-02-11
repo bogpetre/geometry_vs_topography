@@ -72,7 +72,7 @@ modality = {'Vis','Vis','Vis','Vis','Vis','Vis',...
 
 % clf labels are in a different order from task_names because they come
 % from a different first level GLM. We need to resort them.
-clf_resort = [2,1,3,4,6,5,8,7,10,9,12,15,14,11,13,20,18,21,16,17,22,23,19];
+%clf_resort = [2,1,3,4,6,5,8,7,10,9,12,15,14,11,13,20,18,21,16,17,22,23,19]; % 2_10_26
 
 tasks = [1,4:5];
 cond = ismember(task_labels, tasks);
@@ -276,7 +276,8 @@ cbar2.Position(4) = 0.03;
 pos = get(gcf,'Position');
 set(gcf,'Position', [932,533,385,315])
 
-export_fig(gcf,sprintf('panels_%s/common_topographies.png',noise),'-transparent','-r300');
+%export_fig(gcf,sprintf('panels_%s/common_topographies.png',noise),'-transparent','-r300');
+exportgraphics(gcf,sprintf('panels_%s/common_topographies.png',noise),'ContentType','image','Resolution',300);
 
 % print descriptive statistics
 cosim_uni = zeros(size(mtopo1_uni,1),1);
@@ -536,19 +537,69 @@ proj2_trans = mtopo2_trans(cond,:)*v2;
 %% import rdms and binary clf performances
 
 rdm_root = '../../derivatives/hcp_glm_msmall_grayord_spm/results/';
+clf_root = '../../derivatives/single_blocks_msmall_grayord_spm';
 
 if strcmp(noise,'standardized')
     standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var1(subj_pair_id)));
     standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var2(subj_pair_id)));
+    rdm_betanames1 = readtable(sprintf('%s/%d/all_tasks/rsa/stddist/betanames.csv',rdm_root, sid.Var2(subj_pair_id)),'ReadVariableNames',false);
+    rdm_betanames2 = readtable(sprintf('%s/%d/all_tasks/rsa/stddist/betanames.csv',rdm_root, sid.Var2(subj_pair_id)),'ReadVariableNames',false);
 elseif strcmp(noise,'whitened')
     standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var1(subj_pair_id)));
     standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var2(subj_pair_id)));
+    rdm_betanames1 = readtable(sprintf('%s/%d/all_tasks/rsa/crossnobis/betanames.csv',rdm_root, sid.Var2(subj_pair_id)),'ReadVariableNames',false);
+    rdm_betanames2 = readtable(sprintf('%s/%d/all_tasks/rsa/crossnobis/betanames.csv',rdm_root, sid.Var2(subj_pair_id)),'ReadVariableNames',false);
 else
     error('Did not understand noise model choice "%s"',noise)
 end
 
-conf_mats1 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', sid.Var1(subj_pair_id),noise),'ReadRowNames',true,'ReadVariableNames',true);
-conf_mats2 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv',sid.Var2(subj_pair_id),noise),'ReadRowNames',true,'ReadVariableNames',true);
+assert(all(strcmp(rdm_betanames1.Var2,rdm_betanames2.Var2)),'Betaname mismatch across participant RDMs, but this code assumes they''re the same. Aborting.');
+
+conf_mats1 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', ...
+    clf_root, sid.Var1(subj_pair_id),noise),'ReadRowNames',true,'ReadVariableNames',true);
+conf_mats2 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', ...
+    clf_root, sid.Var2(subj_pair_id),noise),'ReadRowNames',true,'ReadVariableNames',true);
+
+clf_betanames1 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_labels.csv', ...
+    clf_root, sid.Var1(subj_pair_id),noise),'ReadVariableNames',false);
+clf_betanames2 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_labels.csv', ...
+    clf_root, sid.Var2(subj_pair_id),noise),'ReadVariableNames',false);
+
+assert(all(strcmp(clf_betanames1.Var1, clf_betanames2.Var1)) && all(strcmp(clf_betanames1.Var2, clf_betanames2.Var2)),...
+   'Betaname mismatch across participant clfs, but this code assumes they''re the same. Aborting.');
+
+% get sorting order that maps clf_betanames1 to rdm_betanames1
+clf_resort = nan(height(rdm_betanames1),1);
+ind = 1;
+for i = 1:height(clf_betanames1)
+    target = lower(clf_betanames1.Var2{i});
+    switch target
+        case 'punishment'
+            target = 'punish';
+        case 'leftfoot'
+            target = 'lf';
+        case 'rightfoot'
+            target = 'rf';
+        case 'lefthand'
+            target = 'lh';
+        case 'righthand'
+            target = 'rh';
+        case 'control'
+            target = 'match';
+        case 'relational'
+            target = 'rel';
+        case 'mental'
+            target = 'tom';
+    end
+    if contains(target,'-back')
+        target = regexprep(strrep(target,'-back','bk'),'s$','');
+    end
+    this_ind = find(contains(lower(rdm_betanames1.Var2),target));
+    if ~isempty(this_ind)
+        clf_resort(this_ind) = i;
+        ind = ind+1;
+    end
+end
 
 uni_rdm1 = squareform(standardized1(:, uni));
 uni_rdm2 = squareform(standardized2(:, uni));
@@ -1094,19 +1145,68 @@ trans_label = roi_labels(lbls(2));
 for i = 1:height(sid)
     try
         rdm_root = '../../derivatives/hcp_glm_msmall_grayord_spm/results/';
-        
+                
         if strcmp(noise,'standardized')
             standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var1(i)));
             standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/stddist/standardized_distance.csv',rdm_root, sid.Var2(i)));
+            rdm_betanames1 = readtable(sprintf('%s/%d/all_tasks/rsa/stddist/betanames.csv',rdm_root, sid.Var2(i)),'ReadVariableNames',false);
+            rdm_betanames2 = readtable(sprintf('%s/%d/all_tasks/rsa/stddist/betanames.csv',rdm_root, sid.Var2(i)),'ReadVariableNames',false);
         elseif strcmp(noise,'whitened')
             standardized1 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var1(i)));
             standardized2 = readmatrix(sprintf('%s/%d/all_tasks/rsa/crossnobis/crossnobis_distance.csv',rdm_root, sid.Var2(i)));
+            rdm_betanames1 = readtable(sprintf('%s/%d/all_tasks/rsa/crossnobis/betanames.csv',rdm_root, sid.Var2(i)),'ReadVariableNames',false);
+            rdm_betanames2 = readtable(sprintf('%s/%d/all_tasks/rsa/crossnobis/betanames.csv',rdm_root, sid.Var2(i)),'ReadVariableNames',false);
         else
             error('Did not understand noise model choice "%s"',noise)
         end
         
-        conf_mats1 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', sid.Var1(i),noise),'ReadRowNames',true,'ReadVariableNames',true);
-        conf_mats2 = readtable(sprintf('../../derivatives/single_blocks_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv',sid.Var2(i),noise),'ReadRowNames',true,'ReadVariableNames',true);
+        assert(all(strcmp(rdm_betanames1.Var2,rdm_betanames2.Var2)),'Betaname mismatch across participant RDMs, but this code assumes they''re the same. Aborting.');
+        
+        conf_mats1 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', ...
+            clf_root, sid.Var1(i),noise),'ReadRowNames',true,'ReadVariableNames',true);
+        conf_mats2 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_performance.csv', ...
+            clf_root, sid.Var2(i),noise),'ReadRowNames',true,'ReadVariableNames',true);
+        
+        clf_betanames1 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_labels.csv', ...
+            clf_root, sid.Var1(i),noise),'ReadVariableNames',false);
+        clf_betanames2 = readtable(sprintf('%s/results/%d/all_tasks/%s_contrasts/binary_clf_labels.csv', ...
+            clf_root, sid.Var2(i),noise),'ReadVariableNames',false);
+        
+        assert(all(strcmp(clf_betanames1.Var1, clf_betanames2.Var1)) && all(strcmp(clf_betanames1.Var2, clf_betanames2.Var2)),...
+           'Betaname mismatch across participant clfs, but this code assumes they''re the same. Aborting.');
+        
+        % get sorting order that maps clf_betanames1 to rdm_betanames1
+        clf_resort = nan(height(rdm_betanames1),1);
+        ind = 1;
+        for j = 1:height(clf_betanames1)
+            target = lower(clf_betanames1.Var2{j});
+            switch target
+                case 'punishment'
+                    target = 'punish';
+                case 'leftfoot'
+                    target = 'lf';
+                case 'rightfoot'
+                    target = 'rf';
+                case 'lefthand'
+                    target = 'lh';
+                case 'righthand'
+                    target = 'rh';
+                case 'control'
+                    target = 'match';
+                case 'relational'
+                    target = 'rel';
+                case 'mental'
+                    target = 'tom';
+            end
+            if contains(target,'-back')
+                target = regexprep(strrep(target,'-back','bk'),'s$','');
+            end
+            this_ind = find(contains(lower(rdm_betanames1.Var2),target));
+            if ~isempty(this_ind)
+                clf_resort(this_ind) = j;
+                ind = ind+1;
+            end
+        end
         
         uni_rdm1 = squareform(standardized1(:, uni));
         uni_rdm2 = squareform(standardized2(:, uni));
@@ -1144,7 +1244,7 @@ for i = 1:height(sid)
         r_t(i,1) = corr(trans_clf1, trans_rdm1);
         r_t(i,2) = corr(trans_clf2, trans_rdm2);
     catch
-        fprintf('Skipped %d\n',i)
+        fprintf('Skipped dyad %d\n',i)
     end
 end
 
