@@ -74,6 +74,7 @@ Binaries:
 Data:
 * HCP data: s3://hcp-openaccess/
 * HCP restricted data (only for heritability analysis): https://www.humanconnectome.org/study/hcp-young-adult/document/restricted-data-usage
+* ImageNet training and validation data (only for ANN modeling): https://image-net.org/
 
 Note, the use of HCP restricted data prohibits us from sharing specific subject ids. This 
 prevents us from identifying the exemplary subjects we use for illustrative purposes in the
