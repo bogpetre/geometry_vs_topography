@@ -49,6 +49,7 @@ Matlab:
 * cifti matlab libraries: https://github.com/Washington-University/cifti-matlab
 * spm12: https://www.fil.ion.ucl.ac.uk/spm/docs/installation/
 * Neuroimaging Pattern Masks: https://github.com/canlab/Neuroimaging_Pattern_Masks/
+* RSA Toolbox (modified for multirun and multisession data): https://github.com/bogpetre/rsatoolbox_matlab
 
 C/C++:
 * libblas
