@@ -42,7 +42,15 @@ patch some minor things in VISSL, the self-supervised learning framework that TD
 uses. Thankfully, none of this should be necessary if you're just using our pretrained
 model weights from OSF.
 
+To avoid needing to rerun all analysis scripts (tens of thousands of CPU and GPU hours
+worth of compute), you can find the analysis derivatives used to generate the manuscript
+tables and figures here: https://osf.io/xmyrn/overview. Refer to the README included
+therein for details on which files pertain to which figures.
+
 ### Dependencies
+
+Python:
+* See requirements.txt file
 
 Matlab:
 * canlabCore: https://github.com/canlab/CanlabCore
@@ -71,7 +79,7 @@ Note, the use of HCP restricted data prohibits us from sharing specific subject 
 prevents us from identifying the exemplary subjects we use for illustrative purposes in the
 manuscript. This information was shared with HCP though and is available to users who agree
 to the restricted data usage agreement. Once the key is obtained the appropriate subject
-dyad can be assigned in the config.json file and figure 1 can be regenerated.
+dyad can be assigned in the config.json file and figure 2 can be regenerated.
 
 ### canlab2024
 
@@ -112,27 +120,30 @@ CANLab2024
 
 ## Usage
 
-Scripts to reproduce first level analysis are available in scripts/. 
+Scripts to reproduce first level analysis and evaluate ANNs are available in scripts/. In particular 
+note,
 * hcp_glm_msmall_grayord_spm.py: fits first level models and estimates geometires using task data
 * hcp_dual_regression_msmall_grayord_spm.py: estimates individualized ICA networks and geometries.
 * hcp_glm_msmall_grayord_spm_single_blocks.py: fits first level models and estimates nearest centroid classification classification performance
+For details on additional scripts refer to scripts/README
 
 These need to be run iteratively over participants. Macros to do this on a SLURM HPC system are
 in macros/. It should be simple to adapt these to other job scheduling systems like torque or SGE.
 Without an HPC environment it's not practical to run these analyses (figures 3-5 took 2-3 months
 worth of CPU hours to produce, figure 6 took much longer). You can however run a single pair of
 participants on a PC in a day or so to help understand the underlying processes if that's desired.
-Pick a pair from resources/paired_sid.csv if that's the case.
+Pick a pair from resources/paired_sid.csv if that's the case. By inspecting analysis intermediates 
+you can better evaluate each step's technical characteristics.
 
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
 rdm_similarity for efficient and scalable computation of geometric similarities
-from the derivatives of the above analyses (example scripts forthcoming, also in macros/).
+from the derivatives of the above analyses (example scripts in macros/).
 
 You will also need to generate spin permuted neuromaps maps locally, since they're too big for 
 github. This can be done with scripts/get_parcellated_neuromap_vals.py, which is called by
 macros/prep_neuromap_data.sh
 
-Once the above scripts have prepared geometric and topographic similarity
-measures and you have your neuromaps ready figures from the paper can be regenerated using matlab 
-scripts found in figures/
+Once the above scripts have prepared geometric and topographic similarity measures and you have 
+your neuromaps ready, figures from the paper can be regenerated using matlab scripts found in 
+figures/
