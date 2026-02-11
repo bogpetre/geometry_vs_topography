@@ -22,7 +22,7 @@ colors_light = config.matlab_disp_scheme.color_light;
 noise='whitened';
 %noise='standardized';
 
-data_root = '../../derivatives/restingstate3/';
+data_root = '../../derivatives/restingstate/';
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
