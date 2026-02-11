@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --hint=nomultithread
 #SBATCH --output rsn25_3f.logs/all_bsc_%a.out
-#SBATCH --account brainsci
+#SBATCH --account dbic
 #SBATCH --array 1-1114
 #SBATCH --exclude=
 #SBATCH --dependency=7195285
@@ -44,7 +44,7 @@ ROOT=/dartfs-hpc/rc/lab/C/CANlab/labdata/projects/bogdan_hcp_glm/
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/restingstate3/hcp${d}/
+OUT_DIR=../derivatives/restingstate/hcp${d}/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")

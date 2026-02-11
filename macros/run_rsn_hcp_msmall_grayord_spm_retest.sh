@@ -4,17 +4,22 @@
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 1
 #SBATCH --ntasks 1
-#SBATCH --cpus-per-task 1
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task 4
+#SBATCH --mem=256G
 #SBATCH --hint=nomultithread
-#SBATCH --output rsn25_3c.logs/rsn25_%a.out
+#SBATCH --output rsn25_retest2.logs/rsn25_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-1114
-#SBATCH --dependency=7195283
+#SBATCH --array 1-24
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
 # and have equivalent configuration options you could substitute for the above.
+#
+# This script runs dual regression against a 25 dimensional HCP template using retest visit
+# data. It's very similar to run_rsn_hcp_msmall_grayord_spm.sh otherwise. We also some
+# parallelization since we have fewer of these jobs and can use more CPUs/job before saturating
+# our allocation, but modify to taste. Change the n_cpus argument to hcp_glm_msmall_grayord_spm.py
+# below accordingly.
 
 hostname
 
@@ -35,9 +40,9 @@ set -x
 d=25 # number of ICA components to use. Options: 15, 25, 50, 100, 150, 200, 300. Must match ICA templates available from PTN1200 release
 
 DATA_SRC=$(cat ../config.json | \
-    python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
+    python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['retest_imaging'])")
 
-OUT_DIR=../derivatives/restingstate/hcp${d}/
+OUT_DIR=../derivatives/retest/restingstate/hcp${d}/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
@@ -46,7 +51,7 @@ HCP_RESOURCES=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['HCP_Resources'])")
 RSN_TEMPLATE=$HCP_RESOURCES/GroupAvg/HCP_PTN1200/groupICA/groupICA_3T_HCP1200_MSMAll_d${d}.ica/melodic_IC.dscalar.nii
 
-sid_list=($(ls $DATA_SRC))
+sid_list=($(cat ../resources/paired_retest_iid_sid.csv | awk -F, '{print $1"\n"$2}'))
 SID1=${sid_list[$[$SLURM_ARRAY_TASK_ID-1]]}
 
 # The $TMPDIR env variable points to local scratch space, which is sometimes full.
@@ -61,18 +66,22 @@ else
         # slower, but much less of a problem running out of space
         SCRATCH_DIR=/dartfs-hpc/scratch/$(whoami)/$(uuidgen)
 fi
+
 cleanup() {
     rm -rf $SCRATCH_DIR
 }
 trap cleanup EXIT # comment to retain analysis intermediaries
+#SCRATCH_DIR=$OUT_DIR/workdir/$SID/ # uncomment to retain analysis intermediares
 mkdir -p $SCRATCH_DIR
 
-if [ ! -e $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii ]; then
+#if [ ! -e $OUT_DIR/results/$SID1/whitened_betas/cifti_math_results.dscalar.nii ]; then
     python -u ../scripts/hcp_dual_regression_msmall_grayord_spm.py \
         --subject_ids ${SID1} --out $OUT_DIR \
         --scratch $SCRATCH_DIR/${SID1} --n_cpus 1 \
         --atlas $ATLAS --rsn_template $RSN_TEMPLATE \
+        --data $DATA_SRC \
         --config ../config.json
-fi
+#fi
 
-
+echo "End time:"
+date

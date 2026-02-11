@@ -39,7 +39,7 @@ d=25
 DATA_SRC=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['hcp_participant_data']['S1200_imaging'])")
 
-OUT_DIR=../derivatives/restingstate2/hcp${d}/
+OUT_DIR=../derivatives/restingstate/hcp${d}/
 
 ATLAS=$(cat ../config.json | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['canlab2024']['path'])")
