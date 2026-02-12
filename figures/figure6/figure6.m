@@ -127,7 +127,7 @@ dz_sr = dz_sr & ~eye(height(restricted));
 
 
 %% load exhaustive cosine similarities and goemetric similarities of tasks
-load(sprintf('task_topographic_similarities_%s.mat', noise),'roi_topo','good_topo');
+load(sprintf('%s/bsc_all/task_topographic_similarities_%s.mat', data_root, noise),'roi_topo','good_topo');
 
 geom_bsc = dir(fullfile(data_root,sprintf('bsc_all/%s_betas/cosine/*v_all.tsv',noise)));
 roi_geom0 = zeros(length(geom_bsc),length(geom_bsc),518);
@@ -329,7 +329,7 @@ end
     mean_geom_r, perm, family_ind, mz, dz, fs, hs, unr, perm_inds);
 
 %% load exhaustive cosine similarities and goemetric similarities of RSNs
-load(sprintf('rsn_topographic_similarities_%s.mat',noise),'rsn_roi_topo','rsn_good_topo');
+load(sprintf('%s/bsc_all/rsn_topographic_similarities_%s.mat',rsn_root,noise),'rsn_roi_topo','rsn_good_topo');
 
 geom_bsc = dir(fullfile(rsn_root,sprintf('bsc_all/%s_betas/cosine/*v_all.tsv',noise)));
 roi_geom_rsn0 = zeros(length(geom_bsc),length(geom_bsc),518);
@@ -427,7 +427,7 @@ task_labels = [1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7];
 task_wuc_retest = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        task_wuc_retest(s,:) = diag(readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var1(s)),'FileType','text'));
+        task_wuc_retest(s,:) = readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var1(s)),'FileType','text');
     catch
         warning('Could not import pair %d', s);
     end
@@ -491,12 +491,12 @@ rsn_wuc_retest = rsn_wuc_retest(has_data,:);
 
 
 % import between subject metrics
-
+%{
 sid = readtable('../../resources/paired_retest_iid_sid.csv', 'ReadVariableNames',false);
 task_wuc = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        task_wuc(s,:) = diag(readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var2(s)),'FileType','text'));
+        task_wuc(s,:) = readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var2(s)),'FileType','text');
     catch
         warning('Could not import pair %d', s);
     end
@@ -514,7 +514,7 @@ end
 task_cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        task_cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
+        task_cosim(s,:) = balanced_mean_op*dlmread(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid.Var1(s), sid.Var2(s)), '\t');
     catch
         warning('Could not import pair %d', s);
     end
@@ -556,7 +556,7 @@ has_data = any(rsn_cosim,2) & any(~isnan(rsn_wuc),2);
 
 rsn_cosim = rsn_cosim(has_data,:);
 rsn_wuc = rsn_wuc(has_data,:);
-
+%}
 
 %% Plot bargraphs
 
@@ -566,8 +566,8 @@ lines = colormap('lines');
 lines_dark = tanh(atanh(2*(lines - 0.5)) - 0.3)/2 + 0.5;
 lines_darkest = tanh(atanh(2*(lines - 0.5)) - 0.8)/2 + 0.5;
 
-colors = config.matlab_disp_scheme.color_light([5,4,2,3,1],:);
-%colors(4:5,:) = [colors(4,:); colors(4,:)];
+colors = config.matlab_disp_scheme.color_light([2,1,5,4,3],:);
+colors(4:5,:) = repmat([0.5,0.5,0.5],2,1);
 colors_dark = tanh(atanh(2*(colors - 0.5)) - 0.3)/2 + 0.5;
 colors_darkest = tanh(atanh(2*(colors - 0.5)) - 0.8)/2 + 0.5;
 
@@ -598,7 +598,7 @@ for i = 1:size(task_topo_clusters,2)
 end
 xlim([0.5,i+0.5])
 ylim(yl);
-title({'Task'},'FontWeight','bold','fontsize',fontsize); 
+title({'Family Clusters'},'FontWeight','bold','fontsize',fontsize); 
 subtitle('Topography','fontsize',fontsize)
 set(gca,'FontSize',fontsize+2,'XTickLabels',[]);
 ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
@@ -625,7 +625,7 @@ for i = 1:size(rsn_topo_clusters,2)
 end
 xlim([0.5,i+0.5])
 ylim(yl);
-title({'RSN'},'FontWeight','bold','fontsize',fontsize); 
+title({'Family Clusters'},'FontWeight','bold','fontsize',fontsize); 
 subtitle('Topography','fontsize',fontsize)
 ylabel({'Mean Regional Similarity',['(cos\theta', char(177), ' CI_{95})']});
 set(gca,'FontSize',fontsize+2,'XTickLabels',[]);
@@ -1112,12 +1112,14 @@ export_fig(f5,sprintf('panels_%s/task_ranks.png',noise),'-transparent','-r300');
 export_fig(f6,sprintf('panels_%s/rsn_ranks.png',noise),'-transparent','-r300');
 %}
 %% Nonparametric tests of heritability
+% (Suppleental table 3)
+P = nan(4,1);
 disp('Task Topography')
 x = task_topo_r_mz;
 y = task_topo_r_dz;
 nx = sum(~isnan(x));
 ny = sum(~isnan(y));
-[P,H,STATS] = ranksum(x, y,'tail','right')
+[P(1),H,STATS] = ranksum(x, y,'tail','right')
 U = STATS.ranksum - nx*(nx + 1)/2
 AUC = U/(nx*ny)
 
@@ -1126,7 +1128,7 @@ x = task_geom_r_mz;
 y = task_geom_r_dz;
 nx = sum(~isnan(x));
 ny = sum(~isnan(y));
-[P,H,STATS] = ranksum(x, y,'tail','right')
+[P(2),H,STATS] = ranksum(x, y,'tail','right')
 U = STATS.ranksum - nx*(nx + 1)/2
 AUC = U/(nx*ny)
 
@@ -1135,7 +1137,7 @@ x = rsn_topo_r_mz;
 y = rsn_topo_r_dz;
 nx = sum(~isnan(x));
 ny = sum(~isnan(y));
-[P,H,STATS] = ranksum(x, y,'tail','right')
+[P(3),H,STATS] = ranksum(x, y,'tail','right')
 U = STATS.ranksum - nx*(nx + 1)/2
 AUC = U/(nx*ny)
 
@@ -1144,9 +1146,11 @@ x = rsn_geom_r_mz;
 y = rsn_geom_r_dz;
 nx = sum(~isnan(x));
 ny = sum(~isnan(y));
-[P,H,STATS] = ranksum(x, y,'tail','right')
+[P(4),H,STATS] = ranksum(x, y,'tail','right')
 U = STATS.ranksum - nx*(nx + 1)/2
 AUC = U/(nx*ny)
+
+holm_sidak(P,0.05)
 
 %% Nonparmaetric interaction tests of mz vs. dz x geometry vs. topography
 nx = length(task_topo_r_mz);
@@ -1195,6 +1199,7 @@ U = STATS.ranksum - length(genes_rsn_dmz)*(length(genes_rsn_dmz) + 1)/2
 AUC = U/(length(genes_rsn_dmz)*length(genes_rsn_ddz))
 
 %% Nonparametric tests of dz vs. fs environment
+% (Supplemental table 4)
 P = zeros(4,1);
 
 disp('Task Topography')

@@ -22,6 +22,8 @@ colors_light = config.matlab_disp_scheme.color_light;
 noise='whitened';
 %noise='standardized';
 
+data_root = '../../derivatives/restingstate/';
+
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
@@ -38,12 +40,12 @@ tsnr = zeros(height(sid), n_roi);
 wi_cosim = nan(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        tsnr1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var1(s)));
-        tsnr2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var2(s)));
+        tsnr1 = readmatrix(sprintf('%s/hcp25/results/%d/tsnr.csv',data_root,sid.Var1(s)));
+        tsnr2 = readmatrix(sprintf('%s/hcp25/results/%d/tsnr.csv',data_root,sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/%s_betas/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/%s_betas/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim1 = readmatrix(sprintf('%s/hcp25/results/%d/%s_betas/%s_similarity.csv',data_root,sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('%s/hcp25/results/%d/%s_betas/%s_similarity.csv',data_root,sid.Var2(s),noise,noise),'FileType','text');
         wi_cosim(s,:) = mean(mean(cat(3,wi_cosim1, wi_cosim2),3));
     catch
         warning('Could not import pair %d', s);
@@ -53,7 +55,7 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv',noise, sid.Var1(s), sid.Var2(s)),...
+        wuc_md(s,:) = readmatrix(sprintf('%s/hcp25/bsc/%s_betas/cosine/%d_v_%d_wuc.tsv', data_root, noise, sid.Var1(s), sid.Var2(s)),...
             'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
@@ -63,7 +65,7 @@ end
 cosim = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        cosim(s,:) = mean(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv',noise, sid.Var1(s), sid.Var2(s)),...
+        cosim(s,:) = mean(readmatrix(sprintf('%s/hcp25/bsc/%s_betas/cosine/%d_v_%d_cosim.tsv', data_root, noise, sid.Var1(s), sid.Var2(s)),...
             'FileType','text'),1);
     catch
         warning('Could not import pair %d', s);
@@ -137,34 +139,6 @@ for i = 1:length(good_rois)
 end
 cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_geom_similarity_%s.dscalar.nii',noise));
 
-%% compute similarity of geometry and topography
-% We use these statistics in the main text of the results, but this
-% significantly slows things down and is best commented out in most cases.
-%{
-sid_ind = repmat(1:size(wuc_md,1)',1,length(good_rois));
-roi_ind = kron(helmertCoding(1:length(good_rois)),ones(size(wuc_md,1),1));
-nanzscore = @(x1)((x1 - nanmean(x1,2))./nanstd(x1,0,2));
-zwuc = nanzscore(wuc_md(:,good_rois));
-cosim_ctx = nanzscore(cosim(:,good_rois));
-ztsnr = nanzscore(tsnr(:,good_rois));
-zwi_cosim = nanzscore(wi_cosim(:,good_rois));
-
-% model (within participant) standardized effect of wuc on cosim while
-% controlling for test-retest reliability (wi_cosim), tSNR, and fixed ROI
-% effects. Model participant specific wuc, test-retest reliability and tsnr
-% random effects along with a random subject specific intercept, but no
-% group level intercept (because mean cosim across group is 0 due to
-% z-scoring). Helmert coding of roi_ind produces coefficients that are
-% averaged across ROIs.
-mdl = fitlmematrix([zwuc(:), ztsnr(:), zwi_cosim(:), roi_ind], ...
-    cosim_ctx(:), ...
-    [zwuc(:), ztsnr(:), zwi_cosim(:), ones(length(sid_ind(:)),1)], ...
-    sid_ind(:));
-[~,~,STATS] = fixedEffects(mdl,'dfmethod','satterthwaite');
-
-disp('Dependence of topography on geometry, brainwide:')
-disp(STATS)
-%}
 %% Plot contrast of relative similarities
 [cosim_ctx, zwuc] = deal(nan(size(wuc_md)));
 
@@ -223,9 +197,9 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[wucb, wucp, wucD, cosimb, cosimp, cosimD] = deal(zeros(length(mapvals),1));
+[wucb, wucp, cosimb, cosimp] = deal(zeros(length(mapvals),1));
 [wucb_CI, cosim_CI] = deal(zeros(length(mapvals),2));
-[mainStd, mainStdP, mainDStd] = deal(zeros(length(mapvals),6));
+[mainStd, mainStdP] = deal(zeros(length(mapvals),6));
 mainStd_CI = zeros(length(mapvals),6,2);
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
@@ -259,18 +233,18 @@ for i = 1:length(mapvals)
 
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), wucb_CI(i,:), wucp(i) wucD(i)] = neuromaps_corr_fx(obs_val, ...
+    [wucb(i), wucb_CI(i,:), wucp(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map, confounds_good_rois);
 end
 
@@ -296,10 +270,6 @@ end
 disp(table(cosimb_str', wucb_str', int_str', ...
     'VariableNames', {'Topo', 'Geo', 'zGeo-zTopo'}))
 
-disp('Cohens Ds:');
-disp(table(cosimD(:), wucD(:), mainDStd(:,2), ...
-    'VariableNames',{'cosim', 'wuc', 'zGeo-zTopo'},...
-    'RowNames', abr_mapname));
 
 buffer = 3; % how many times do we scale the x axis to fit anchor labels on either end?
 
@@ -430,6 +400,22 @@ sgtitle({'Specific factors dissociate resting-state network','topographic and re
 exportgraphics(gcf,sprintf('panels_%s/gradient_barplots_nostd.png',noise),'ContentType','image','Resolution',300);
 
 
+%% Load permutation nulls
+% Nulls evaluate similarities of a shuffled response set in one participant
+% against the non-shuffled responses of the other participant in a dyad.
+% Under this null the similarities are not due to matching stimulus
+% conditions but rather due to the activation statistics of the region.
+% 100 shuffles were evaluated, and averaging across dyads produces a 
+% (coarsely sampled, only 100x) null distribution of similarities for each
+% region. We can compute the 95% CI each relevant region and plot the
+% average region's 95% CI upperbound.
+
+% these are precomputed by compute_null_similarities.m
+load(sprintf('%s/hcp25/bsc_null/perm_nulls_%s.mat',data_root,noise),'cosim_null','wuc_null');
+
+% averge across participants (like we will when we plot scatterplots)
+wuc_null_mean = squeeze(nanmean(wuc_null,2));
+cosim_null_mean = squeeze(nanmean(cosim_null,2));
 
 %% plot RDM & topographic correlations vs. margulies 1, MSMAll, unstandardized
 % find margulies gradient 1
@@ -447,17 +433,41 @@ wuc_md_ctx = wuc_corr(:, good_rois_ctx);
 cosim_ctx = cosim_corr(:, good_rois_ctx);
 good_grad_roi = vals(ismember(1:358, good_rois_ctx), map_ind);
 
+% get null benchmark
+null_thresh = 0.975;
+null_sim = wuc_null_mean(:,good_rois_ctx);
+wuc_null_thresh = mean(prctile(null_sim, null_thresh*100));
+null_sim = cosim_null_mean(:,good_rois_ctx);
+cosim_null_thresh = mean(prctile(null_sim, null_thresh*100));
+
 figure;
 clf
 ax1 = subplot(1,2,1);
 hold on;
 ax2 = subplot(1,2,2);
 hold on;
+
+% add nulls
+plot(ax1,[min(good_grad_roi), max(good_grad_roi)],[cosim_null_thresh, cosim_null_thresh],'--','color',[0.5,0.5,0.5],'LineWidth',2)
+plot(ax2,[min(good_grad_roi), max(good_grad_roi)],[wuc_null_thresh, wuc_null_thresh],'--','color',[0.5,0.5,0.5],'LineWidth',2)
+
 for i = 1:size(wuc_md_ctx,2)
     color = cmap(good_rois_ctx(i),:);
     if good_rois_ctx(i) < 358 
-        s1 = plot(ax2, good_grad_roi(i), mean(wuc_md_ctx(:,i)), '^', 'color', color);
-        s2 = plot(ax1, good_grad_roi(i), mean(cosim_ctx(:,i)), 'o', 'color', color);
+        s1 = scatter(ax2, good_grad_roi(i), mean(wuc_md_ctx(:,i)), '^', 'MarkerEdgeColor', color);
+        s2 = scatter(ax1, good_grad_roi(i), mean(cosim_ctx(:,i)), 'o', 'MarkerEdgeColor', color);
+        if mean(wuc_md_ctx(:,i)) > prctile(wuc_null_mean(:,i),null_thresh*100)
+            s1.MarkerFaceAlpha = 0.5;
+            s1.MarkerFaceColor = color;
+        else
+            s1.MarkerFaceAlpha = 0;
+        end
+        if mean(cosim_ctx(:,i)) > prctile(cosim_null_mean(:,i),null_thresh*100)
+            s2.MarkerFaceAlpha = 0.5;
+            s2.MarkerFaceColor = color;
+        else
+            s2.MarkerFaceAlpha = 0;
+        end
     else
         continue;
     end
@@ -465,9 +475,11 @@ end
 xl = [min(good_grad_roi), max(good_grad_roi)];
 yl = [min([ylim(ax2),ylim(ax1)]), max([ylim(ax2),ylim(ax1)])];
 xlim(ax2,xl);
-ylim(ax2,yl);
 xlim(ax1,xl);
-ylim(ax1,yl);
+if strcmp(noise,'standardized')
+    ylim(ax2,yl);
+    ylim(ax1,yl);
+end
 set(ax2, 'YGrid', 'on', 'box', 'off', 'fontsize', fs,...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0)
 ylabel(ax2,{'Mean regional','geometric similarity', '(WUC of RDMs | tSNR, rel.)'});
@@ -502,15 +514,16 @@ l.LineWidth = 2;
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2),642,345]);
 
-title(ax2, {'Representations converge','across cortical hierarchy'},'FontWeight','normal');
-title(ax1, {'Topographic trends','along cortical hierarchy'},'FontWeight','normal')
+title(ax2, {'Representations converge','along cortical hierarchy'},'FontWeight','normal');
+title(ax1, {'Topography diverges','along cortical hierarchy'},'FontWeight','normal')
 
 sgtitle({'Transmodal representations are most similar','but also implemented most idiosyncratically'},'FontWeight','bold','fontsize',fs+1)
 
 
 % add margulies map
 a1 = axes();
-a1.Position = [0.33,0.56,0.15,0.15];
+%a1.Position = [0.18,0.1,0.15,0.15];
+a1.Position = [0.33,0.55,0.15,0.15];
 a1.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
@@ -531,7 +544,7 @@ atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
 
 a2 = axes();
-a2.Position = [0.33,0.40,0.15,0.15];
+a2.Position = [0.62,0.55,0.15,0.15];
 a2.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
@@ -541,5 +554,8 @@ o3 = surface(o3, 'axes', a2, 'direction', 'hcp inflated left', 'orientation', 'l
 atlas_cii = get_cifti_data(config.canlab2024.path);
 cdata = atlas_cii.cortex_left;
 plot_to_surf(cdata',o3.surface{1}.object_handle, 'indexmap', 'colormap', [cmap(1:358,:); [0,0,0]]);
+
+t1 = text(ax2,xl(1)+0.2,wuc_null_thresh+0.03,'Null (condition-permuted) CI95','FontSize',fs-3);
+t2 = text(ax2,xl(1)+0.2,wuc_null_thresh-0.02,'upper bound for mean ROI','FontSize',fs-3);
 
 exportgraphics(gcf,sprintf('panels_%s/margulies_01.png',noise),'ContentType','image','Resolution',300);

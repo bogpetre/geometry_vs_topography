@@ -86,4 +86,4 @@ end
 
 clear topos
 
-save(sprintf('rsn_topographic_similarities_%s.mat',noise),'rsn_roi_topo','rsn_good_topo','-v7.3');
+save(sprintf('%s/bsc_all/rsn_topographic_similarities_%s.mat',data_root,noise),'rsn_roi_topo','rsn_good_topo','-v7.3');

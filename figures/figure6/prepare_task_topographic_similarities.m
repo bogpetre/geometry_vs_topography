@@ -90,4 +90,4 @@ end
 
 clear topos
 
-save(sprintf('task_topographic_similarities_%s.mat', noise),'roi_topo','good_topo','-v7.3');
+save(sprintf('%s/bsc_all/task_topographic_similarities_%s.mat', data_root, noise),'roi_topo','good_topo','-v7.3');
