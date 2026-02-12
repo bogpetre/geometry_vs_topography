@@ -6,9 +6,9 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_msmall_grayord_spm2.logs/bsc_null_%a.out
+#SBATCH --output hcp_glm_msmall_grayord_spm.logs/bsc_null_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-416
+#SBATCH --array 1-100
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
