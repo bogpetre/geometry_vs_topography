@@ -81,6 +81,7 @@ def main():
     args = parser.parse_args()
     
     parcellation = images.dlabel_to_gifti(args.atlas)
+    parcellation = images.relabel_gifti(parcellation)
     parcellater = parcellate.Parcellater(parcellation, 'fslr').fit()
 
     n_perm=args.nperms
