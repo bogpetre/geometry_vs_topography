@@ -9,7 +9,7 @@
 #SBATCH --hint=nomultithread
 #SBATCH --output rsn25_3.logs/bsc_null_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-100
+#SBATCH --array 472,608,638,644,647,729,732,738,745,756,758,761,767,771,777,802,809,820,828,830,868,873,876,880,883,887,891,894,900,905,920,924,945,948,950,954,958,966,981,993,1000
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -99,26 +99,30 @@ for i in $(seq 0 206); do
 
     mkdir -p $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine
 
-    ../bin/rdm_similarity64 \
-        $OUT_DIR/results/${SID1}/whitened_betas/crossnobis_distance.csv \
-        $OUT_DIR/results/${SID2}/whitened_betas/crossnobis_distance.csv \
-        $OUT_DIR/results/${SID1}/whitened_betas/whitening_matrix_out.bin \
-        $OUT_DIR/results/${SID2}/whitened_betas/whitening_matrix_out.bin \
-        $OUT_DIR/results/${SID1}/whitened_betas/whitening_matrix_out.json \
-        $OUT_DIR/results/${SID2}/whitened_betas/whitening_matrix_out.json \
-        $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
-        - 1 $shuffle_str
+    if [ ! -e $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv ]; then
+        ../bin/rdm_similarity64 \
+            $OUT_DIR/results/${SID1}/whitened_betas/crossnobis_distance.csv \
+            $OUT_DIR/results/${SID2}/whitened_betas/crossnobis_distance.csv \
+            $OUT_DIR/results/${SID1}/whitened_betas/whitening_matrix_out.bin \
+            $OUT_DIR/results/${SID2}/whitened_betas/whitening_matrix_out.bin \
+            $OUT_DIR/results/${SID1}/whitened_betas/whitening_matrix_out.json \
+            $OUT_DIR/results/${SID2}/whitened_betas/whitening_matrix_out.json \
+            $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
+            - 1 $shuffle_str
+    fi
 
     mkdir -p $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine
 
-    ../bin/rdm_similarity64 \
-        $OUT_DIR/results/${SID1}/standardized_betas/standardized_distance.csv \
-        $OUT_DIR/results/${SID2}/standardized_betas/standardized_distance.csv \
-        $OUT_DIR/results/${SID1}/standardized_betas/whitening_matrix_out.bin \
-        $OUT_DIR/results/${SID2}/standardized_betas/whitening_matrix_out.bin \
-        $OUT_DIR/results/${SID1}/standardized_betas/whitening_matrix_out.json \
-        $OUT_DIR/results/${SID2}/standardized_betas/whitening_matrix_out.json \
-        $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
-        - 1 $shuffle_str
+    if [ ! -e $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv ]; then
+        ../bin/rdm_similarity64 \
+            $OUT_DIR/results/${SID1}/standardized_betas/standardized_distance.csv \
+            $OUT_DIR/results/${SID2}/standardized_betas/standardized_distance.csv \
+            $OUT_DIR/results/${SID1}/standardized_betas/whitening_matrix_out.bin \
+            $OUT_DIR/results/${SID2}/standardized_betas/whitening_matrix_out.bin \
+            $OUT_DIR/results/${SID1}/standardized_betas/whitening_matrix_out.json \
+            $OUT_DIR/results/${SID2}/standardized_betas/whitening_matrix_out.json \
+            $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
+            - 1 $shuffle_str
+    fi
 
 done

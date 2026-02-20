@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name BSC
+#SBATCH --job-name nullRSA
 #SBATCH --time 1-00:00:00
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 1
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --hint=nomultithread
-#SBATCH --output hcp_glm_msmall_grayord_spm.logs/bsc_null_%a.out
+#SBATCH --output hcp_glm_msmall_grayord_spm2.logs/bsc_null_%a.out
 #SBATCH --account dbic
-#SBATCH --array 1-100
+#SBATCH --array 150,153
 
 # This is a SLRUM batch job submission script for running on an HPC system. Other job submission
 # systems are also popular, but they all function according to more or less the same principles
@@ -40,7 +40,7 @@ OUT_DIR=../derivatives/hcp_glm_msmall_grayord_spm/
 
 TASK_ID=$[$SLURM_ARRAY_TASK_ID-1]
 
-space_avail=$(df -kT /scratch | tail -n 1 | awk '{print $5}')
+space_avail=$(df -kT $TMPDIR | tail -n 1 | awk '{print $5}')
 disk_space_req=400 # scratch space required in gigabytes, each run takes 22, and we might run 20 on a node
 if [[ $space_avail -gt $(echo 1024*1024*$disk_space_req | bc -l) ]]; then
         # faster but more resource constrained
@@ -90,33 +90,38 @@ for i in $(seq 0 206); do
     # whitened betas
     mkdir -p $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/
 
-    cp $OUT_DIR/results/${SID1}/all_tasks/rsa/crossnobis/whitening_matrix_out.bin $SCRATCH_DIR/${SID1}_wh_whitening_matrix_out.bin
-    cp $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/whitening_matrix_out.bin $SCRATCH_DIR/${SID2}_wh_whitening_matrix_out.bin
-    ../bin/rdm_similarity64 \
-        $OUT_DIR/results/${SID1}/all_tasks/rsa/crossnobis/crossnobis_distance.csv \
-        $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/crossnobis_distance.csv \
-        $SCRATCH_DIR/${SID1}_wh_whitening_matrix_out.bin \
-        $SCRATCH_DIR/${SID2}_wh_whitening_matrix_out.bin \
-        $OUT_DIR/results/${SID1}/all_tasks/rsa/crossnobis/whitening_matrix_out.json \
-        $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/whitening_matrix_out.json \
-        $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
-        1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7 1 $shuffle_str
+    if [ ! -e $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv ]; then
+        cp $OUT_DIR/results/${SID1}/all_tasks/rsa/crossnobis/whitening_matrix_out.bin $SCRATCH_DIR/${SID1}_wh_whitening_matrix_out.bin
+        cp $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/whitening_matrix_out.bin $SCRATCH_DIR/${SID2}_wh_whitening_matrix_out.bin
+        ../bin/rdm_similarity64 \
+            $OUT_DIR/results/${SID1}/all_tasks/rsa/crossnobis/crossnobis_distance.csv \
+            $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/crossnobis_distance.csv \
+            $SCRATCH_DIR/${SID1}_wh_whitening_matrix_out.bin \
+            $SCRATCH_DIR/${SID2}_wh_whitening_matrix_out.bin \
+            $OUT_DIR/results/${SID1}/all_tasks/rsa/crossnobis/whitening_matrix_out.json \
+            $OUT_DIR/results/${SID2}/all_tasks/rsa/crossnobis/whitening_matrix_out.json \
+            $OUT_DIR/bsc_null/seed${seed}/whitened_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
+            1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7 1 $shuffle_str
+    fi
 
     # standardized betas
     mkdir -p $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/
 
-    cp $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/whitening_matrix_out.bin $SCRATCH_DIR/${SID1}_std_whitening_matrix_out.bin
-    cp $OUT_DIR/results/${SID2}/all_tasks/rsa/stddist/whitening_matrix_out.bin $SCRATCH_DIR/${SID2}_std_whitening_matrix_out.bin 
-    ../bin/rdm_similarity64 \
-        $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/standardized_distance.csv \
-        $OUT_DIR/results/${SID2}/all_tasks/rsa/stddist/standardized_distance.csv \
-        $SCRATCH_DIR/${SID1}_std_whitening_matrix_out.bin \
-        $SCRATCH_DIR/${SID2}_std_whitening_matrix_out.bin \
-        $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/whitening_matrix_out.json \
-        $OUT_DIR/results/${SID2}/all_tasks/rsa/stddist/whitening_matrix_out.json \
-        $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
-        1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7 1 $shuffle_str
+    if [ ! -e $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv ]; then
+        cp $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/whitening_matrix_out.bin $SCRATCH_DIR/${SID1}_std_whitening_matrix_out.bin
+        cp $OUT_DIR/results/${SID2}/all_tasks/rsa/stddist/whitening_matrix_out.bin $SCRATCH_DIR/${SID2}_std_whitening_matrix_out.bin 
+        ../bin/rdm_similarity64 \
+            $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/standardized_distance.csv \
+            $OUT_DIR/results/${SID2}/all_tasks/rsa/stddist/standardized_distance.csv \
+            $SCRATCH_DIR/${SID1}_std_whitening_matrix_out.bin \
+            $SCRATCH_DIR/${SID2}_std_whitening_matrix_out.bin \
+            $OUT_DIR/results/${SID1}/all_tasks/rsa/stddist/whitening_matrix_out.json \
+            $OUT_DIR/results/${SID2}/all_tasks/rsa/stddist/whitening_matrix_out.json \
+            $OUT_DIR/bsc_null/seed${seed}/standardized_betas/cosine/${SID1}_v_${SID2}_wuc.tsv 0 \
+            1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7 1 $shuffle_str
+    fi
 
+    rm -f $SCRATCH_DIR/${SID1}_* $SCRATCH_DIR/${SID2}_* &
 done
 echo "End time:"
 date
