@@ -477,8 +477,13 @@ yl = [min([ylim(ax2),ylim(ax1)]), max([ylim(ax2),ylim(ax1)])];
 xlim(ax2,xl);
 xlim(ax1,xl);
 if strcmp(noise,'standardized')
-    ylim(ax2,yl);
-    ylim(ax1,yl);
+    for ax=[ax1 ax2]
+        yl = ylim(ax);
+        yl_range = diff(yl);
+        yl_range = yl_range*1.1;
+        yl = [mean(yl) - yl_range/2, mean(yl) + yl_range/2]
+        ylim(ax,yl);
+    end
 end
 set(ax2, 'YGrid', 'on', 'box', 'off', 'fontsize', fs,...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0)
@@ -523,7 +528,11 @@ sgtitle({'Transmodal representations are most similar','but also implemented mos
 % add margulies map
 a1 = axes();
 %a1.Position = [0.18,0.1,0.15,0.15];
-a1.Position = [0.33,0.55,0.15,0.15];
+if strcmp(noise,'standardized')
+    a1.Position = [0.18,0.095,0.15,0.15];
+else
+    a1.Position = [0.33,0.55,0.15,0.15];
+end
 a1.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
