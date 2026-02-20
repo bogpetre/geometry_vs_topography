@@ -97,6 +97,267 @@ def init_tsnr(name='tsnr', run_source="directionsource", session_source="tasksou
 
     return wf
 
+'''
+# this is a preliminary write up for multivolume atlas support. It's clunky though, so I'm abandoning it
+# for now in favor of building multi-atlas support into my outermost workflows instead
+def init_spatial_whitening_wf_inner(name='whitening', shrinkage=-1, normmode='runwise'):
+
+    wf = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'spm_mat_files','atlas_nii', 'atlas_cii']),
+        name='inputspec')
+        
+    # spatial standardize runwise
+    noiseNormalizeBetas = pe.Node(
+        interface=SpatialWhiteningMultiTask(
+            normmode=normmode, 
+            shrinkage=shrinkage),
+        name="noisenormalizebetas")
+        
+    splitbetas = pe.Node(
+        interface=fsl.Split(dimension='t'),
+        name="splitbetas")
+
+    def select_betas_of_interest_by_name(beta_images, betanames_file):
+        # this assumes equal number of contrasts in each session
+        import numpy as np
+        import re
+
+        beta_names = np.loadtxt(betanames_file, delimiter="\t", dtype='str')
+        sessions = [int(re.sub(r'Sn\(([0-9]+)\).*',r'\1',name)) for name in beta_names]
+        uniq_sessions = list(set(sessions))
+
+        beta_names = [re.sub(r'Sn\([0-9]+\)\ (.*).*',r'\1',name) for name in beta_names]
+
+        filt_beta_images = []
+        filt_beta_names = []
+        for sess in uniq_sessions:
+            these_betas = []
+            these_names = []
+            for img, name, session in zip(beta_images, beta_names, sessions):
+                # drop Cue condition from Motor task, since it's not of interest (trivial visual stim)
+                # drop response and question periods since theyr'e also generic like the motor cue condition
+                isbad = False
+                for bad_name in ['Task-Cue', 'Task-Response', 'Task-Math-Question', 'Task-Story-Question', 'constant']:
+                    if bad_name in name:
+                        isbad = True
+                if isbad:
+                    continue
+
+                if session != sess:
+                    continue
+
+                # drop last trials of emotion task because they overrun the scan duration.
+                if 'Task-EMOTION' in name and '-05' in name:
+                    continue
+
+                these_betas.append(img)
+                these_names.append(name)
+
+            filt_beta_images.append(these_betas)
+            filt_beta_names.append(these_names)
+
+        return filt_beta_images, filt_beta_names
+
+    selectBetasOfInterest = pe.Node(util.Function(input_names=['beta_images', 'betanames_file'],
+                                                    output_names=['beta_images', 'beta_names'],
+                                                    function=select_betas_of_interest_by_name),
+                                        name='selectbetasofinterest')
+                                        
+    mergebetas = pe.MapNode(
+        interface=fsl.Merge(
+            dimension='t'),
+        iterfield=['in_files'],
+        name="mergebetas")
+        
+    beta2cifti = pe.MapNode(
+        interface=wb_cifti.NiftiConvertCifti(reset_scalars=True),
+        iterfield=['nifti_in'],
+        name='beta2cifti')
+
+    def makeSetNamesListSubjLevel(names):
+        def _makeSetNamesListSubjLevel(names):
+            if isinstance(names, list) and isinstance(names[0], list):
+                return [_makeSetNamesListSubjLevel(name) for name in names]
+            else:
+                return [(int(i+1), item) for i,item in enumerate(names)]
+
+        return _makeSetNamesListSubjLevel(names)
+
+    addnames = pe.MapNode(
+        interface=wb_misc.SetMapNames(),
+        iterfield=['in_file','map'],
+        name="addnames")
+
+    outputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'out_file']),
+        name='outputspec')
+    
+    wf.connect([
+        # standardize runwise
+        (inputnode, noiseNormalizeBetas, [(('atlas_nii', pickfirst), 'atlas'),
+                                          ('spm_mat_files', 'spm_mat_files')]),
+        
+        # split std betas by session, merge and convert to LR and RL specific ciftis
+        (noiseNormalizeBetas, splitbetas, [('whitened_images', 'in_file')]),
+        (splitbetas, selectBetasOfInterest, [
+            ('out_files', 'beta_images')]),
+        (noiseNormalizeBetas, selectBetasOfInterest, [
+            ('betanames','betanames_file')]),
+        
+        (selectBetasOfInterest, mergebetas, [('beta_images', 'in_files')]),
+        (mergebetas, beta2cifti, [('merged_file', 'nifti_in')]),
+        (inputnode, beta2cifti, [(('atlas_cii', pickfirst), 'cifti_template')]),
+        
+        # assign condition names to std betas
+        (selectBetasOfInterest, addnames, [(('beta_names', makeSetNamesListSubjLevel), 'map')]),
+        (beta2cifti, addnames, [('out_file', 'in_file')]),
+
+        (addnames, outputnode, [('out_file', 'out_file')]),
+    ])
+
+    return wf
+
+
+def init_spatial_whitening_wf_atlas4d(name='outerwhitening', joinsource='tasksource', shrinkage=-1, normmode='runwise'):
+    '''
+    This function wraps an equivalent of init_spatial_whitening_wf() for use with multi-volume atlases,
+    e.g. atlases that have overlapping searchlights. It's a bit hacky, because the inner workflow won't
+    be visible to the outer workflows graph (i.e. whichever workflow calls 
+    init_spatial_whitening_wf_atlas4d). From the perspective of the outer workflow the entire inner
+    workflow is simply a Node. What this buys us though is the ability to nest MapNodes. The outer 
+    MapNode iterates over atlas volumes while the inner MapNodes iterate over individual beta maps.
+    '''
+
+    wf = pe.Workflow(name=name)
+
+    inputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'spm_mat_file','atlas']),
+        name='inputspec')
+
+    joinTaskSPMs = pe.JoinNode(util.IdentityInterface(
+            fields=['spm_mat_file']),
+        joinsource=joinsource,
+        joinfield=['spm_mat_file'],
+        name='jointaskbetas')
+        
+    atlas2nifti = pe.Node(
+        interface=wb_cifti.CiftiConvertNifti(
+            smaller_dims=True),
+        name='atlas2nifti')
+
+    splitatlas = pe.Node(
+        interface=fsl.Split(dimension='t'),
+        name='splitatlas')
+
+    # the combined run_whitening_wf() and multiAtlasSpatialWhitening lets us turn the entire workflow into 
+    # a MapNode
+    def run_whitening_wf(spm_mat_files, atlas_nii, atlas_cii, shrinkage, normmode):
+        from geometry_vs_topography.nipype import workflows as workflows
+        import os
+        from pathlib import Path
+
+        # This is *already inside rsawf’s working tree*
+        parent_node_wd = os.getcwd()
+
+        wf = workflows.init_spatial_whitening_wf_inner(shrinkage=shrinkage, normmode=normmode)
+
+        vol_id = Path(atlas_nii).stem
+        wf.base_dir = os.path.join(parent_node_wd, "inner_wf", vol_id)
+
+        wf.get_node("inputspec").inputs.atlas_nii = atlas_nii
+        wf.get_node("inputspec").inputs.atlas_cii = atlas_cii
+        wf.get_node("inputspec").inputs.spm_mat_files = spm_mat_files
+
+        try:
+            res = wf.run(plugin="Linear")
+
+            outnode = next(n for n in res.nodes() if n.name == "addnames")
+            out_file = outnode.result.outputs.out_file
+
+            return out_file
+        except Exception as e:
+            print("\n========== INNER WORKFLOW FAILED ==========")
+            print(f"Inner base_dir: {inner_wf.base_dir}")
+            print("Exception:")
+            traceback.print_exc()
+            print("===========================================\n")
+
+            raise
+
+    multiAtlasSpatialWhitening = pe.MapNode(util.Function(
+            input_names=['spm_mat_files', 'atlas_nii', 'atlas_cii','shrinkage','normmode'],
+            output_names=['out_file'],
+            function=run_whitening_wf), 
+        iterfield=['atlas_nii'],
+        name='multiatlasspatialwhitening')
+
+    multiAtlasSpatialWhitening.inputs.shrinkage = shrinkage
+    multiAtlasSpatialWhitening.inputs.normmode = normmode
+
+    def transpose_list_of_lists(x):
+        """
+        x: list over atlas volumes, each element is list over sessions
+        returns: list over sessions, each element is list over atlas volumes
+        """
+        # sanity checks
+        if not x:
+            return []
+        if not isinstance(x[0], (list, tuple)):
+            return [x]  # already flat-ish
+
+        lens = [len(v) for v in x]
+        if len(set(lens)) != 1:
+            raise ValueError(f"Ragged nested list: inner lengths = {lens}")
+
+        # transpose
+        return [list(items) for items in zip(*x)]
+
+    reorder = pe.Node(
+            util.Function(
+                input_names=["x"],
+                output_names=["by_session"],
+                function=transpose_list_of_lists),
+            name="reorder_whbetas")
+
+    mergeWhBetas = pe.MapNode(interface=wb_cifti.CiftiMerge(),
+        iterfield=['cifti'],
+        name="mergeWhBetas")
+
+    outputnode = pe.Node(
+        interface=util.IdentityInterface(fields=[
+            'out_file']),
+        name='outputspec')
+
+    if joinsource:
+        wf.connect([
+            (inputnode, joinTaskSPMs, [('spm_mat_file', 'spm_mat_file')]),
+            (joinTaskSPMs, multiAtlasSpatialWhitening, [('spm_mat_file', 'spm_mat_files')]),
+        ])
+    else:
+        wf.connect([
+            (inputnode, multiAtlasSpatialWhitening, [('spm_mat_file', 'spm_mat_files')]),
+        ])
+
+    wf.connect([
+        (inputnode, atlas2nifti, [('atlas', 'cifti_in')]),
+        (atlas2nifti, splitatlas, [(('out_file', pickfirst), 'in_file')]),
+        (splitatlas, multiAtlasSpatialWhitening, [('out_files', 'atlas_nii')]),
+        
+        (inputnode, multiAtlasSpatialWhitening, [('atlas', 'atlas_cii')]),
+
+        (multiAtlasSpatialWhitening, reorder, [('out_file', 'x')]),
+        (reorder, mergeWhBetas, [('by_session', 'cifti')]),
+        
+        (mergeWhBetas, outputnode, [('out_file', 'out_file')])
+    ])
+
+    return wf
+'''
 
 def init_spatial_whitening_wf(name='whitening', joinsource='tasksource', shrinkage=-1, normmode='runwise'):
 

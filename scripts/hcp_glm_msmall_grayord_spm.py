@@ -665,6 +665,7 @@ datasink.inputs.regexp_substitutions = [
     (r'_(\w*)2cifti0', r'LR/\1'),
     (r'_(\w*)2cifti1', r'RL/\1'),
     (r'cifti_average_parcellated.txt',r'tsnr.csv'),
+    (r'(.*?)_atlas.*?([\w\d_]+)\.dlabel\.nii',r'\1\2/')
 ]
 
 
@@ -1226,6 +1227,8 @@ print("Building subject-level workflow:", time.ctime(), flush=True)
 
 subjectlevel = pe.Workflow(name="subjectlevel")
 
+atlassource = pe.Node(util.IdentityInterface(fields=["atlas"]), name="atlassource")
+
 subjectlevel.connect([
     (infosource, datasource, [('subject_id', 'subject_id')]),
     (tasksource, datasource, [('task','task')]),
@@ -1238,6 +1241,9 @@ subjectlevel.connect([
         ('surf_right', 'inputspec.surf_right')]),
         
     (datasource, tsnrwf, [('func_surf', 'inputspec.in_files')]),
+
+    (atlassource, tsnrwf, [('atlas', 'inputspec.atlas')]),
+    (atlassource, rsawf, [('atlas', 'inputspec.atlas')]),
 
     (infosource, modelfit, [('subject_id', 'inputspec.subject_id')]),
     (tasksource, modelfit, [('task','inputspec.task')]),
@@ -1330,7 +1336,7 @@ if __name__ == '__main__':
                         help='scratch directory where temporary files should be stored')
     parser.add_argument('--n_cpus', type=int, default=int(os.getenv('SLURM_CPUS_PER_TASK',default='1')),
                         help='Number of CPUs available for computation')
-    parser.add_argument('--atlas', type=str, required=True,
+    parser.add_argument('--atlas', nargs='+', required=True,
                         help='cifti dlabels file to use to define RSA parcells')
     parser.add_argument('--data', type=str, required=False,
                         help='Path to HCP data directory immediately above subject folders, e.g. HCP1200')
@@ -1361,6 +1367,12 @@ if __name__ == '__main__':
     tasksource.iterables = [('task', args.tasks)]
     directionsource.iterables = [('direction', ['LR','RL'])]
 
+    atlas_list = args.atlas  # list (nargs='+')
+    if len(atlas_list) == 1:
+        atlassource.inputs.atlas = atlas_list[0]
+    else:
+        atlassource.iterables = [("atlas", atlas_list)]
+
     SCRATCH_DIR = args.scratch
     subjectlevel.base_dir = os.path.abspath(SCRATCH_DIR + '/workingdir')
     subjectlevel.config = {
@@ -1371,8 +1383,8 @@ if __name__ == '__main__':
 
     datasink.inputs.base_directory = os.path.abspath(args.out)
     
-    subjectlevel.inputs.tsnr.inputspec.atlas = args.atlas
-    subjectlevel.inputs.rsa.inputspec.atlas = args.atlas
+    #subjectlevel.inputs.tsnr.inputspec.atlas = args.atlas
+    #subjectlevel.inputs.rsa.inputspec.atlas = args.atlas
 
     print("Starting subject level workflow:", time.ctime(), flush=True)
     subjectlevel.write_graph()
