@@ -300,7 +300,7 @@ h1 = barplot_columns({topo_spatial_B(:), topo_layer_B(:)}, 'nofig', ...
     'colors',dc_color_light, ...
     'MarkerSize',5);
 set(h1.star_handles,'fontsize',config.matlab_disp_scheme.fontsize-3,'horizontalalign','center')
-set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'})
+set(gca,'XTickLabels',{'Wiring Cost','Layer Depth'})
 xlabel([])
 ylabel({'\Deltasimilarity (\beta)'})
 yl = ylim;
@@ -324,7 +324,7 @@ h2 = barplot_columns({geom_spatial_B(:), geom_layer_B(:)}, 'nofig', ...
     'colors',dc_color_light, ...
     'MarkerSize',5);
 set(h2.star_handles,'fontsize',fs-3,'horizontalalign','center')
-set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'},'XTickLabelRotation',45)
+set(gca,'XTickLabels',{'Wiring Cost','Layer Depth'},'XTickLabelRotation',45)
 xlabel([])
 ylabel({'\Deltasimilarity (\beta)'})
 yl = ylim;
@@ -347,7 +347,7 @@ h3 = barplot_columns({spatial_metric_int_B(:), layer_metric_int_B(:)}, 'nofig',.
     'colors',dc_color_light, ...
     'MarkerSize',5);
 set(h3.star_handles,'fontsize',fs-3,'horizontalalign','center')
-set(gca,'XTickLabels',{'Wiring Cost','NetHierarchy'},'XTickLabelRotation',45)
+set(gca,'XTickLabels',{'Wiring Cost','Layer Depth'},'XTickLabelRotation',45)
 xlabel([])
 ylabel({'\Deltasimilarity (\beta_{std})'})
 yl = ylim;
@@ -365,15 +365,16 @@ annot{2,2} = text(1.95, yl(2)+diff(yl)*0.5,'layer4.1','FontSize',fs-3,'Horizonta
 box off
 title({'zGeo - zTopo'},'fontsize',fs,'fontweight','normal')
 
-sgtitle({'Factors associated with model variation'},...
+sgtitle({'Factors associated with model variation','(regression coefficients)'},...
     'fontsize',fs+1,'fontweight','bold')
-
-t1.Position(1) = 0.18
-t1.Position(2) = 0.275;
-t1.Position(3:4) = [0.68,0.55];
 
 pos = get(gcf,'Position');
 set(gcf,'Position',[pos(1:2), 350, 360])
+
+t1.Position(1) = 0.18
+%t1.Position(2) = 0.25;
+t1.Position(3:4) = [0.68,0.53];
+set(s1,'XTickLabelRotation',45)
 
 export_fig(gcf,'panels/similarity_coefs.png','-png','-r300','-transparent')
 
