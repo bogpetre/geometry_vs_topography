@@ -40,8 +40,8 @@ for s = 1:height(sid_all)
         tsnr1(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid_all.Var1(s)));
         tsnr2(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/tsnr.csv',sid_all.Var2(s)));
         
-        wi_cosim1(s,:) = balanced_mean_op*readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid_all.Var1(s),noise,noise),'FileType','text');
-        wi_cosim2(s,:) = balanced_mean_op*readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_betas/%s_similarity.csv',sid_all.Var2(s),noise,noise),'FileType','text');        
+        wi_cosim1(s,:) = balanced_mean_op*readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid_all.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2(s,:) = balanced_mean_op*readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid_all.Var2(s),noise,noise),'FileType','text');        
     catch
         warning('Could not import pair %d', s);
     end
@@ -64,7 +64,7 @@ wuc = zeros(height(sid), n_roi);
 [wuc, wuc_md_p] = deal(zeros(height(sid), n_roi));
 for s = 1:height(sid)
     try
-        wuc(s,:) = diag(readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var1(s)),'FileType','text'));
+        wuc(s,:) = readmatrix(sprintf('../../derivatives/retest/hcp_glm_msmall_grayord_spm/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid.Var1(s),sid.Var1(s)),'FileType','text');
     catch
         warning('Could not import pair %d', s);
     end
@@ -247,10 +247,138 @@ leg = legend([h;p(1:4)],{'LS Line','Participant1','Participant2','Participant3',
 set(gca,'FontSize',fs);
 
 B = mean_xsubject_B(cosim,wi_cosim(sid_all_in_retest,:),'std');
-title({'Test-Retest (Visit 1) vs. Visit 1 vs 2', ['Mean r^2 = ',sprintf('%0.3f',B(1)^2)]},'fontsize',fs+2);
+title({'Task Test-Retest (Visit 1) vs. Visit 1 vs 2', ['Mean r^2 = ',sprintf('%0.3f',B(1)^2)]},'fontsize',fs+2);
 
 
 pos = get(gcf,'Position');
 set(gcf,'Position', [pos(1:2), 400,407])
 
 exportgraphics(gcf,sprintf('panels_%s/test_retest_vs_test_followup_scatterplot.png',noise),'ContentType','image','Resolution',300);
+
+
+%% import rest retest data
+sid_rest = readtable('../../resources/paired_retest_iid_sid.csv', 'ReadVariableNames',false);
+sid_rest = table([sid_rest.Var1;sid_rest.Var2]);
+
+wuc_rest = zeros(height(sid_rest), n_roi);
+for s = 1:height(sid_rest)
+    try
+        wuc_rest(s,:) = readmatrix(sprintf('../../derivatives/retest/restingstate/hcp25/bsc_retest/%s_betas/cosine/%d_v_%d_wuc.tsv',noise,sid_rest.Var1(s),sid_rest.Var1(s)),'FileType','text');
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+for s = 1:height(sid_rest)
+    % Some distance matrices are so noise dominated that their test-retest
+    % reliability does not produce a valid RDM whitening matrix. We set
+    % those to nans here. If we consider the residual non-imaginary
+    % subjects for these regions we'll have biased estimates, but nans make
+    % these easy to keep track of so we can mask them out later
+    nan_regions = imag(wuc_rest(s,:)) ~= 0;
+    wuc_rest(s, nan_regions) = nan;
+end
+
+cosim_rest = zeros(height(sid_rest), n_roi);
+for s = 1:height(sid_rest)
+    try
+        cosim_rest(s,:) = mean(dlmread(sprintf('../../derivatives/retest/restingstate/hcp25/bsc_retest/%s_betas/cosine/%d_v_%d_cosim.tsv', noise, sid_rest.Var1(s), sid_rest.Var1(s)), '\t'));
+    catch
+        warning('Could not import pair %d', s);
+    end
+end
+
+has_data_rest = any(cosim_rest,2) & any(~isnan(wuc_rest),2);
+
+cosim_rest = cosim_rest(has_data_rest,:);
+wuc_rest = wuc_rest(has_data_rest,:);
+sid_rest = sid_rest(has_data_rest,:);
+
+
+
+%% plot rest stats to brain
+
+B = nanmean(cosim_rest);
+cmaprange = prctile(B,[2.5,97.5]);
+switch noise
+    case 'whitened'
+        T = {'Rest Topoography Test-Retest Reliability',['(Whitened \beta, cos\theta, ', sprintf('N=%d)',size(cosim_rest,1))]};
+    case 'standardized'
+        T = {'Rest Topoography Test-Retest Reliability',['(t-stat, cos\theta, ', sprintf('N=%d)',size(cosim_rest,1))]};
+end
+plot_to_brain(B,1:length(B),cmaprange,T,fs+2);
+exportgraphics(gcf,sprintf('panels_%s/rest_test_followup_cosim.png',noise),'ContentType','image','Resolution',300);
+for i = 1:length(B)
+    new_cii_data(atlas_cii.cdata == i) = B(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('rest_topo_cosim_test_v_followup_n22_%s.dscalar.nii',noise));
+
+B = nanmean(wuc_rest);
+cmaprange = prctile(B,[2.5,97.5]);
+switch noise
+    case 'whitened'
+        T = {'Rest Geometry Test-Retest Reliability',['(Whitened \beta, cos\theta, ', sprintf('N=%d)',size(wuc_rest,1))]};
+    case 'standardized'
+        T = {'Rest Geometry Test-Retest Reliability',['(t-stat, cos\theta, ', sprintf('N=%d)',size(wuc_rest,1))]};
+end
+plot_to_brain(B,1:length(B),cmaprange,T,fs+2);
+exportgraphics(gcf,sprintf('panels_%s/rest_test_retest_wu.png',noise),'ContentType','image','Resolution',300);
+for i = 1:length(B)
+    new_cii_data(atlas_cii.cdata == i) = B(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('rest_geom_wuc_test_v_followup_n22_%s.dscalar.nii',noise));
+
+%% Plot rest vs. test reliabilities
+
+task_ind = find(has_data);
+rest_ind = find(has_data_rest);
+
+task_with_rest = ismember(task_ind, rest_ind);
+rest_with_task = ismember(rest_ind, task_ind);
+
+figure;
+p = plot(cosim(task_with_rest,1:358)',cosim_rest(rest_with_task,1:358)','.')
+B = mean_xsubject_B(cosim(task_with_rest,1:358), cosim_rest(rest_with_task,1:358));
+hold on;
+xlim([-0.2,1]);
+ylim([-0.2,1]);
+h = plot(xlim, xlim*B(1) + B(2),'color',dc_color,'LineWidth',2);
+axis square
+box off
+ylabel({'Rest Topographic Similarity','(cos\theta within session)'});
+xlabel({'Task Topographic Similarity','(cos\theta between session)'})
+leg = legend([h;p(1:4)],{'LS Line','Participant1','Participant2','Participant3','etc'},'location','southeast');
+set(gca,'FontSize',fs);
+
+B = mean_xsubject_B(cosim(task_with_rest,1:358),cosim_rest(rest_with_task,1:358),'std');
+title({'Cortical Topographies Test-Retest', ['Task vs. Rest Mean r^2 = ',sprintf('%0.3f',B(1)^2)]},'fontsize',fs+2);
+
+
+pos = get(gcf,'Position');
+set(gcf,'Position', [pos(1:2), 400,407])
+
+exportgraphics(gcf,sprintf('panels_%s/test_retest_topographies_task_vs_rest_scatterplot.png',noise),'ContentType','image','Resolution',300);
+
+
+
+figure;
+p = plot(wuc(task_with_rest,1:358)',wuc_rest(rest_with_task,1:358)','.')
+B = mean_xsubject_B(wuc(task_with_rest,1:358), wuc_rest(rest_with_task,1:358));
+hold on;
+xlim([-0.2,1]);
+ylim([-0.2,1]);
+h = plot(xlim, xlim*B(1) + B(2),'color',dc_color,'LineWidth',2);
+axis square
+box off
+ylabel({'Rest Representational Similarity','(cos\theta within session)'});
+xlabel({'Task Representational Similarity','(cos\theta between session)'})
+leg = legend([h;p(1:4)],{'LS Line','Participant1','Participant2','Participant3','etc'},'location','southeast');
+set(gca,'FontSize',fs);
+
+B = mean_xsubject_B(wuc(task_with_rest,1:358),wuc_rest(rest_with_task,1:358),'std');
+title({'Cortical Representations Test-Retest', ['Task vs. Rest Mean r^2 = ',sprintf('%0.3f',B(1)^2)]},'fontsize',fs+2);
+
+
+pos = get(gcf,'Position');
+set(gcf,'Position', [pos(1:2), 400,407])
+
+exportgraphics(gcf,sprintf('panels_%s/test_retest_representations_task_vs_rest_scatterplot.png',noise),'ContentType','image','Resolution',300);
