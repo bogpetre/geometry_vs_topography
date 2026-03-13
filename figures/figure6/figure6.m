@@ -191,7 +191,7 @@ mz_race = sort(race(is_an_mz_twin));
 mz_race_counts = table(a,[diff(b); length(mz_race)-b(end)]/length(mz_race)*100)
 
 
-n_dz = sum(sum(mz.*~isnan(topo_r(:,:,1))) > 0)
+n_dz = sum(sum(dz.*~isnan(topo_r(:,:,1))) > 0)
 n_dz_dyads = sum(fs(:).*~isnan(mean_topo_r(:)))/2
 
 n_dz_gt = sum(sum(dz_gt.*~isnan(topo_r(:,:,1))) > 0)
@@ -653,7 +653,7 @@ for i = 1:size(task_geom_clusters,2)
 end
 xlim([0.5,i+0.5])
 ylim(yl);
-subtitle('Geometry','fontsize',fontsize)
+subtitle('Representations','fontsize',fontsize)
 set(gca,'XTick',1:size(task_geom_clusters,2), ...
     'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'}, ...
     'FontSize',fontsize+2,'XTickLabelRotation', 90);
@@ -682,7 +682,7 @@ for i = 1:size(rsn_geom_clusters,2)
 end
 xlim([0.5,i+0.5])
 ylim(yl);
-title({'Geometry'},'FontWeight','normal','fontsize',fontsize); 
+title({'Representations'},'FontWeight','normal','fontsize',fontsize); 
 set(gca,'XTick',1:size(rsn_geom_clusters,2), ...
     'XTickLabels',{'Twins (MZ)','Twins (DZ)','Siblings (Full)','Siblings (Half)','Unrelated'}, ...
     'FontSize',fontsize+2,'XTickLabelRotation', 90);
@@ -921,7 +921,7 @@ ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({''},'FontWeight','bold'); 
-subtitle({'Geo'},'FontWeight','normal');
+subtitle({'Rep'},'FontWeight','normal');
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 set(get(gca,'YAxis'),'Visible','off')
 grid on
@@ -951,7 +951,7 @@ ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({''},'FontWeight','bold'); 
-subtitle({'Geo'},'FontWeight','normal'); 
+subtitle({'Rep'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 set(get(gca,'YAxis'),'Visible','off')
 grid on
@@ -1023,7 +1023,7 @@ ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({' '},'FontWeight','bold');
-subtitle({'Geo'},'FontWeight','normal'); 
+subtitle({'Rep'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
@@ -1089,7 +1089,7 @@ ylim(yl);
 ngroups = size(y,1);
 nbars = size(y,2);
 title({' '},'FontWeight','bold');
-subtitle({'Geo'},'FontWeight','normal'); 
+subtitle({'Rep'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
 ylabel('Similarity Rank');
 grid on
@@ -1322,7 +1322,7 @@ ngroups = size(y,1);
 nbars = size(y,2);
 title({'Genes'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
-ylabel({'Topography - Geometry','(Ranks)'});
+ylabel({'Topo - Rep','(Ranks)'});
 grid on
 box off
 yl = ylim;
@@ -1352,7 +1352,7 @@ ngroups = size(y,1);
 nbars = size(y,2);
 title({'Env'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
-ylabel({'Topography - Geometry','(Ranks)'});
+ylabel({'Topo - Rep','(Ranks)'});
 grid on
 box off
 yl = ylim;
@@ -1389,7 +1389,7 @@ ngroups = size(y,1);
 nbars = size(y,2);
 title({'Genes'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'MZ','DZ'},'FontSize',fontsize+2,'XTickLabelRotation',90);
-ylabel({'Topography - Geometry','(Ranks)'});
+ylabel({'Topo - Rep','(Ranks)'});
 grid on
 box off
 yl = ylim;
@@ -1419,7 +1419,7 @@ ngroups = size(y,1);
 nbars = size(y,2);
 title({'Env'},'FontWeight','normal'); 
 set(gca,'XTick',1:size(y,2),'XTickLabels',{'Twins (DZ)','Siblings (Full)'},'FontSize',fontsize+2,'XTickLabelRotation',90);
-ylabel({'Topography - Geometry','(Ranks)'});
+ylabel({'Topo - Rep','(Ranks)'});
 grid on
 box off
 yl = ylim;
