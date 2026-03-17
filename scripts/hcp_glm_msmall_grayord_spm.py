@@ -1137,7 +1137,7 @@ rsawf.connect([
     # standardize runwise
     (inputnode_rsa, stdwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
                               ('atlas', 'inputspec.atlas')]),
-    (stdwfl1, outputnode_rsa, [('outputspec.out_file','outputspec.std_con_l1')]),
+    (stdwfl1, outputnode_rsa, [('outputspec.out_file','std_con_l1')]),
 
     
     # standardize subject-wise ("overall" in rsatoolbox'select_contrasts parlance)
@@ -1147,7 +1147,7 @@ rsawf.connect([
     # whitten runwise
     (inputnode_rsa, whitenwfl1, [('spm_mat_file', 'inputspec.spm_mat_file'),
                                  ('atlas', 'inputspec.atlas')]),
-    (whitenwfl1, outputnode_rsa, [('outputspec.out_file','outputspec.whitened_con_l1')]),
+    (whitenwfl1, outputnode_rsa, [('outputspec.out_file','whitened_con_l1')]),
     
 
     # whiten overall-wise
