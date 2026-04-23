@@ -1,4 +1,5 @@
 close all; clear all;
+%parpool(8)
 
 config = jsondecode(fileread('../../config.json'));
 
@@ -225,8 +226,8 @@ cla
 uni_label = 'Ctx_V1_L';
 uni = find(contains(roi_labels, uni_label),1,'first');
 
-x = wuc_md(:,uni);
-y = cosim(:, uni);
+x = atanh(wuc_md(:,uni));
+y = atanh(cosim(:, uni));
 % seems prudent to just show the data rather than interpolated estimates
 %x = regress_out(x, [confounds{1}(:,uni), confounds{2}(:,uni)]);
 %y = regress_out(y, [confounds{1}(:,uni), confounds{2}(:,uni)]);
@@ -248,6 +249,16 @@ ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs)
 box off;
 axis image
+yl = ylim;
+ylim([yl(1),yl(2)*1.25])
+
+if strcmp(noise,'standardized')
+    a1 = annotation('textarrow',[0.4900 0.5300],[0.7300 0.6700],'String',['\beta = ', sprintf('%0.2f', m.Coefficients.Estimate(2))], ...
+        'FontSize',fs, 'FontWeight', 'bold')
+else
+    a1 = annotation('textarrow',[0.46 0.57],[0.78 0.74],'String',['\beta = ', sprintf('%0.2f', m.Coefficients.Estimate(2))], ...
+        'FontSize',fs, 'FontWeight', 'bold')
+end
 
 tile2 = nexttile()
 cla
@@ -255,8 +266,8 @@ cla
 trans_label = 'Ctx_p9_46v_R';
 trans = find(contains(roi_labels, trans_label),1,'first');
 
-x = wuc_md(:,trans);
-y = cosim(:, trans);
+x = atanh(wuc_md(:,trans));
+y = atanh(cosim(:, trans));
 % seems prudent to just show the data rather than interpolated estimates
 %x = regress_out(x, [confounds{1}(:,trans), confounds{2}(:,trans)]);
 %y = regress_out(y, [confounds{1}(:,trans), confounds{2}(:,trans)]);
@@ -273,21 +284,37 @@ l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 xlim(xl);
 
+if strcmp(noise,'standardized')
+    a2 = annotation('textarrow',[0.5800 0.52],[0.23 0.2850],'String',['\beta = ', sprintf('%0.2f', m.Coefficients.Estimate(2))], ...
+        'FontSize',fs, 'Color', [0.8,0,0],'FontWeight','bold')
+else
+    a2 = annotation('textarrow',[0.6000 0.55],[0.23 0.3150],'String',['\beta = ', sprintf('%0.2f', m.Coefficients.Estimate(2))], ...
+        'FontSize',fs, 'Color', [0.8,0,0],'FontWeight','bold')
+end
+
 trans_label = strrep(trans_label,'Ctx_','Ctx ');
 trans_label = strrep(trans_label,'_R',' R');
 trans_label = strrep(trans_label,'_L',' L');
 title({[strrep(trans_label, '_','-'), ' (transmodal)']}, 'fontweight','normal','fontsize',fs)
 xlabel({'RepSim','(WUC)'})
 ylabel({'TopoSim','(cos\theta)'})
-set(gca,'FontSize',fs,'YTick', [0.2,0.4])
+set(gca,'FontSize',fs,'YTick', [-0.2,0,0.2,0.4])
 box off;
 axis image
+yl = ylim;
+ylim([yl(1)-0.125,yl(2)+0.125])
 
 leg1 = legend([p1,p2],{'V1 dyad', 'p9-46v dyad'},'fontsize',fs);
 
 pos = get(gcf,'Position');
-set(gcf,'Position',[pos(1:2),326,407]);
+set(gcf,'Position',[pos(1:2),326,430]);
 
+if strcmp(noise,'standardized')
+    t2.Position(3) = 0.65;
+    t2.Position(4) = 0.59;
+else
+    t2.Position(3) = 0.6;
+end
 %t2.Position(2) = 0.18;
 %t2.Position(4) = 0.635;
 
@@ -325,11 +352,27 @@ map_ind = 8;
 
 % has more significant subjects than holm-sidak threshold
 good_grad_roi = vals(ismember(1:358, good_rois), map_ind);
+a = {};
 hold on;
 for i = 1:length(good_grad_roi)
     color = cmap(good_rois(i),:);
     if good_rois(i) < 358 
-        plot(good_grad_roi(i), assocB(good_rois(i)), 'h', 'color', color);
+        p = plot(good_grad_roi(i), assocB(good_rois(i)), 'h', 'color', color);
+        if good_rois(i) == uni
+            p.MarkerFaceColor = color;
+            if strcmp(noise,'standardized')
+                a{end+1} = annotation('textarrow',[0.2500 0.21],[0.5600 0.5250],'String',strrep(uni_label,'_',' '),'fontsize',fs,'fontweight','bold');
+            else
+                a{end+1} = annotation('textarrow',[0.2500 0.2050],[0.5600 0.5200],'String',strrep(uni_label,'_',' '),'fontsize',fs,'fontweight','bold');
+            end
+        elseif good_rois(i) == trans
+            p.MarkerFaceColor = color;
+            if strcmp(noise,'standardized')
+                a{end+1} = annotation('textarrow',[0.3300 0.36],[0.2600 0.3500],'String',strrep(trans_label,'_',' '),'fontsize',fs,'fontweight','bold','Color',[0.8,0,0]);
+            else
+                a{end+1} = annotation('textarrow',[0.3300 0.356],[0.2600 0.3500],'String',strrep(trans_label,'_',' '),'fontsize',fs,'fontweight','bold','Color',[0.8,0,0]);
+            end
+        end
     else
         continue;
     end
@@ -399,14 +442,14 @@ leg2.Position(2) = 0.03;
 
 
 % add ROI legend
-a1 = axes();
+ax1 = axes();
 %a1.Position = [0.285,0.61,0.15,0.15];
-a1.Position = [0.2,0.07,0.15,0.15];
-a1.Visible = 'off';
+ax1.Position = [0.2,0.07,0.15,0.15];
+ax1.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
 o2 = fmridisplay('overlay', which(overlay));
-o2 = surface(o2, 'axes', a1, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
+o2 = surface(o2, 'axes', ax1, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
 
 map_files = dir('../../resources/neuromaps/');
 map_tokens = regexp(mapname,'(.*)-(.*)','tokens');
@@ -421,14 +464,14 @@ plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
 
-a2 = axes();
+ax2 = axes();
 %a2.Position = [0.165,0.61,0.15,0.15];
-a2.Position = [0.285,0.61,0.15,0.15];
-a2.Visible = 'off';
+ax2.Position = [0.285,0.61,0.15,0.15];
+ax2.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
 o3 = fmridisplay('overlay', which(overlay));
-o3 = surface(o3, 'axes', a2, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
+o3 = surface(o3, 'axes', ax2, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
 
 atlas_cii = get_cifti_data(config.canlab2024.path);
 cdata = atlas_cii.cortex_left;
