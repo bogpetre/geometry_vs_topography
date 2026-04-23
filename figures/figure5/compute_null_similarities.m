@@ -174,7 +174,7 @@ parfor i = 1:height(sid)
 end
 
 % compute confound corrected null similarities
-n_seeds = 100;
+n_seeds = 1000;
 wuc_null = nan(n_seeds, height(sid), n_roi);
 cosim_null = nan(n_seeds, n_subj, n_roi);
 for seed = 1:n_seeds
@@ -246,4 +246,4 @@ for seed = 1:n_seeds
     end
 end
 
-save(sprintf('%s/bsc_null/perm_nulls_%s.mat',data_root,noise),'cosim_null','wuc_null')
+save(sprintf('%s/bsc_null/perm_nulls_1000_%s.mat',data_root,noise),'cosim_null','wuc_null')

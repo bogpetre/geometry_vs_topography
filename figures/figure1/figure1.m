@@ -455,12 +455,12 @@ export_fig(gcf,'panels/model_agreement.png','-png','-r300','-transparent')
 %% Plot performance metrics
 [resnet_top1, tdann_top1, resnet_top5, tdann_top5] = deal(nan(2*n_networks,1));
 for s = 1:2*n_networks
-    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_spatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s));
+    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_spatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s-1));
     json = jsondecode(data(end-1,:));
     tdann_top1(s) = json.test_accuracy_list_meter.top_1.x0;
     tdann_top5(s) = json.test_accuracy_list_meter.top_5.x0;
 
-    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_nonspatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s));
+    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_nonspatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s-1));
     json = jsondecode(data(end-1,:));
     resnet_top1(s) = json.test_accuracy_list_meter.top_1.x0;
     resnet_top5(s) = json.test_accuracy_list_meter.top_5.x0;
@@ -586,7 +586,7 @@ cbf2.cdata(medial_mask_R) = zscore_fun(cbf2.cdata(medial_mask_R));
 figure(4)
 clf
 t7 = tiledlayout(4,3,'Padding','compact','TileSpacing','tight');
-sgtitle(t7,{'Factors hypothetically associated with','biological circuit variation'},'FontWeight','bold','FontSize',fs+1);
+sgtitle(t7,{'Factors hypothetically associated with','brain topography variation'},'FontWeight','bold','FontSize',fs+1);
 
 
 ax1 = nexttile(t7);
