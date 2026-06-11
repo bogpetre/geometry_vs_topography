@@ -24,27 +24,6 @@ for i = 1:length(atlas_labels)
     cmap(i,:) = atlas_labels(i).rgba(1:3);
 end
 
-% color choices are arbitrary, but chosen to evoke depth correspondences
-% when juxtaposed against brain results
-%{
-layer_color_src = {'Ctx_V1_L', 'Ctx_IFSp_L'; ...
-'Ctx_V2_L', 'Ctx_8C_L'; ...
-'Ctx_V3_L', 'Ctx_8Av_L'; ...
-'Ctx_V4_L', 'Ctx_8Ad_L'; ...
-'Ctx_V4t_L', 'Ctx_8BL_L'; ...
-'Ctx_V8_L', 'Ctx_9m_L'; ...
-'Ctx_FFC_L', 'Ctx_d32_L'; ...
-'Ctx_VVC_L', 'Ctx_a24_L'};
-
-layer_colors = cell(size(layer_color_src));
-for i = 1:size(layer_colors,1)
-    for j = 1:size(layer_colors,2)
-        ind = find(contains({atlas_labels.name}, layer_color_src{i,j}));
-        layer_colors{i,j} = atlas_labels(ind).rgba(1:3);
-    end
-end
-%}
-
 layer_colors = repmat({[0.2471,0.0196,1], [0.3804, 0.3843, 0.3412]},8,1);
 
 %% Plot similarity metrics

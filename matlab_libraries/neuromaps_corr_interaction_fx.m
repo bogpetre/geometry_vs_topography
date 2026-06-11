@@ -30,32 +30,6 @@ function [B, CI, p, effectsize, sampling_var, perm_var] = neuromaps_corr_interac
         jk(i,:) = mean(subj_B(ind,:));
     end
     sampling_var = (n-1)/n*sum((jk - mean(jk)).^2);
-    
-    %{
-    % Adjust for covariance (minor adjustment, very slow)
-    jk_null = nan(size(subj_B));
-    for i = 1:size(subj_B,1)
-        ind = 1:size(subj_B,1);
-        ind(i) = [];
-        this_B_perm = zeros(1000,size(B,2));
-        parfor j = 1:1000
-            % impute nan values
-            confounds = cell(1,length(varargin));
-            if ~isempty(varargin)
-                for k = 1:length(varargin{1})
-                    confounds{k} = varargin{1}{k}(:,ind);
-                end
-            end
-            subj_spin_betas = get_mean_B(obs_val1(:,ind), obs_val2(:,ind), perm_map(:,j), confounds);
-            this_B_perm(j,:) = mean(subj_spin_betas);
-        end
-        jk_null(i,:) = mean(this_B_perm);
-    end
-    sampling_perm_cov = (n-1)/n*sum((jk - mean(jk)).*(jk_null - mean(jk_null)));
-    sampling_perm_cov(3:end) = 0;
-    perm_var = perm_var - sampling_perm_cov;
-    sampling_var = sampling_var - sampling_perm_cov;
-    %}
 
     se = sqrt(perm_var + sampling_var);
     z = B./se;

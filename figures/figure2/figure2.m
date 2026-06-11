@@ -401,8 +401,6 @@ cmaprange = prctile(data(:),[2.5,97.5]);
 cmaprange = [-1*max(abs(cmaprange)), max(abs(cmaprange))];
 
 cm2 = flip(cm1(:,[3,2,1]));
-%neg_cmap_space = round(linspace(round(length(cm1)*-1*cmaprange(1)/cmaprange(2)), length(cm1), length(cm1)/2));
-%cm = [cm2(neg_cmap_space,:); cm1(1:2:end,:)]; 
 cm = [cm2(1:2:end,:); cm1(1:2:end,:)]; 
 
 [~, exteriorPoints] = findExteriorPoints(surf_R.faces, surf_R.vertices, trans_mask);
@@ -475,7 +473,6 @@ cosim_trans = zeros(size(mtopo1_trans,1),1);
 for i = 1:size(mtopo1_trans,1)
     cosim_trans(i) = mtopo1_trans(i,:)*mtopo2_trans(i,:)'/(norm(mtopo1_trans(i,:))*norm(mtopo2_trans(i,:)));
 end
-%sprintf('Mean transmodal similarity: %0.3f (cosim, all tasks)',mean(cosim_trans))
 sprintf('Mean transmodal similarity: %0.3f (cosim, 6 tasks)',mean(cosim_trans(these_task_ind)))
 
 
@@ -486,9 +483,6 @@ for i = 1:size(mtopo1_trans,1)
         cosim_x_task_trans_A(i,j) = mtopo1_trans(i,:)*mtopo1_trans(j,:)'/(norm(mtopo1_trans(i,:))*norm(mtopo1_trans(j,:)));
     end
 end
-%disp('Transmodal similarity across tasks, participant A:');
-%disp(cosim_x_task_trans_A(these_task_ind,these_task_ind))
-
 
 cosim_x_task_trans_B = zeros(size(mtopo2_trans,1));
 for i = 1:size(mtopo2_trans,1)
@@ -496,8 +490,6 @@ for i = 1:size(mtopo2_trans,1)
         cosim_x_task_trans_B(i,j) = mtopo2_trans(i,:)*mtopo2_trans(j,:)'/(norm(mtopo2_trans(i,:))*norm(mtopo2_trans(j,:)));
     end
 end
-%disp('Transmodal similarity across tasks, participant B:');
-%disp(cosim_x_task_trans_B(these_task_ind,these_task_ind))
 
 
 %{

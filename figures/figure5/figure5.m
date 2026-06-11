@@ -530,7 +530,6 @@ sgtitle({'Transmodal representations are most similar','but also implemented mos
 
 % add margulies map
 a1 = axes();
-%a1.Position = [0.18,0.1,0.15,0.15];
 if strcmp(noise,'standardized')
     a1.Position = [0.18,0.095,0.15,0.15];
 else
