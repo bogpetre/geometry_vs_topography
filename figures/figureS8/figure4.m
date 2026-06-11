@@ -9,6 +9,7 @@ addpath(genpath(fullfile(config.matlab_libraries.npm)));
 
 addpath('../../matlab_libraries');
 addpath('../../resources/neuromaps');
+addpath('../../src/rdm_similarity/matlab')
 
 fs=config.matlab_disp_scheme.fontsize;
 
@@ -16,31 +17,42 @@ f = figure;
 cm = colormap(f,'hot');
 close(f)
 
-dc_color = config.matlab_disp_scheme.color_main;
-dc_color_light = config.matlab_disp_scheme.color_light;
+colors = config.matlab_disp_scheme.color_main;
+colors_light = config.matlab_disp_scheme.color_light;
+
+noise = 'whitened';
+%noise='standardized';
+
+seed = 0;
 
 %% import atlas in cifti space and get region names
 atlas_cii = cifti_read(config.canlab2024.path);
 atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
 roi_labels = {atlas_labels.name}; 
 
-atlas_cii = get_cifti_data(config.canlab2024.path);
-n_roi = length(unique([atlas_cii.cortex_left, atlas_cii.cortex_right, atlas_cii.volumes])) - 1;
+atlas_cii_data = get_cifti_data(config.canlab2024.path);
+n_roi = length(unique([atlas_cii_data.cortex_left, atlas_cii_data.cortex_right, atlas_cii_data.volumes])) - 1;
 
 %% import between subject similarity measures for unrelated individuals
 sid = readtable('../../resources/paired_sid.csv', 'ReadVariableNames',false);
+
+task_labels = [1,1,2,2,3,3,4,4,5,5,6,6,6,6,6,7,7,7,7,7,7,7,7];
+
+% multiplying by this vector will balances conditions across tasks
+balanced_mean_op = [1/7*repmat(1/2,1,10), 1/7*repmat(1/5,1,5), 1/7*repmat(1/8,1,8)];
 
 tsnr = zeros(height(sid), n_roi);
 wi_cosim = nan(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        tsnr1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var1(s)));
-        tsnr2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/tsnr.csv',sid.Var2(s)));
+        tsnr1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm7/results/%d/tsnr.csv',sid.Var1(s)));
+        tsnr2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm7/results/%d/tsnr.csv',sid.Var2(s)));
         tsnr(s,:) = mean([tsnr1, tsnr2],2);
 
-        wi_cosim1 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim2 = readmatrix(sprintf('../../derivatives/restingstate/hcp25/results/%d/standardized_betas/standardized_similarity.csv',sid.Var1(s)),'FileType','text');
-        wi_cosim(s,:) = mean(mean(cat(3,wi_cosim1, wi_cosim2),3));
+        wi_cosim1 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm7/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var1(s),noise,noise),'FileType','text');
+        wi_cosim2 = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm7/results/%d/all_tasks/%s_contrasts/%s_similarity.csv',sid.Var2(s),noise,noise),'FileType','text');
+        comb_cosim = mean(cat(3,wi_cosim1, wi_cosim2),3);
+        wi_cosim(s,:) = balanced_mean_op*comb_cosim;
     catch
         warning('Could not import pair %d', s);
     end
@@ -49,22 +61,134 @@ end
 wuc_md = zeros(height(sid), n_roi);
 for s = 1:height(sid)
     try
-        wuc_md(s,:) = diag(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/standardized_betas/cosine/%d_v_%d_wuc.tsv',sid.Var1(s), sid.Var2(s)),...
-            'FileType','text','Delimiter',','));
+        wuc_md(s,:) = readmatrix(sprintf('../../derivatives/hcp_glm_msmall_grayord_spm7/bsc_null/seed%d/%s_betas/cosine/%d_v_%d_wuc.tsv',seed,noise,sid.Var1(s), sid.Var2(s)),...
+            'FileType','text','Delimiter',',');
     catch
         warning('Could not import pair %d', s);
+    end
+end
+%{
+for s = 1:height(sid)
+    nan_regions = imag(wuc_md(s,:)) ~= 0;
+    wuc_md(s, nan_regions) = nan;
+end
+%}
+
+
+% load topographies
+n_subj = height(sid);
+
+left_ctx_roi = unique(atlas_cii_data.cortex_left);
+right_ctx_roi = unique(atlas_cii_data.cortex_right);
+subctx_roi = unique(atlas_cii_data.volumes);
+left_ctx_roi(left_ctx_roi == 0) = [];
+right_ctx_roi(right_ctx_roi == 0) = [];
+subctx_roi(subctx_roi == 0) = [];
+
+topos1 = cell(n_roi,n_subj);
+good_topo = true(1,n_subj);
+parfor i = 1:height(sid)
+    try
+        contrast_file = dir(['../../derivatives_bak/hcp_glm_msmall_grayord_spm/results/', ...
+                sprintf('%d/all_tasks/%s_contrasts/merged_cifti.dscalar.nii', ...
+                sid.Var1(i), noise)]);
+
+        these_contrasts = get_cifti_data(fullfile(contrast_file.folder, contrast_file.name));
+        
+        for r = 1:n_roi
+            if ismember(r, left_ctx_roi)
+                struct = 'cortex_left';
+            elseif ismember(r, right_ctx_roi)
+                struct = 'cortex_right';
+            elseif ismember(r, subctx_roi)
+                struct = 'volumes';
+            else
+                error('Could not identify structure for region %d',r);
+            end
+
+            assert(size(atlas_cii_data.(struct),2) == size(these_contrasts.(struct),2));
+
+            ind = atlas_cii_data.(struct) == r;
+            topos1{r,i} = these_contrasts.(struct)(:,ind);
+            s = zeros(size(topos1{r,i},1),1);
+            for j = 1:size(topos1{r,i},1)
+                s(j) = norm(topos1{r,i}(j,:));
+            end
+            topos1{r,i} = topos1{r,i}./s;
+        end
+    catch
+        good_topo(i) = false;
+        warning('Failed to import topographies for subject %d', sid.Var1(i));
     end
 end
 
-cosim = zeros(height(sid), n_roi);
-for s = 1:height(sid)
+topos2 = cell(n_roi,n_subj);
+good_topo = true(1,n_subj);
+parfor i = 1:height(sid)
     try
-        cosim(s,:) = mean(readmatrix(sprintf('../../derivatives/restingstate/hcp25/bsc/standardized_betas/cosine/%d_v_%d_cosim.tsv',sid.Var1(s), sid.Var2(s)),...
-            'FileType','text'),1);
+        contrast_file = dir(['../../derivatives_bak/hcp_glm_msmall_grayord_spm/results/', ...
+                sprintf('%d/all_tasks/%s_contrasts/merged_cifti.dscalar.nii', ...
+                sid.Var2(i), noise)]);
+
+        these_contrasts = get_cifti_data(fullfile(contrast_file.folder, contrast_file.name));
+        
+        for r = 1:n_roi
+            if ismember(r, left_ctx_roi)
+                struct = 'cortex_left';
+            elseif ismember(r, right_ctx_roi)
+                struct = 'cortex_right';
+            elseif ismember(r, subctx_roi)
+                struct = 'volumes';
+            else
+                error('Could not identify structure for region %d',r);
+            end
+
+            assert(size(atlas_cii_data.(struct),2) == size(these_contrasts.(struct),2));
+
+            ind = atlas_cii_data.(struct) == r;
+            topos2{r,i} = these_contrasts.(struct)(:,ind);
+            s = zeros(size(topos2{r,i},1),1);
+            for j = 1:size(topos2{r,i},1)
+                s(j) = norm(topos2{r,i}(j,:));
+            end
+            topos2{r,i} = topos2{r,i}./s;
+        end
     catch
-        warning('Could not import pair %d', s);
+        good_topo(i) = false;
+        warning('Failed to import topographies for subject %d', sid.Var2(i));
     end
 end
+
+% compute similarities
+rand_ordering = csvread(['../../derivatives/hcp_glm_msmall_grayord_spm7/', ...
+    sprintf('/bsc_null/seed%d/shuffle_ind.csv',seed)]);
+rand_ordering = rand_ordering+1; % from python to matlab indexing
+
+cosim = nan(n_subj, n_roi);
+for r = 1:n_roi
+    fprintf('Compute topographic similarity for region %d\n',r);
+    for i = 1:n_subj
+        if ~good_topo(i)
+            continue;
+        end
+
+        % balance with oversampling rather than weights
+        X = topos1{r,i};
+        Y = topos2{r,i};
+        
+        % build expansion mapper that replicates rows as needed
+        replicate_id = build_replication_info(task_labels);
+        X = X(replicate_id,:);
+        Y = Y(replicate_id,:);
+
+        perm_id = lift_perm_to_expanded(rand_ordering, replicate_id);
+        X = X(perm_id,:);
+
+        cosim(i,r) = mean(diag(X*Y'));
+    end
+end
+
+clear topos1 topos2 X Y
 
 has_data = any(wuc_md,2) & any(cosim,2) & any(~isnan(wuc_md),2) & any(~isnan(cosim),2) & any(~isnan(wi_cosim),2);
 cosim = cosim(has_data,:);
@@ -103,9 +227,13 @@ assocB(good_rois) = B0(1:p);
 cmaprange = prctile(assocB(~isnan(assocB)),[2.5,90]);
 cmaprange(1) = eps;
 
-T = {'Dependence of topographic','on geometric similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
+T = {'Dependence of topographic','on representational similarity',['(across subject \beta, ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
 plot_to_brain(assocB, 1:length(assocB), cmaprange, T, fs+2);
-
+exportgraphics(gcf,sprintf('panels_%s/association_map.png',noise),'ContentType','image','Resolution',300);
+for i = 1:length(good_rois)
+    new_cii_data(atlas_cii.cdata == good_rois(i)) = assocB(i);
+end
+cifti_write_from_template(atlas_cii, new_cii_data,sprintf('regional_ztopo_regression_on_zgeom_%s.dscalar.nii',noise));
 %% estimate neuromap associations
 
 % note that the margulies gradient map from the neuromaps database
@@ -116,18 +244,18 @@ plot_to_brain(assocB, 1:length(assocB), cmaprange, T, fs+2);
 % If we use Margulies' version it strengths the effect of polysynaptic 
 % depth on implementations of common representations, so using the 
 % neuromaps version is conservative with respect to our conclusions.
-maps = [{'abagen', 'genepc1','GenePC1','(-)','(+)'};...
-    {'hill2010', 'evoexp','EvoExp1','old','new'};...
-    {'xu2020', 'evoexp','EvoExp2','old','new'};...
-    {'xu2020', 'FChomology','FCHomology','diff','same'}; ...
-    {'reardon2018', 'scalinghcp','DevExp1','early','late'};...
-    {'hill2010', 'devexp','DevExp2','early','late'};...
-    {'neurosynth', 'cogpc1','CogPC1','(-)','(+)'};...
-    {'hcps1200', 'myelinmap','Myelin','min','max'};...
-    {'hcps1200', 'thickness','Thickness','thin','thick'};...
-    {'margulies2016', 'fcgradient01','NetHierarchy','uni.','trans.'};...
-    {'raichle', 'cbf', 'CBF1','low','high'};...
-    {'satterthwaite2014', 'meancbf', 'CBF2','low','high'}];
+maps = [{'hill2010', 'evoexp','EvoExp1','old','new',1};...
+    {'xu2020', 'evoexp','EvoExp2','old','new',1};...
+    {'xu2020', 'FChomology','FCHomology','diff','same',1}; ...
+    {'reardon2018', 'scalinghcp','DevExp1','early','late',2};...
+    {'hill2010', 'devexp','DevExp2','early','late',2};...
+    {'hcps1200', 'myelinmap','Myelin','min','max',3};...
+    {'hcps1200', 'thickness','Thickness','thin','thick',3};...
+    {'margulies2016', 'fcgradient01','NetHierarchy','uni.','trans.',3};...
+    {'abagen', 'genepc1','GenePC1','(-)','(+)',4};...
+    {'neurosynth', 'cogpc1','CogPC1','(-)','(+)',4};...    
+    {'raichle', 'cbf', 'CBF1','low','high',4};...
+    {'satterthwaite2014', 'meancbf', 'CBF2','low','high',4}];
 
 mapvals = dir('../../resources/neuromaps/canlab2024_parcel_vals/');
 mapvals(1:2) = []; % remove '.' and '..' refs
@@ -144,6 +272,7 @@ mapname = {};
 [Bb, Bp, cohensf2] = deal(zeros(length(mapvals),1));
 [Bb_CI] = deal(zeros(length(mapvals),2));
 for i = 1:length(mapvals)
+    tic
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
 
     vals(:,i) = csvread(fullfile(mapvals(i).folder, mapvals(i).name));
@@ -154,16 +283,10 @@ for i = 1:length(mapvals)
         these_good_rois(these_good_rois < 180) = [];
     end
 
-    confounds_good_rois = cell(1,length(confounds));
-    for j = 1:length(confounds)
-        confounds_good_rois{j} = confounds{j}(:,these_good_rois)';
-    end
-    
     fprintf('Evaluating %s\n', mapname{i})
 
     randgrad = csvread(fullfile('../../resources/neuromaps/canlab2024_permuted_annotations',mapvals(i).name));
     randgrad(randgrad == 0) = nan; % medial wall
-
 
     % eval B wuc ~ rdm
     map_val = vals(these_good_rois, i);
@@ -173,13 +296,13 @@ for i = 1:length(mapvals)
     map_sd = std(map_val);
     
     map_val = (map_val - map_mu)./map_sd;
-    %perm_map = (perm_map - map_mu)./map_sd;
     perm_map = (perm_map - nanmean(perm_map))./map_sd;
     
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
     [Bb(i), Bb_CI(i,:), Bp(i), cohensD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    toc
 end
 
 
@@ -229,12 +352,12 @@ fprintf('V1: topo ~ geom \beta = %0.3f +- [%0.3f, %0.3f]\n', get_regression_B([x
 
 m = fitlm(x, y);
 y = m.predict(xlim');
-l = plot(xlim',y,'-','color',dc_color);
+l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 
 title([strrep(uni_label, '_',' '), ' (unimodal)'], 'fontweight','normal','fontsize',fs)
-xlabel('geo (WUC)')
-ylabel({'topo','(cos\theta)'})
+xlabel({'RepSim (WUC)'})
+ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs)
 box off;
 axis image
@@ -259,13 +382,13 @@ fprintf('p9-46v: topo ~ geom \beta = %0.3f +- [%0.3f, %0.3f]\n', get_regression_
 
 m = fitlm(x, y);
 y = m.predict(xlim');
-l = plot(xlim',y,'-','color',dc_color);
+l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 xlim(xl);
 
 title({[strrep(trans_label, '_',' '), ' (transmodal)']}, 'fontweight','normal','fontsize',fs)
-xlabel({'geo (WUC)'})
-ylabel({'topo','(cos\theta)'})
+xlabel({'RepSim','(WUC)'})
+ylabel({'TopoSim','(cos\theta)'})
 set(gca,'FontSize',fs,'YTick', [0.2,0.4])
 box off;
 axis image
@@ -278,12 +401,12 @@ set(gcf,'Position',[pos(1:2),326,407]);
 t2.Position(2) = 0.18;
 t2.Position(4) = 0.635;
 
-leg1.Position(1) = -0.09;
-leg1.Position(2) = -0.02;
+leg1.Position(1) = -0.05;
+leg1.Position(2) = 0.025;
 
-sgtitle({'Topography is an inconsistent','measure of geometry'},'FontWeight','bold','fontsize',fs+2)
+sgtitle({'Topography is an inconsistent','measure of representations'},'FontWeight','bold','fontsize',fs+2)
 
-exportgraphics(gcf,'panels/scatterplots.png','ContentType','image','Resolution',300);
+exportgraphics(gcf,sprintf('panels_%s/scatterplots.png',noise),'ContentType','image','Resolution',300);
 
 %% plot association 2nd level regression and barplots
 abr_mapname = maps(:,3);
@@ -297,8 +420,10 @@ t2 = tiledlayout(1,2,'TileSpacing','compact');
 
 nexttile()
 [~,I] = sort(Bp, 'ascend');
-Bp(Bp == 0) = 0.99/(0.99+nperms);
-[sig,pthresh] = holm_sidak(Bp, 0.05);
+pthresh = FDR(Bp, 0.05);
+if any(pthresh)
+    sig = Bp <= pthresh;
+end
 %{
 I = I(ismember(I,find(Bp <= pthresh)));
 if length(I) > 0
@@ -309,7 +434,7 @@ if length(I) == 0 || Bp(10) == Bp(map_ind)
     map_ind = 10;
 end
 %}
-map_ind = 10;
+map_ind = 8;
 
 % has more significant subjects than holm-sidak threshold
 good_grad_roi = vals(ismember(1:358, good_rois), map_ind);
@@ -323,14 +448,14 @@ for i = 1:length(good_grad_roi)
     end
 end
 set(gca, 'YGrid', 'on', 'box', 'off', 'fontsize', fs);
-ylabel({'\beta','topo ~ geo'});
-title({'Topographic sensitivity ', 'to geometric similarity'},'FontWeight','normal','fontsize',fs-1);
+ylabel({'\beta','TopoSim ~ RepSim'});
+title({'Topographic sensitivity ', 'to representational similarity'},'FontWeight','normal','fontsize',fs-1);
 set(gca,'XTick',[-5,6],'XTickLabels',{'Uni','Trans'},'FontSize',fs)
 xl = xlim;
 
 m_rep = fitlm(good_grad_roi, assocB(good_rois < 359));
 y = m_rep.predict(xlim');
-l = plot(xlim',y,'-','color',dc_color);
+l = plot(xlim',y,'-','color',colors(3,:));
 l.LineWidth = 2;
 leg2 = legend('\beta across dyads','fontsize',fs);
 set(gca,'FontSize',fs)
@@ -344,14 +469,16 @@ hold on;
 
 pos_err = Bb_CI(:,2) - Bb;
 neg_err = Bb - Bb_CI(:,1);
-errorbar(Bb, 1:length(mapname), neg_err, pos_err, '.', 'horizontal', 'capsize', 0,'color',dc_color_light, 'linewidth',2)
-plot(Bb,1:length(mapname), 'h','MarkerFaceColor',dc_color_light,'color', dc_color,'MarkerFaceColor',dc_color_light);
+for i = 1:length(mapname)
+    errorbar(Bb(i), i, neg_err(i), pos_err(i), '.', 'horizontal', 'capsize', 0,'color',colors_light(maps{i,6},:), 'linewidth',2)
+    plot(Bb(i),i, 'h','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', abr_mapname,'FontSize',fs-1, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
 
 title({'Cortical gradients associated with','coupled geometry and topography'},'fontweight','normal', 'fontsize', fs+1);
-xlabel({'\beta_1','topo ~ \beta_0geo + \beta_1geo*map'}, 'fontsize', fs)
+xlabel({'\beta_1','topo ~ \beta_0rep + \beta_1rep*map'}, 'fontsize', fs)
 box off
 xl = xlim;
 xlim([buffer*xl(1), xl(2)*buffer])
@@ -366,9 +493,9 @@ for i = 1:length(maps)
     annot{i,2} = text(buffer*xl(2)*0.95,i,maps{i,5},'FontSize',fs-3,'HorizontalAlignment','right');
 end
 
-Bp(Bp == 0) = 0.99/nperms;
-sig = holm_sidak(Bp, 0.05);
-if any(sig)
+pthresh = FDR(Bp, 0.05);
+if any(pthresh)
+    sig = Bp <= pthresh;
     x = sign(Bb(sig)).*(pos_err(sig) + abs(Bb(sig)) + xl(2) * 0.2);
     text(x, find(sig),'*','HorizontalAlignment','center');
 end
@@ -381,13 +508,14 @@ t2.Position(4) = 0.53;
 t2.Position(1) = 0.15;
 
 leg2.Position(1) = 0.15;
-leg2.Position(2) = 0.036;
+leg2.Position(2) = 0.03;
 
 
 
 % add ROI legend
 a1 = axes();
-a1.Position = [0.28,0.61,0.15,0.15];
+%a1.Position = [0.285,0.61,0.15,0.15];
+a1.Position = [0.2,0.07,0.15,0.15];
 a1.Visible = 'off';
 
 overlay = canlab_get_underlay_image;
@@ -403,7 +531,39 @@ file_ind = find(contains({map_files.name}, map_tokens{map_ind}{1}{1}) & ...
 grayord_surf_L = gifti(fullfile(map_files(file_ind).folder, map_files(file_ind).name));
 plot_to_surf(grayord_surf_L.cdata,o2.surface{1}.object_handle);
 
-sgtitle({'Topographic similarity only indicates','geometric similarity in unimodal areas'},'FontWeight','Bold','fontsize',fs+2)
+
+atlas_cii = cifti_read(config.canlab2024.path);
+atlas_labels = atlas_cii.diminfo{2}.maps.table(2:end); % drop first label, it corresponds to 0-valued vertices, i.e. the medial wall
+
+a2 = axes();
+%a2.Position = [0.165,0.61,0.15,0.15];
+a2.Position = [0.285,0.61,0.15,0.15];
+a2.Visible = 'off';
+
+overlay = canlab_get_underlay_image;
+o3 = fmridisplay('overlay', which(overlay));
+o3 = surface(o3, 'axes', a2, 'direction', 'hcp inflated left', 'orientation', 'lateral');     
+
+atlas_cii = get_cifti_data(config.canlab2024.path);
+cdata = atlas_cii.cortex_left;
+plot_to_surf(cdata',o3.surface{1}.object_handle, 'indexmap', 'colormap', [cmap(1:358,:); [0,0,0]]);
+
+sgtitle({'Topographic similarity is only sensitive to representational','similarity in architecturally constrained areas'},'FontWeight','Bold','fontsize',fs+2)
 
 
-exportgraphics(gcf,'panels/second_level_associations.png','ContentType','image','Resolution',300);
+export_fig(gcf,sprintf('panels_%s/second_level_associations.png',noise),'-transparent','-r300');
+
+%% post hoc eval of cerebellum
+ind = find(contains({atlas_labels.name},{'Cblm_V_','Cblm_VI_'}));
+x = mean(wuc_md(:,ind),2);
+y = mean(cosim(:,ind),2);
+
+B_CI = bootci(5000,@get_regression_B,[x,y])
+B = get_regression_B([x,y])
+
+ind = find(contains({atlas_labels.name},{'Cblm_Crus'}));
+x = mean(wuc_md(:,ind),2);
+y = mean(cosim(:,ind),2);
+
+B_CI = bootci(5000,@get_regression_B,[x,y])
+B = get_regression_B([x,y])
