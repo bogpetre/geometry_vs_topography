@@ -383,10 +383,10 @@ export_fig(gcf,'panels/similarity_coefs.png','-png','-r300','-transparent')
 tdann_ag = table2array(readtable('../../derivatives/models/tdann_agreement.csv'))'*100;
 resnet_ag = table2array(readtable('../../derivatives/models/resnet_agreement.csv'))'*100;
 
-[~,p,~,STATS] = ttest2(resnet_ag(:,1), tdann_ag(:,1));
+[~,p,~,STATS] = ttest(resnet_ag(:,1), tdann_ag(:,1));
 fprintf('ResNet > TDANN 1000-cat agreement: t(%0.1f)=%0.3f, %0.2e\n',STATS.df,STATS.tstat,p)
 
-[~,p,~,STATS] = ttest2(resnet_ag(:,2), tdann_ag(:,2));
+[~,p,~,STATS] = ttest(resnet_ag(:,2), tdann_ag(:,2));
 fprintf('ResNet > TDANN 50-cat agreement: t(%0.1f)=%0.3f, %0.2e\n',STATS.df,STATS.tstat,p)
 
 figure(5);

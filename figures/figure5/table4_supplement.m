@@ -115,11 +115,11 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[Bb, Bp, Bb_corr, Bp_corr] = deal(zeros(length(mapvals),1));
+[Bb, Bp, BD, Bb_corr, Bp_corr, BD_corr] = deal(zeros(length(mapvals),1));
 [Bb_CI, Bb_CI_corr] = deal(zeros(length(mapvals),2));
-[wucb, wucp, wucstd, cosimb, cosimp, cosimstd] = deal(zeros(length(mapvals),1));
+[wucb, wucp, wucstd, wucD, cosimb, cosimp, cosimstd, cosimD] = deal(zeros(length(mapvals),1));
 [wucb_CI, wucstd_CI, cosim_CI, cosimstd_CI] = deal(zeros(length(mapvals),2));
-[mainInt, mainStd] = deal(zeros(length(mapvals),2));
+[mainInt, mainStd, mainDStd] = deal(zeros(length(mapvals),2));
 [mainInt_CI, mainStd_CI] = deal(zeros(length(mapvals),2,2));
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
@@ -156,28 +156,28 @@ for i = 1:length(mapvals)
     end
 
     % uncorrected sensitivity (coupling) test
-    [Bb(i), Bb_CI(i,:), Bp(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
+    [Bb(i), Bb_CI(i,:), Bp(i), BD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
 
     % corrected sensitivity (coupling) test
-    [Bb_corr(i), Bb_CI_corr(i,:), Bp_corr(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    [Bb_corr(i), Bb_CI_corr(i,:), Bp_corr(i), BD_corr(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
 
 
     % estimate uncorrected gradient similarities
     
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), wucb_CI(i,:), wucp(i)] = neuromaps_corr_fx(obs_val, ...
+    [wucb(i), wucb_CI(i,:), wucp(i), wucD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i)] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:) mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map);
 end
 
@@ -215,3 +215,7 @@ for i = 1:length(Bb_corr)
 end
 disp(table(bb_corr_str', ...
     'VariableNames', {'neuromap_modulation'}))
+disp(table(cosimD, wucD, mainDStd(:,2), BD, ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo', 'coupling'}, 'RowNames', abr_mapname))
+disp(table(cosimp, wucp, mainStdP(:,2), Bp, ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo', 'coupling'}, 'RowNames', abr_mapname))

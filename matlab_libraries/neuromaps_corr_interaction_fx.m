@@ -78,7 +78,7 @@ function [B, CI, p, effectsize, sampling_var, perm_var] = neuromaps_corr_interac
         end
     end
 
-    effectsize = B ./ sqrt(perm_var + n*sampling_var);
+    effectsize = B ./ sqrt(n*sampling_var);
     effectsize(3:end) = nan;
 end
 

@@ -162,7 +162,7 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[Bb, Bp, cohensf2] = deal(zeros(length(mapvals),1));
+[Bb, Bp, BD] = deal(zeros(length(mapvals),1));
 [Bb_CI] = deal(zeros(length(mapvals),2));
 for i = 1:length(mapvals)
     tic
@@ -194,7 +194,7 @@ for i = 1:length(mapvals)
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    [Bb(i), Bb_CI(i,:), Bp(i), cohensD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
+    [Bb(i), Bb_CI(i,:), Bp(i), BD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map, {confounds{1}(:,these_good_rois), confounds{2}(:,these_good_rois)});
     toc
 end
 
@@ -209,6 +209,9 @@ for i = 1:length(Bb)
     bb_str{i} = sprintf('%0.3f±%0.3f',Bb(i), mean([Bb_CI(i,2) - Bb(i), Bb(i) - Bb_CI(i,1)],2));
 end
 disp(table(bb_str', ...
+    'VariableNames', {'neuromap_modulation'}))
+
+disp(table(BD, ...
     'VariableNames', {'neuromap_modulation'}))
 
 cmap = zeros(length(atlas_labels),3);

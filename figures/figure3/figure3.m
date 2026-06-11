@@ -308,18 +308,18 @@ for i = 1:length(mapvals)
 
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), wucb_CI(i,:), wucp(i)] = neuromaps_corr_fx(obs_val, ...
+    [wucb(i), wucb_CI(i,:), wucp(i), wucD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i)] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map, confounds_good_rois);
 end
 
@@ -343,7 +343,11 @@ for i = 1:length(wucb)
     int_str{i} = sprintf('%0.3f±%0.3f',mainStd(i,2), mean([mainStd_CI(i,2,2) - mainStd(i,2), mainStd(i,2) - mainStd_CI(i,2,1)],2));
 end
 disp(table(cosimb_str', wucb_str', int_str', ...
-    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}))
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}, 'RowNames', abr_mapname))
+disp(table(cosimD, wucD, mainDStd(:,2), ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}, 'RowNames', abr_mapname))
+disp(table(cosimp, wucp, mainStdP(:,2), ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}, 'RowNames', abr_mapname))
 
 buffer = 3; % how many times do we scale the x axis to fit anchor labels on either end?
 
