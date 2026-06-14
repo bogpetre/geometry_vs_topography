@@ -21,7 +21,11 @@ SRC32 = src/rdm_similarity/rdm_similarity32.cpp
 SRC64 = src/rdm_similarity/rdm_similarity64.cpp
 
 # Build all
-all: $(TARGET32) $(TARGET64)
+
+all: build_dir $(TARGET32) $(TARGET64)
+
+build_dir:
+	mkdir -p bin
 
 $(TARGET32): $(SRC32) src/rdm_similarity/rdm_similarity.inl
 	$(CXX) $(CXXFLAGS) -I$(EIGEN_INC) -I$(JSON_INC) $(SRC32) -o $(TARGET32) ${LDFLAGS}
