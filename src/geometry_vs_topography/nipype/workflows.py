@@ -223,14 +223,12 @@ def init_spatial_whitening_wf_inner(name='whitening', shrinkage=-1, normmode='ru
 
 
 def init_spatial_whitening_wf_atlas4d(name='outerwhitening', joinsource='tasksource', shrinkage=-1, normmode='runwise'):
-    '''
-    This function wraps an equivalent of init_spatial_whitening_wf() for use with multi-volume atlases,
-    e.g. atlases that have overlapping searchlights. It's a bit hacky, because the inner workflow won't
-    be visible to the outer workflows graph (i.e. whichever workflow calls 
-    init_spatial_whitening_wf_atlas4d). From the perspective of the outer workflow the entire inner
-    workflow is simply a Node. What this buys us though is the ability to nest MapNodes. The outer 
-    MapNode iterates over atlas volumes while the inner MapNodes iterate over individual beta maps.
-    '''
+    # This function wraps an equivalent of init_spatial_whitening_wf() for use with multi-volume atlases,
+    # e.g. atlases that have overlapping searchlights. It's a bit hacky, because the inner workflow won't
+    # be visible to the outer workflows graph (i.e. whichever workflow calls 
+    # init_spatial_whitening_wf_atlas4d). From the perspective of the outer workflow the entire inner
+    # workflow is simply a Node. What this buys us though is the ability to nest MapNodes. The outer 
+    # MapNode iterates over atlas volumes while the inner MapNodes iterate over individual beta maps.
 
     wf = pe.Workflow(name=name)
 
