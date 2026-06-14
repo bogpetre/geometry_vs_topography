@@ -3,7 +3,19 @@ This repo contains code for "Cortical maps diverge, representations converge alo
 
 ## Setup
 
-From all analyses except training neural nets, go to the same level of the
+It is highly recommended that you deploy a conda environment for testing this code.
+
+```
+conda create env -n geometry_vs_topography --python=3.9
+```
+
+Now install some necessary C++ libraries
+
+```
+conda install -c conda-forge libblas eigen lapack nlohmann_json
+```
+
+For all analyses except training neural nets, go to the same level of the
 directory tree as where this README file is, and invoke the following 
 to compile rdm_similarty and install python packages
 
@@ -12,14 +24,6 @@ pip install -r requirements.txt
 pip install .
 make
 ```
-
-If you get compilation problems due to missing libraries try,
-
-```
-conda install -c conda-forge libblas eigen lapack nlohmann_json
-```
-
-and then rerun make.
 
 You will also need to install/aquire the additional non-python dependencies below. In 
 particular, neuromaps (installed by requirements.txt) and the nipype pipelines in
@@ -31,7 +35,9 @@ PATH=$PATH:<connectome_workbench_binary_directory>
 ```
 
 Finally, copy config_template.json to config.json and update the paths within to
-point to the location of your copy of the necessary dependencies (below).
+point to the location of your copy of the necessary dependencies (below). Note that if
+you do not have access to the restricted HCP data you can continue without it. This will
+only prevent you from rerunning the heritability analyses (figure 6).
 
 For training neural networks you will need the TDANN library from the neuroAI lab, which
 uses a different python version and is best run from a different conda environment. For
@@ -81,6 +87,48 @@ prevents us from identifying the exemplary subjects we use for illustrative purp
 manuscript. This information was shared with HCP though and is available to users who agree
 to the restricted data usage agreement. Once the key is obtained the appropriate subject
 dyad can be assigned in the config.json file and figure 2 can be regenerated.
+
+The HCP data will take a long time to download, but for a minimal run you only need a
+participant pair. Assuming you have credentails (an aws access key ID and secrete access
+key) assigned to a profile called "hcp" (in ~/.aws/config) you can download a minimal pair
+like so (from the top level of this repo)
+
+```
+mkdir -p data
+aws s3 --profile hcp sync \
+    --exclude="ROIs/*" --exclude="Native/*" --exclude="xfms/*" \
+    --exclude="**/*_s4_*" --exclude="**/Phase*" \
+    --exclude="**/*native.func.gii" \
+    --exclude="*RibbonVolumeToSurfaceMapping/*" \
+    --exclude="**/*LR.nii.gz" \
+    --exclude="**/*RL.nii.gz" \
+    --exclude="**/*feat/*" \
+    --exclude="*RestingStateStats/*" \
+    --exclude="*stats*" \
+    --exclude="**/*SBRef*" \
+    --exclude="*ica/*" \
+    s3://hcp-openaccess/HCP_1200/100307/MNINonLinear \
+    data/HCP_1200/100307/MNINonLinear
+aws s3 --profile hcp sync \
+    --exclude="ROIs/*" --exclude="Native/*" --exclude="xfms/*" \
+    --exclude="**/*_s4_*" --exclude="**/Phase*" \
+    --exclude="**/*native.func.gii" \
+    --exclude="*RibbonVolumeToSurfaceMapping/*" \
+    --exclude="**/*LR.nii.gz" \
+    --exclude="**/*RL.nii.gz" \
+    --exclude="**/*feat/*" \
+    --exclude="*RestingStateStats/*" \
+    --exclude="*stats*" \
+    --exclude="**/*SBRef*" \
+    --exclude="*ica/*" \
+    s3://hcp-openaccess/HCP_1200/992673/MNINonLinear \
+    data/HCP_1200//992673/MNINonLinear
+```
+
+And make sure your S1200_imaging variable path in config.json points to data/HCP_1200.
+This will download more data than is strictly needed, but better to be 
+overinclusive than accidentally miss some stray file used somewhere obscure. The
+exclusions already cut each participant directory size down from ~50G to 20G.
 
 ### canlab2024
 
