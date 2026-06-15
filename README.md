@@ -459,7 +459,7 @@ The approach is the same as for the task results.
 
 To perform inference over spatial maps you will need null models for spin tests. These can be
 obtained by running scripts/neuromaps get_parcellated_neuromap_vals.py. The minimum reqs above
-list 1 CPU. If you have fewer than 12 available modify this script will automatically use them
+list 1 CPU. If you have more than 12 available this script will automatically use them
 though. If you don't want this modify the macro accordingly.
 
 ```
