@@ -3,6 +3,9 @@ This repo contains code for "Cortical maps diverge, representations converge alo
 
 ## Setup
 
+This setup and downloading of a minimal dataset will require ~1-2 hours, but your mileage may vary 
+depending on internet speeds and *nix proficiency.
+
 It is highly recommended that you deploy a conda environment for testing this code.
 
 ```
@@ -88,48 +91,6 @@ manuscript. This information was shared with HCP though and is available to user
 to the restricted data usage agreement. Once the key is obtained the appropriate subject
 dyad can be assigned in the config.json file and figure 2 can be regenerated.
 
-The HCP data will take a long time to download, but for a minimal run you only need a
-participant pair. Assuming you have credentails (an aws access key ID and secrete access
-key) assigned to a profile called "hcp" (in ~/.aws/config) you can download a minimal pair
-like so (from the top level of this repo)
-
-```
-mkdir -p data
-aws s3 --profile hcp sync \
-    --exclude="ROIs/*" --exclude="Native/*" --exclude="xfms/*" \
-    --exclude="**/*_s4_*" --exclude="**/Phase*" \
-    --exclude="**/*native.func.gii" \
-    --exclude="*RibbonVolumeToSurfaceMapping/*" \
-    --exclude="**/*LR.nii.gz" \
-    --exclude="**/*RL.nii.gz" \
-    --exclude="**/*feat/*" \
-    --exclude="*RestingStateStats/*" \
-    --exclude="*stats*" \
-    --exclude="**/*SBRef*" \
-    --exclude="*ica/*" \
-    s3://hcp-openaccess/HCP_1200/100307/MNINonLinear \
-    data/HCP_1200/100307/MNINonLinear
-aws s3 --profile hcp sync \
-    --exclude="ROIs/*" --exclude="Native/*" --exclude="xfms/*" \
-    --exclude="**/*_s4_*" --exclude="**/Phase*" \
-    --exclude="**/*native.func.gii" \
-    --exclude="*RibbonVolumeToSurfaceMapping/*" \
-    --exclude="**/*LR.nii.gz" \
-    --exclude="**/*RL.nii.gz" \
-    --exclude="**/*feat/*" \
-    --exclude="*RestingStateStats/*" \
-    --exclude="*stats*" \
-    --exclude="**/*SBRef*" \
-    --exclude="*ica/*" \
-    s3://hcp-openaccess/HCP_1200/992673/MNINonLinear \
-    data/HCP_1200//992673/MNINonLinear
-```
-
-And make sure your S1200_imaging variable path in config.json points to data/HCP_1200.
-This will download more data than is strictly needed, but better to be 
-overinclusive than accidentally miss some stray file used somewhere obscure. The
-exclusions already cut each participant directory size down from ~50G to 20G.
-
 ### canlab2024
 
 This repo requires the canlab2024 atlas. Due to licensing restrictions we cannot 
@@ -182,7 +143,9 @@ Without an HPC environment it's not practical to run these analyses (figures 3-5
 worth of CPU hours to produce, figure 6 took much longer). You can however run a single pair of
 participants on a PC in a day or so to help understand the underlying processes if that's desired.
 Pick a pair from resources/paired_sid.csv if that's the case. By inspecting analysis intermediates 
-you can better evaluate each step's technical characteristics.
+you can better evaluate each step's technical characteristics. Specific steps for doing this are 
+detailed below in the Demo section. To regenerate figures without rerunning everything you can
+simply work with the analysis derivatives which are available via osf (https://osf.io/xmyrn/overview).
 
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
@@ -194,5 +157,334 @@ github. This can be done with scripts/get_parcellated_neuromap_vals.py, which is
 macros/prep_neuromap_data.sh
 
 Once the above scripts have prepared geometric and topographic similarity measures and you have 
+
+For minimal usage examples refer to the Demo section below and subsections of interest.
+
+## Demo
+
+Replicating all analyses would take months of CPU hours, but because most analyses are performed
+dyad-wise and aggregated across dyads, an informative replication ca nbe performed on a single
+dyad using a "typical" workstation intsead of a high performance computing cluster. The examples
+below demonstrate how to do this. These are managed by nipype pipelines, and by inspecting the
+working directory and intermediate files you can gain insight into implementation details of the
+first level GLM, dual regression approach, spatial whitening operations and RSA.
+
+This demo assumes you have already installed this repository, following the instructions in "Setup"
+above.
+
+If you do not want to rerun first level analysis you can simply use the OSF directory to regenerate
+main findings from analysis derivatives (https://osf.io/xmyrn/overview). Just refer to the neuromap
+prep section below as well.
+
+### System requirements
+
+Linux system (Mac is untested, but may work too)
+100G disk space
+48G memory
+1 CPU
+
+Data has been tested using the following python library versions:
+
+```
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - _openmp_mutex=4.5=20_gnu
+  - bzip2=1.0.8=hda65f42_9
+  - ca-certificates=2026.5.20=hbd8a1cb_0
+  - lapack=3.11.0=8_netlib
+  - ld_impl_linux-64=2.45.1=default_hbd61a6d_102
+  - libblas=3.11.0=8_h4a7cf45_openblas
+  - libexpat=2.8.1=hecca717_1
+  - libffi=3.5.2=h3435931_0
+  - libgcc=15.2.0=he0feb66_19
+  - libgcc-ng=15.2.0=h69a702a_19
+  - libgfortran=15.2.0=h69a702a_19
+  - libgfortran5=15.2.0=h68bc16d_19
+  - libgomp=15.2.0=he0feb66_19
+  - liblapack=3.11.0=8_h47877c9_openblas
+  - liblzma=5.8.3=hb03c661_0
+  - libnsl=2.0.1=hb9d3cd8_1
+  - libopenblas=0.3.33=pthreads_h94d23a6_0
+  - libsqlite=3.53.2=h0c1763c_0
+  - libuuid=2.42.1=h5347b49_0
+  - libxcrypt=4.4.36=hd590300_1
+  - libzlib=1.3.2=h25fd6f3_2
+  - ncurses=6.6=hdb14827_0
+  - nlohmann_json=3.12.0=h54a6638_1
+  - openssl=3.6.3=h35e630c_0
+  - pip=25.2=pyh8b19718_0
+  - python=3.9.23=hc30ae73_0_cpython
+  - readline=8.3=h853b02a_0
+  - setuptools=80.9.0=pyhff2d567_0
+  - tk=8.6.13=noxft_h366c992_103
+  - wheel=0.45.1=pyhd8ed1ab_1
+  - zstd=1.5.7=hb78ec9c_6
+  - pip:
+      - acres==0.5.0
+      - certifi==2026.5.20
+      - charset-normalizer==3.4.7
+      - ci-info==0.4.0
+      - click==8.1.8
+      - contourpy==1.3.0
+      - cycler==0.12.1
+      - eigen==0.1.1
+      - etelemetry==0.3.1
+      - filelock==3.19.1
+      - fonttools==4.60.2
+      - geometry-vs-topography==1.0.0
+      - h5py==3.14.0
+      - hcp-utils==0.1.0
+      - idna==3.18
+      - importlib-resources==6.5.2
+      - isodate==0.7.2
+      - joblib==1.5.3
+      - kiwisolver==1.4.7
+      - looseversion==1.3.0
+      - lxml==6.1.1
+      - matplotlib==3.9.4
+      - networkx==3.2.1
+      - neuromaps==0.0.7
+      - nibabel==5.3.3
+      - nilearn==0.12.1
+      - nipype==1.10.0
+      - nipype-workbench-extensions==0.1.0
+      - nlohmann-json==3.12.0
+      - numpy==2.0.2
+      - packaging==26.2
+      - pandas==2.3.3
+      - pillow==11.3.0
+      - prov==2.1.1
+      - puremagic==1.30
+      - pydot==4.0.1
+      - pyparsing==3.3.2
+      - python-dateutil==2.9.0.post0
+      - pytz==2026.2
+      - rdflib==7.6.0
+      - requests==2.32.5
+      - scikit-learn==1.6.1
+      - scipy==1.13.1
+      - simplejson==4.1.1
+      - six==1.17.0
+      - stonefish-license-manager==0.7.2
+      - threadpoolctl==3.6.0
+      - traits==7.1.0
+      - typing-extensions==4.15.0
+      - tzdata==2026.2
+      - urllib3==2.6.3
+      - x21==0.5.3
+      - zipp==3.23.1
+
+```
+
+### Data download
+
+Note, the minimal data download is not needed to run figures 1-6 off of OSF analysis 
+derivatives, or ANN analyses. This section is only relevant for rerunning timeseries analysis 
+of task and resting state data.
+
+First, download the data needed for a minimal run. Assuming you have credentails (an aws access 
+key ID and secrete access key) assigned to a profile called "hcp" (in ~/.aws/config) you can 
+download a minimal pair like so (from the top level of this repo).
+
+```
+mkdir -p data
+aws s3 --profile hcp sync \
+    --exclude="ROIs/*" --exclude="Native/*" --exclude="xfms/*" \
+    --exclude="**/*_s4_*" --exclude="**/Phase*" \
+    --exclude="**/*native.func.gii" \
+    --exclude="*RibbonVolumeToSurfaceMapping/*" \
+    --exclude="**/*feat/*" \
+    --exclude="*RestingStateStats/*" \
+    --exclude="*stats*" \
+    --exclude="**/*SBRef*" \
+    --exclude="*ica/*" \
+    s3://hcp-openaccess/HCP_1200/100307/MNINonLinear \
+    data/HCP_1200/100307/MNINonLinear
+aws s3 --profile hcp sync \
+    --exclude="ROIs/*" --exclude="Native/*" --exclude="xfms/*" \
+    --exclude="**/*_s4_*" --exclude="**/Phase*" \
+    --exclude="**/*native.func.gii" \
+    --exclude="*RibbonVolumeToSurfaceMapping/*" \
+    --exclude="**/*feat/*" \
+    --exclude="*RestingStateStats/*" \
+    --exclude="*stats*" \
+    --exclude="**/*SBRef*" \
+    --exclude="*ica/*" \
+    s3://hcp-openaccess/HCP_1200/992673/MNINonLinear \
+    data/HCP_1200//992673/MNINonLinear
+```
+
+And make sure your S1200_imaging variable path in config.json points to data/HCP_1200.
+This will download more data than is strictly needed, but better to be 
+overinclusive than accidentally miss some stray file used somewhere obscure. The
+exclusions already cut each participant directory size down from ~50G to 28G.
 your neuromaps ready, figures from the paper can be regenerated using matlab scripts found in 
 figures/
+
+### Task similarity dyad example
+
+Modify the run script, macros/run_subj_hcp_msmall_grayord_spm.sh, by substituting a viable
+local scratch directory for your pipeline intermediates and uncommenting the "trap" to avoid
+autodeletion on completion. Replace this block,
+
+```
+cleanup() {
+    rm -rf $SCRATCH_DIR
+}
+trap cleanup EXIT
+```
+
+With something like
+
+```
+SCRATCH_DIR=$OUT_DIR/scratch/$SID/
+cleanup() {
+    rm -rf $SCRATCH_DIR
+}
+#trap cleanup EXIT
+```
+
+Now set the SLURM_ARRAY_TASK_ID env varibale corresponding to subject pairs 100307 and 992673
+and run macros/run_subj_hcp_msmall_grayord_spm.sh. If you have only downloaded these two 
+participants these would be 1 and 2. Otherwise these will be whatever order these subject ids 
+come out in when you run ls data/HCP_1200 | cat -n. A loop like the following should take care of
+it.
+
+```
+cd macros/
+for i in 1 2; do
+    export SLURM_ARRAY_TASK_ID=$i
+    ./run_subj_hcp_msmall_grayord_spm.sh
+done
+```
+
+run_subj_hcp_msmall_grayord_spm.sh will run the first level analysis and prepare inputs for
+topographic and geometric similarity analyses. These will take several hours to run. Note that
+they must be run from inside the macros directory or relative paths won't point to the right 
+locations.
+
+To compute similarity metrics from these outputs we used the the *bsc.sh scripts. To replicate
+this for your example dyad you can invoke the following,
+
+```
+export SLURM_ARRAY_TASK_ID=1
+macros/run_subj_hcp_msmall_grayord_spm_bsc.sh
+```
+
+Noe that this also uses a scratch directory, but not for nipype pipelines, and these
+are not likely to be very informative. You can use a modification to retain these if you like, 
+just as you did by commenting out the trap and redirecting scratch in the 
+macros/run_subj_hcp_msmall_grayord_spm.sh scripts however a more useful approach may be to 
+simply perform these computations in matlab and step through the code in a debugger. For 
+replicating the results from the paper exactly you should use the C++ code as the *bsc.sh 
+code does, but C++ isn't as easy to read as matlab in a debugger, and the latter is also made
+available by our prototyping scripts as a substitute. For the latter refer to the usage in 
+src/rdm_similarity/matlab/unit_test_rdm_cosim_scripts.m
+
+The approach involving the *bsc.sh scripts will produce outputs in 
+derivatives/hcp_glm_msmall_grayord_spm/bsc. First level model outputs will be in
+derivatives/hcp_glm_msmall_grayord_spm/results/. For example, standard first level model
+outputs will be in 
+derivatives/hcp_glm_msmall_grayord_spm/results/<SID>/all_tasks/tstats/
+You can view theese in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
+You will need some FS LR 32k underlay surfaces like the S1200 inflated cortical surface
+(https://github.com/rmldj/hcp-utils/tree/master/hcp_utils/data) and a volumetric reference
+which you can find from the Neuroimaging_Pattern_Masks repository:
+(https://github.com/canlab/Neuroimaging_Pattern_Masks/tree/master/templates/MNI152NLin6Asym_T1_2mm.nii.gz)
+
+The bsc results are expected to agree with those on the OSF data upload. If using the 
+dyad given above, that agreement with bsc/whitened_betas/cosine/100307_v_992673_wuc.tsv and
+bsc/whitened_betas/cosine/100307_v_992673_cosim.tsv from https://osf.io/mctsa.
+
+### Resting state network similarity dyad example
+
+Modify the run script, macros/run_rsn_hcp_msmall_grayord_spm.sh like you did the GLM script 
+above, by substituting a viable local scratch directory for your pipeline intermediates and 
+uncommenting the "trap" to avoid autodeletion on completion. Replace this block,
+
+```
+cleanup() {
+    rm -rf $SCRATCH_DIR
+}
+trap cleanup EXIT
+```
+
+With something like
+
+```
+SCRATCH_DIR=$OUT_DIR/scratch/$SID/
+cleanup() {
+    rm -rf $SCRATCH_DIR
+}
+#trap cleanup EXIT
+```
+
+Now set the SLURM_ARRAY_TASK_ID env varibale corresponding to subject pairs 100307 and 992673
+and run macros/run_subj_hcp_msmall_grayord_spm.sh (refer to the GLM analysis above for details).
+A loop like the following should take care of running the first level analyses.
+
+```
+cd macros/
+for i in 1 2; do
+    export SLURM_ARRAY_TASK_ID=$i
+    ./run_rsn_hcp_msmall_grayord_spm.sh
+done
+```
+
+run_rsn_hcp_msmall_grayord_spm.sh will run the first level analysis (dual regression) and prepare 
+inputs for topographic and geometric similarity analyses. These will take several hours to run, 
+same as the task scripts. Note once again that they must be run from inside the macros/ directory 
+for relative paths to be correct.
+
+To compute similarity metrics from these outputs we used the the *bsc.sh scripts. To replicate
+this for your example dyad you can invoke the following,
+
+```
+export SLURM_ARRAY_TASK_ID=1
+macros/run_rsn_hcp_msmall_grayord_spm_bsc.sh
+```
+
+You can also use the matlab prototyping script as a substitute. Refer to the task demo above
+for details on this.
+
+The approach involving the *bsc.sh scripts will produce outputs in 
+derivatives/restingstate/hcp25/bsc. First level model outputs will be in
+derivatives/restingstate/hcp25/results/. For example, standardized ICA maps (tstats) 
+will be in 
+derivatives/restingstate/hcp25/results/100307/standardized_betas/cifti_math_results.dscalar.nii
+You can view these in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
+The approach is the same as for the task results.
+
+The bsc results are expected to agree with those on the OSF data upload. If using the 
+dyad given above, that agreement with bsc/whitened_betas/cosine/100307_v_992673_wuc.tsv and
+bsc/whitened_betas/cosine/100307_v_992673_cosim.tsv from https://osf.io/237je
+
+### Neuromap Prep
+
+To perform inference over spatial maps you will need null models for spin tests. These can be
+obtained by running scripts/neuromaps get_parcellated_neuromap_vals.py. The minimum reqs above
+list 1 CPU. If you have more than 12 available this script will automatically use them
+though. If you don't want this modify the macro accordingly.
+
+```
+cd macros/
+./prep_neuromap_data.sh
+```
+
+This should populate resources/neuromaps/canlab2024_permuted_annotations with csv files, one
+per neuromap. The contents of these csv files are a region x permutation matrix.
+
+### Replicating figures 1-6
+
+To replicate these figures make sure you've downloaded and extracted hcp_glm_msmall_grayord_spm/bsc.tar.bz 
+(a bz2 archive, despite the extension), and hcp_glm_msmall_grayord_spm/results.tar.bz2. 
+hcp_glm_grayord_spm.tar.bz2 (for replication of non-msmall results), 
+hcp_glm_msmall_grayord_spm_gordon.tar.bz2 (for replication with the Gordon atlas), models.tar.bz2 
+(for ANNs), retest.tar.bz2 (for figure 6) and single_blocks_msm_grayord_spm.tar.bz2 (for brain decoding).
+Of these the most important is hcp_glm_msmall_grayord_spm (for figures 2-5 and most of 6).
+
+Additionally for figures 3-5 make sure you've run the Neuromap Prep detailed above.
+
+You should now be able to run the matlab scripts in figures/ to reproduce the plots from the manuscript.
