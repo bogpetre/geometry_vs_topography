@@ -246,9 +246,13 @@ zipp==3.23.1
 
 ### Data download
 
+Note, the minimal data download is not needed to run figures 1-6 off of OSF analysis 
+derivatives, or ANN analyses. This section is only relevant for rerunning timeseries analysis 
+of task and resting state data.
+
 First, download the data needed for a minimal run. Assuming you have credentails (an aws access 
 key ID and secrete access key) assigned to a profile called "hcp" (in ~/.aws/config) you can 
-download a minimal pair like so (from the top level of this repo)
+download a minimal pair like so (from the top level of this repo).
 
 ```
 mkdir -p data
