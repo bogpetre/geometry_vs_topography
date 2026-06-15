@@ -3,6 +3,9 @@ This repo contains code for "Cortical maps diverge, representations converge alo
 
 ## Setup
 
+This setup and downloading of a minimal dataset will require ~1-2 hours, but your mileage may vary 
+depending on internet speeds and *nix proficiency.
+
 It is highly recommended that you deploy a conda environment for testing this code.
 
 ```
@@ -140,7 +143,9 @@ Without an HPC environment it's not practical to run these analyses (figures 3-5
 worth of CPU hours to produce, figure 6 took much longer). You can however run a single pair of
 participants on a PC in a day or so to help understand the underlying processes if that's desired.
 Pick a pair from resources/paired_sid.csv if that's the case. By inspecting analysis intermediates 
-you can better evaluate each step's technical characteristics.
+you can better evaluate each step's technical characteristics. Specific steps for doing this are 
+detailed below in the Demo section. To regenerate figures without rerunning everything you can
+simply work with the analysis derivatives which are available via osf (https://osf.io/xmyrn/overview).
 
 Once the above are run, topographic similarity measures and geometric similarity 
 measures can be computed using pairwise_parcel_op for cosine similarity measures and 
@@ -165,12 +170,77 @@ first level GLM, dual regression approach, spatial whitening operations and RSA.
 This demo assumes you have already installed this repository, following the instructions in "Setup"
 above.
 
+If you do not want to rerun first level analysis you can simply use the OSF directory to regenerate
+main findings from analysis derivatives (https://osf.io/xmyrn/overview). Just refer to the neuromap
+prep section below as well.
+
 ### System requirements
 
 Linux system (Mac is untested, but may work too)
 100G disk space
 48G memory
 1 CPU
+
+Data has been tested using the following python library versions:
+
+```
+acres==0.5.0
+certifi==2026.5.20
+charset-normalizer==3.4.7
+ci-info==0.4.0
+click==8.1.8
+contourpy==1.3.0
+cycler==0.12.1
+eigen==0.1.1
+etelemetry==0.3.1
+filelock==3.19.1
+fonttools==4.60.2
+geometry_vs_topography==1.0.0
+h5py==3.14.0
+hcp_utils==0.1.0
+idna==3.18
+importlib_resources==6.5.2
+isodate==0.7.2
+joblib==1.5.3
+kiwisolver==1.4.7
+looseversion==1.3.0
+lxml==6.1.1
+matplotlib==3.9.4
+networkx==3.2.1
+neuromaps==0.0.7
+nibabel==5.3.3
+nilearn==0.12.1
+nipype==1.10.0
+nipype-workbench-extensions==0.1.0
+nlohmann-json==3.12.0
+numpy==2.0.2
+packaging==26.2
+pandas==2.3.3
+pillow==11.3.0
+pip==25.2
+prov==2.1.1
+puremagic==1.30
+pydot==4.0.1
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+pytz==2026.2
+rdflib==7.6.0
+requests==2.32.5
+scikit-learn==1.6.1
+scipy==1.13.1
+setuptools==80.9.0
+simplejson==4.1.1
+six==1.17.0
+stonefish-license-manager==0.7.2
+threadpoolctl==3.6.0
+traits==7.1.0
+typing_extensions==4.15.0
+tzdata==2026.2
+urllib3==2.6.3
+wheel==0.45.1
+x21==0.5.3
+zipp==3.23.1
+```
 
 ### Data download
 
@@ -344,3 +414,28 @@ derivatives/restingstate/hcp25/results/100307/standardized_betas/cifti_math_resu
 You can view theese in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
 The approach is the same as for the task results.
 
+
+### Neuromap Prep
+
+To perform inference over spatial maps you will need null models for spin tests. These can be
+obtained by running scripts/neuromaps get_parcellated_neuromap_vals.py. The minimum reqs above
+list 1 CPU. If you have fewer than 12 available modify this script will automatically use them
+though. If you don't want this modify the macro accordingly.
+
+```
+cd macros/
+./prep_neuromap_data.sh
+```
+
+### Replicating figures 1-6
+
+To replicate these figures make sure you've downloaded and extracted hcp_glm_msmall_grayord_spm/bsc.tar.bz 
+(a bz2 archive, despite the extension), and hcp_glm_msmall_grayord_spm/results.tar.bz2. 
+hcp_glm_grayord_spm.tar.bz2 (for replication of non-msmall results), 
+hcp_glm_msmall_grayord_spm_gordon.tar.bz2 (for replication with the Gordon atlas), models.tar.bz2 
+(for ANNs), retest.tar.bz2 (for figure 6) and single_blocks_msm_grayord_spm.tar.bz2 (for brain decoding).
+Of these the most important is hcp_glm_msmall_grayord_spm (for figures 2-5 and most of 6).
+
+Additionally for figures 3-5 make sure you've run the Neuromap Prep detailed above.
+
+You should now be able to run the matlab scripts in figures/ to reproduce the plots from the manuscript.
