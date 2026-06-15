@@ -394,6 +394,9 @@ You will need some FS LR 32k underlay surfaces like the S1200 inflated cortical 
 which you can find from the Neuroimaging_Pattern_Masks repository:
 (https://github.com/canlab/Neuroimaging_Pattern_Masks/tree/master/templates/MNI152NLin6Asym_T1_2mm.nii.gz)
 
+The bsc results are expected to agree with those on the OSF data upload. If using the 
+dyad given above, that agreement with bsc/whitened_betas/cosine/100307_v_992673_wuc.tsv and
+bsc/whitened_betas/cosine/100307_v_992673_cosim.tsv from https://osf.io/mctsa.
 
 ### Resting state network similarity dyad example
 
@@ -451,9 +454,12 @@ derivatives/restingstate/hcp25/bsc. First level model outputs will be in
 derivatives/restingstate/hcp25/results/. For example, standardized ICA maps (tstats) 
 will be in 
 derivatives/restingstate/hcp25/results/100307/standardized_betas/cifti_math_results.dscalar.nii
-You can view theese in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
+You can view these in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
 The approach is the same as for the task results.
 
+The bsc results are expected to agree with those on the OSF data upload. If using the 
+dyad given above, that agreement with bsc/whitened_betas/cosine/100307_v_992673_wuc.tsv and
+bsc/whitened_betas/cosine/100307_v_992673_cosim.tsv from https://osf.io/237je
 
 ### Neuromap Prep
 
@@ -466,6 +472,9 @@ though. If you don't want this modify the macro accordingly.
 cd macros/
 ./prep_neuromap_data.sh
 ```
+
+This should populate resources/neuromaps/canlab2024_permuted_annotations with csv files, one
+per neuromap. The contents of these csv files are a region x permutation matrix.
 
 ### Replicating figures 1-6
 
