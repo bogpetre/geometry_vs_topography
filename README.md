@@ -158,6 +158,8 @@ macros/prep_neuromap_data.sh
 
 Once the above scripts have prepared geometric and topographic similarity measures and you have 
 
+For minimal usage examples refer to the Demo section below and subsections of interest.
+
 ## Demo
 
 Replicating all analyses would take months of CPU hours, but because most analyses are performed
