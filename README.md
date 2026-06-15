@@ -1,5 +1,16 @@
 # Geometry vs Topography
-This repo contains code for "Representations converge as brain maps diverge along the cortical hierarchy"
+This repo contains code for "Representations converge as brain maps diverge along the cortical 
+hierarchy". It enables reproducibility at three distinct levels of involvement. At the top level
+it enables use of analysis derivatives hosted on OSF (linked below) to regenerate figures and
+high level statistics reported in the manuscript. Second, it allows complete reproduction of
+similarity metrics for a minimal dataset consisting of a single dyad of HCP participants (see 
+Demo subsection). Finally, at the most involved level it allows complete reproduction of the 
+entire analysis pipeline from timeseries data. The latter realistically requires high performance 
+computing resources and high-bandwidth memory (HBM) datacenter GPUs (e.g. A100s), but the first 
+two levels should be feasible on a typical workstation.
+
+Note that reproduction of heritability results requires access to Tier 1 HCP restricted data to
+identify twins.
 
 ## Setup
 
