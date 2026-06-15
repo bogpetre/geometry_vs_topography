@@ -28,7 +28,7 @@ pip install .
 make
 ```
 
-You will also need to install/aquire the additional non-python dependencies below. In 
+You will also need to install/acquire the additional non-python dependencies below. In 
 particular, neuromaps (installed by requirements.txt) and the nipype pipelines in
 scripts/ expect wb_command (Dependences: connectome workbench) to be on your system 
 path,
@@ -156,15 +156,18 @@ You will also need to generate spin permuted neuromaps maps locally, since they'
 github. This can be done with scripts/get_parcellated_neuromap_vals.py, which is called by
 macros/prep_neuromap_data.sh
 
-Once the above scripts have prepared geometric and topographic similarity measures and you have 
+Once the above scripts have prepared geometric and topographic similarity measures (or you've 
+downloaded precomputed analysis derivatives from OSF) and you have spun neuromaps generated,
+you can rerun the matlab scripts in figures/ to regenerate figures and recompute high level
+statistics reported in the manuscript.
 
 For minimal usage examples refer to the Demo section below and subsections of interest.
 
 ## Demo
 
 Replicating all analyses would take months of CPU hours, but because most analyses are performed
-dyad-wise and aggregated across dyads, an informative replication ca nbe performed on a single
-dyad using a "typical" workstation intsead of a high performance computing cluster. The examples
+dyad-wise and aggregated across dyads, an informative replication can be performed on a single
+dyad using a "typical" workstation instead of a high performance computing cluster. The examples
 below demonstrate how to do this. These are managed by nipype pipelines, and by inspecting the
 working directory and intermediate files you can gain insight into implementation details of the
 first level GLM, dual regression approach, spatial whitening operations and RSA.
@@ -285,7 +288,7 @@ derivatives, or ANN analyses. This section is only relevant for rerunning timese
 of task and resting state data.
 
 First, download the data needed for a minimal run. Assuming you have credentails (an aws access 
-key ID and secrete access key) assigned to a profile called "hcp" (in ~/.aws/config) you can 
+key ID and secret access key) assigned to a profile called "hcp" (in ~/.aws/config) you can 
 download a minimal pair like so (from the top level of this repo).
 
 ```
@@ -373,7 +376,7 @@ export SLURM_ARRAY_TASK_ID=1
 macros/run_subj_hcp_msmall_grayord_spm_bsc.sh
 ```
 
-Noe that this also uses a scratch directory, but not for nipype pipelines, and these
+Note that this also uses a scratch directory, but not for nipype pipelines, and these
 are not likely to be very informative. You can use a modification to retain these if you like, 
 just as you did by commenting out the trap and redirecting scratch in the 
 macros/run_subj_hcp_msmall_grayord_spm.sh scripts however a more useful approach may be to 
@@ -388,7 +391,7 @@ derivatives/hcp_glm_msmall_grayord_spm/bsc. First level model outputs will be in
 derivatives/hcp_glm_msmall_grayord_spm/results/. For example, standard first level model
 outputs will be in 
 derivatives/hcp_glm_msmall_grayord_spm/results/<SID>/all_tasks/tstats/
-You can view theese in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
+You can view these in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
 You will need some FS LR 32k underlay surfaces like the S1200 inflated cortical surface
 (https://github.com/rmldj/hcp-utils/tree/master/hcp_utils/data) and a volumetric reference
 which you can find from the Neuroimaging_Pattern_Masks repository:
@@ -421,7 +424,7 @@ cleanup() {
 #trap cleanup EXIT
 ```
 
-Now set the SLURM_ARRAY_TASK_ID env varibale corresponding to subject pairs 100307 and 992673
+Now set the SLURM_ARRAY_TASK_ID env variable corresponding to subject pairs 100307 and 992673
 and run macros/run_subj_hcp_msmall_grayord_spm.sh (refer to the GLM analysis above for details).
 A loop like the following should take care of running the first level analyses.
 
