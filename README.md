@@ -396,10 +396,10 @@ for i in 1 2; do
 done
 ```
 
-run_rsn_hcp_msmall_grayord_spm.sh will run the first level analysis and prepare inputs for
-topographic and geometric similarity analyses. These will take several hours to run, same as
-the task scripts. Note once again that they must be run from inside the macros/ directory for
-relative paths to be correct.
+run_rsn_hcp_msmall_grayord_spm.sh will run the first level analysis (dual regression) and prepare 
+inputs for topographic and geometric similarity analyses. These will take several hours to run, 
+same as the task scripts. Note once again that they must be run from inside the macros/ directory 
+for relative paths to be correct.
 
 To compute similarity metrics from these outputs we used the the *bsc.sh scripts. To replicate
 this for your example dyad you can invoke the following,
@@ -413,8 +413,8 @@ You can also use the matlab prototyping script as a substitute. Refer to the tas
 for details on this.
 
 The approach involving the *bsc.sh scripts will produce outputs in 
-derivatives/hcp_glm_msmall_grayord_spm/bsc. First level model outputs will be in
-derivatives/hcp_glm_msmall_grayord_spm/results/. For example, standardized ICA maps (tstats) 
+derivatives/restingstate/hcp25/bsc. First level model outputs will be in
+derivatives/restingstate/hcp25/results/. For example, standardized ICA maps (tstats) 
 will be in 
 derivatives/restingstate/hcp25/results/100307/standardized_betas/cifti_math_results.dscalar.nii
 You can view theese in wb_view (https://www.humanconnectome.org/software/connectome-workbench).
