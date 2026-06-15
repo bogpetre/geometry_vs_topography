@@ -186,62 +186,96 @@ Linux system (Mac is untested, but may work too)
 Data has been tested using the following python library versions:
 
 ```
-acres==0.5.0
-certifi==2026.5.20
-charset-normalizer==3.4.7
-ci-info==0.4.0
-click==8.1.8
-contourpy==1.3.0
-cycler==0.12.1
-eigen==0.1.1
-etelemetry==0.3.1
-filelock==3.19.1
-fonttools==4.60.2
-geometry_vs_topography==1.0.0
-h5py==3.14.0
-hcp_utils==0.1.0
-idna==3.18
-importlib_resources==6.5.2
-isodate==0.7.2
-joblib==1.5.3
-kiwisolver==1.4.7
-looseversion==1.3.0
-lxml==6.1.1
-matplotlib==3.9.4
-networkx==3.2.1
-neuromaps==0.0.7
-nibabel==5.3.3
-nilearn==0.12.1
-nipype==1.10.0
-nipype-workbench-extensions==0.1.0
-nlohmann-json==3.12.0
-numpy==2.0.2
-packaging==26.2
-pandas==2.3.3
-pillow==11.3.0
-pip==25.2
-prov==2.1.1
-puremagic==1.30
-pydot==4.0.1
-pyparsing==3.3.2
-python-dateutil==2.9.0.post0
-pytz==2026.2
-rdflib==7.6.0
-requests==2.32.5
-scikit-learn==1.6.1
-scipy==1.13.1
-setuptools==80.9.0
-simplejson==4.1.1
-six==1.17.0
-stonefish-license-manager==0.7.2
-threadpoolctl==3.6.0
-traits==7.1.0
-typing_extensions==4.15.0
-tzdata==2026.2
-urllib3==2.6.3
-wheel==0.45.1
-x21==0.5.3
-zipp==3.23.1
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - _openmp_mutex=4.5=20_gnu
+  - bzip2=1.0.8=hda65f42_9
+  - ca-certificates=2026.5.20=hbd8a1cb_0
+  - lapack=3.11.0=8_netlib
+  - ld_impl_linux-64=2.45.1=default_hbd61a6d_102
+  - libblas=3.11.0=8_h4a7cf45_openblas
+  - libexpat=2.8.1=hecca717_1
+  - libffi=3.5.2=h3435931_0
+  - libgcc=15.2.0=he0feb66_19
+  - libgcc-ng=15.2.0=h69a702a_19
+  - libgfortran=15.2.0=h69a702a_19
+  - libgfortran5=15.2.0=h68bc16d_19
+  - libgomp=15.2.0=he0feb66_19
+  - liblapack=3.11.0=8_h47877c9_openblas
+  - liblzma=5.8.3=hb03c661_0
+  - libnsl=2.0.1=hb9d3cd8_1
+  - libopenblas=0.3.33=pthreads_h94d23a6_0
+  - libsqlite=3.53.2=h0c1763c_0
+  - libuuid=2.42.1=h5347b49_0
+  - libxcrypt=4.4.36=hd590300_1
+  - libzlib=1.3.2=h25fd6f3_2
+  - ncurses=6.6=hdb14827_0
+  - nlohmann_json=3.12.0=h54a6638_1
+  - openssl=3.6.3=h35e630c_0
+  - pip=25.2=pyh8b19718_0
+  - python=3.9.23=hc30ae73_0_cpython
+  - readline=8.3=h853b02a_0
+  - setuptools=80.9.0=pyhff2d567_0
+  - tk=8.6.13=noxft_h366c992_103
+  - wheel=0.45.1=pyhd8ed1ab_1
+  - zstd=1.5.7=hb78ec9c_6
+  - pip:
+      - acres==0.5.0
+      - certifi==2026.5.20
+      - charset-normalizer==3.4.7
+      - ci-info==0.4.0
+      - click==8.1.8
+      - contourpy==1.3.0
+      - cycler==0.12.1
+      - eigen==0.1.1
+      - etelemetry==0.3.1
+      - filelock==3.19.1
+      - fonttools==4.60.2
+      - geometry-vs-topography==1.0.0
+      - h5py==3.14.0
+      - hcp-utils==0.1.0
+      - idna==3.18
+      - importlib-resources==6.5.2
+      - isodate==0.7.2
+      - joblib==1.5.3
+      - kiwisolver==1.4.7
+      - looseversion==1.3.0
+      - lxml==6.1.1
+      - matplotlib==3.9.4
+      - networkx==3.2.1
+      - neuromaps==0.0.7
+      - nibabel==5.3.3
+      - nilearn==0.12.1
+      - nipype==1.10.0
+      - nipype-workbench-extensions==0.1.0
+      - nlohmann-json==3.12.0
+      - numpy==2.0.2
+      - packaging==26.2
+      - pandas==2.3.3
+      - pillow==11.3.0
+      - prov==2.1.1
+      - puremagic==1.30
+      - pydot==4.0.1
+      - pyparsing==3.3.2
+      - python-dateutil==2.9.0.post0
+      - pytz==2026.2
+      - rdflib==7.6.0
+      - requests==2.32.5
+      - scikit-learn==1.6.1
+      - scipy==1.13.1
+      - simplejson==4.1.1
+      - six==1.17.0
+      - stonefish-license-manager==0.7.2
+      - threadpoolctl==3.6.0
+      - traits==7.1.0
+      - typing-extensions==4.15.0
+      - tzdata==2026.2
+      - urllib3==2.6.3
+      - x21==0.5.3
+      - zipp==3.23.1
+
 ```
 
 ### Data download
