@@ -1,5 +1,5 @@
 # Geometry vs Topography
-This repo contains code for "Cortical maps diverge, representations converge along cortical hierarchy"
+This repo contains code for "Representations converge as brain maps diverge along the cortical hierarchy"
 
 ## Setup
 
