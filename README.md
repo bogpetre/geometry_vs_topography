@@ -334,8 +334,6 @@ And make sure your S1200_imaging variable path in config.json points to data/HCP
 This will download more data than is strictly needed, but better to be 
 overinclusive than accidentally miss some stray file used somewhere obscure. The
 exclusions already cut each participant directory size down from ~50G to 28G.
-your neuromaps ready, figures from the paper can be regenerated using matlab scripts found in 
-figures/
 
 ### Task similarity dyad example
 
@@ -436,7 +434,7 @@ cleanup() {
 ```
 
 Now set the SLURM_ARRAY_TASK_ID env variable corresponding to subject pairs 100307 and 992673
-and run macros/run_subj_hcp_msmall_grayord_spm.sh (refer to the GLM analysis above for details).
+and run macros/run_rsn_hcp_msmall_grayord_spm.sh (refer to the GLM analysis above for details).
 A loop like the following should take care of running the first level analyses.
 
 ```
