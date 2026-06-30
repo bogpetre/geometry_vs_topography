@@ -475,7 +475,7 @@ bsc/whitened_betas/cosine/100307_v_992673_cosim.tsv from https://osf.io/237je
 
 ### Neuromap Prep
 
-To perform inference over spatial maps you will need null models for spin tests. These can be
+To perform inference over spatial maps you will need null samples for spin tests. These can be
 obtained by running scripts/neuromaps get_parcellated_neuromap_vals.py. The minimum reqs above
 list 1 CPU. If you have more than 12 available this script will automatically use them
 though. If you don't want this modify the macro accordingly.
