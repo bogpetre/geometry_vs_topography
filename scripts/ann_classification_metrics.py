@@ -1,5 +1,5 @@
 # This script estimates,
-# - the classification performance of TDANNs and ResNets, 
+# - the classification performance of TDANNs and ResNets, and abridged ResNets (matched to TDANN perf)
 # - their label agreements within dyad
 # - their coarse semantic agreement on supersets
 #
@@ -89,7 +89,7 @@ from spacetorch.utils.vissl.hooks import spatial_hook_generator
 
 seed = 3
 
-def load_model_from_checkpoint(seed, spatial='Spatial'):
+def load_model_from_checkpoint(seed, spatial='Spatial', abridged=False):
     def flatten_vissl_model_dict(model_blob):
         """
         model_blob = ckpt["classy_state_dict"]["base_model"]["model"]
@@ -140,7 +140,10 @@ def load_model_from_checkpoint(seed, spatial='Spatial'):
     cfg['MODEL']['WEIGHTS_INIT']['PARAMS_FILE'] = config_path  / f'simclr_{spatial}_resnet18_swappedon_SineGrating2019_isoswap_3_seed_{seed}'
     model = build_model(cfg.MODEL, cfg.OPTIMIZER)
 
-    subdir = f"simclr_{spatial}_resnet18_swappedon_SineGrating2019_isoswap_3_seed_{seed}_linear_eval"
+    if abridged:
+        subdir = f"simclr_{spatial}_resnet18_swappedon_SineGrating2019_isoswap_3_seed_{seed}_60_epochs_linear_eval"
+    else:
+        subdir = f"simclr_{spatial}_resnet18_swappedon_SineGrating2019_isoswap_3_seed_{seed}_linear_eval"
     CKPT_PATH = config_path / "linear_eval" / subdir / "model_final_checkpoint_phase27.torch"
     ckpt = torch.load(CKPT_PATH, map_location=DEVICE)
 
@@ -159,6 +162,7 @@ def load_model_from_checkpoint(seed, spatial='Spatial'):
 
 tdann = [load_model_from_checkpoint(s) for s in range(14)]
 resnet = [load_model_from_checkpoint(s, spatial='Nonspatial') for s in range(14)]
+abrresnet = [load_model_from_checkpoint(s, spatial='Nonespatial', abridged=True) for s in range(14)]
 
 # load imagenet labels
 
@@ -253,6 +257,36 @@ np.savetxt(
 )
 
 
+t0 = time.time()
+abrresnet_pred = []
+for i,m in enumerate(abrresnet):
+    t1 = time.time()
+    print(f'{t1-t0}: Evaluationg mdl {i}')
+
+    m.to(DEVICE).eval()
+    torch.manual_seed(0)
+    mdl_pred = []
+    for j,(xb, _) in enumerate(dataloader):
+        xb = xb.to(DEVICE, non_blocking=True)
+        with torch.no_grad():
+            this_pred = m(xb)[0].softmax(dim=1).argmax(dim=1)
+
+        mdl_pred.append(this_pred.to('cpu'))
+    abrresnet_pred.append(torch.cat(mdl_pred))
+
+# Stack into (M, N) then transpose to (N, M)
+abrresnet_pred_matrix = torch.stack(abrresnet_pred, dim=0).T   # shape: (N_stim, N_models)
+
+# Move to CPU and NumPy
+pred_np = abrresnet_pred_matrix.cpu().numpy()
+
+# Write CSV
+np.savetxt(
+    Path(repo_root) / "derivatives" / "models" / "abrresnet_predictions.csv",
+    pred_np,
+    delimiter=",",
+    fmt="%d"   # class indices are ints
+)
 
 ## What follows below could have been a separate script. It's merged here for convenience
 
@@ -411,6 +445,38 @@ print('ResNet dyad aggreements (ImageNet labels):')
 print([a/50000 for a in resnet_acc])
 print('ResNet dyad aggreements (Hypernym superset labels):')
 print([a/50000 for a in resnet_superset_acc])
+
+
+# Evaluate AbrResNet label agreements 
+
+from sklearn.metrics import f1_score
+
+abrresnet_pred = np.loadtxt(Path(repo_root) / "derivatives" / "models" / "abrresnet_predictions.csv",
+    delimiter=",")
+
+n_pairs = int(abrresnet_pred.shape[1]/2)
+f1 = []
+abrresnet_acc, abrresnet_superset_acc = [], []
+for i in range(n_pairs):
+    j = i+n_pairs
+    net1 = abrresnet_pred[:,i]
+    net2 = abrresnet_pred[:,j]
+
+    acc = 0
+    for a, b in zip(net1, net2):
+        if leaf_to_super[wnids[a]] == leaf_to_super[wnids[b]]:
+            acc += 1
+
+    f1.append(f1_score(net1, net2, average='macro'))
+    abrresnet_acc.append(sum(net1 == net2))
+
+    abrresnet_superset_acc.append(acc)
+
+print('AbrResNet dyad aggreements (ImageNet labels):')
+print([a/50000 for a in abrresnet_acc])
+print('AbrResNet dyad aggreements (Hypernym superset labels):')
+print([a/50000 for a in abrresnet_superset_acc])
+
 
 # Evaluate TDANN label agreements
 
