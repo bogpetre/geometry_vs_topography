@@ -124,9 +124,12 @@ from src.features import FeatureExtractor, resolve_sequential_module_from_str
 if TASK_ID < 7:
     # Evaluate TDANNs
     TDANN = True
+    ABRIDGED = False
 else:
     # Evaluate ResNet-18s without loss function
     TDANN = False
+    if TASK_ID >= 14:
+        ABRIDGED = True
 
 # Which networks do we compare?
 total_net_dyad_count = 7
@@ -151,7 +154,7 @@ image_path = SCRATCH_DIR # modify this to copy the necessary files from wherever
 
 CKPT_ROOT = repo_root / 'derivatives' / 'models' / 'checkpoints'
 
-def tdann_ckpt_path_for_seed(seed: int, spatial = True) -> Path:
+def tdann_ckpt_path_for_seed(seed: int, spatial = True, abridged = False) -> Path:
     """Return path to model_final_checkpoint for a given TDANN seed (0–4)."""
 
     '''
@@ -176,6 +179,9 @@ def tdann_ckpt_path_for_seed(seed: int, spatial = True) -> Path:
     if spatial:
         subdir = 'simclr_' + subdir
         chkpt = CKPT_ROOT / subdir / "model_final_checkpoint_phase199.torch"
+    elif abridged:
+        subdir = 'simclr_non' + subdir
+        chkpt = CKPT_ROOT / subdir / "model_phase60.torch"
     else:
         subdir = 'simclr_non' + subdir
         chkpt = CKPT_ROOT / subdir / "model_final_checkpoint_phase199.torch"
@@ -183,7 +189,7 @@ def tdann_ckpt_path_for_seed(seed: int, spatial = True) -> Path:
     return chkpt
 
 # Load the models
-seeds = {'Spatial': list(range(14)), 'Nonspatial': list(range(14))}
+#seeds = {'Spatial': list(range(14)), 'Nonspatial': list(range(14))}
 
 models = []
 
@@ -191,6 +197,9 @@ for net in NETS:
     if TDANN:
         ckpt_path = tdann_ckpt_path_for_seed(net)
         print(f"Loading TDANN seed {net} from {ckpt_path}")
+    elif ABRIDGED:
+        ckpt_path = tdann_ckpt_path_for_seed(net, spatial=False, abridged=True)
+        print(f"Loading Abridged ResNet-18 seed {net} from {ckpt_path}")
     else:
         ckpt_path = tdann_ckpt_path_for_seed(net, spatial=False)
         print(f"Loading ResNet-18 seed {net} from {ckpt_path}")
@@ -360,6 +369,8 @@ out_file = repo_root / 'derivatives' / 'models' / 'tdann_v_resnet_similarities_w
 
 if TDANN:
     network_type = 'TDANN'
+elif ABRIDGED:
+    network_type = 'AbrResNet'
 else:
     network_type = 'ResNet'
 
