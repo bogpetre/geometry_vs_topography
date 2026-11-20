@@ -128,9 +128,9 @@ vals = zeros(358, length(mapvals));
 mapname = {};
 [wucb, wucp, cosimb, cosimp] = deal(zeros(length(mapvals),1));
 [wucb_CI, cosim_CI] = deal(zeros(length(mapvals),2));
-[mainStd, mainStdP] = deal(zeros(length(mapvals),2));
+[mainStd, mainStdP, mainDStd] = deal(zeros(length(mapvals),2));
 mainStd_CI = zeros(length(mapvals),2,2);
-[Bb, Bp] = deal(zeros(length(mapvals),1));
+[Bb, Bp, BD] = deal(zeros(length(mapvals),1));
 [Bb_CI] = deal(zeros(length(mapvals),2));
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
@@ -161,24 +161,24 @@ for i = 1:length(mapvals)
     topo = atanh(cosim(:,these_good_rois));
     rdm = atanh(wuc_md(:,these_good_rois));
 
-    [Bb(i), Bb_CI(i,:), Bp(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
+    [Bb(i), Bb_CI(i,:), Bp(i), BD(i)] = neuromaps_corr(topo, rdm, map_val, perm_map);
 
     % estimate uncorrected gradient similarities
     
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), wucb_CI(i,:), wucp(i)] = neuromaps_corr_fx(obs_val, ...
+    [wucb(i), wucb_CI(i,:), wucp(i), wucD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i)] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map);
 end
 
@@ -205,5 +205,12 @@ bb_str = {};
 for i = 1:length(Bb)
     bb_str{i} = sprintf('%0.3f±%0.3f',Bb(i), mean([Bb_CI(i,2) - Bb(i), Bb(i) - Bb_CI(i,1)],2));
 end
+%disp(table(cosimb_str', wucb_str', int_str', bb_str', ...
+%    'VariableNames', {'Topo', 'Geo', 'zGeo-zTopo', 'coupling'}))
+
 disp(table(cosimb_str', wucb_str', int_str', bb_str', ...
-    'VariableNames', {'Topo', 'Geo', 'zGeo-zTopo', 'coupling'}))
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo', 'coupling'}, 'RowNames', abr_mapname))
+disp(table(cosimD', wucD', mainDStd(:,2), BD, ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo', 'coupling'}, 'RowNames', abr_mapname))
+disp(table(cosimp, wucp, mainStdP(:,2), Bp, ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo', 'coupling'}, 'RowNames', abr_mapname))

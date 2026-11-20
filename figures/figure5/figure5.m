@@ -120,7 +120,7 @@ end
 B = mean(cosim_corr(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
-T = {'Between subject topographic similarity',['(RSN Spatial cos\theta | tSNR, rel., ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')'],''};
+T = {'Topographic Similarity','Between Subjects',['(RSN Spatial cos\theta | tSNR, rel., ',sprintf('N=%d',sum(~all(cosim == 0,2))), ')']};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/topographic_similarity.png',noise),'ContentType','image','Resolution',300);
 for i = 1:length(good_rois)
@@ -131,7 +131,7 @@ cifti_write_from_template(atlas_cii, new_cii_data,sprintf('mean_topo_similarity_
 B = nanmean(wuc_corr(:,good_rois));
 cmaprange = prctile(B,[2.5,97.5]);
 cmaprange(1) = eps;
-T = {'Between subject geometric similarity',['(RSN WUC | tSNR, rel., ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')'],''};
+T = {'Representational Similarity','Between Subjects',['(RSN WUC | tSNR, rel., ',sprintf('N=%d',sum(~all(wuc_md == 0,2))), ')']};
 plot_to_brain(B, good_rois, cmaprange, T, fs+2);
 exportgraphics(gcf,sprintf('panels_%s/geometric_similarity.png',noise),'ContentType','image','Resolution',300);
 for i = 1:length(good_rois)
@@ -155,7 +155,7 @@ end
 B = nanmean(d(:,good_rois),1);
 cmaprange = prctile(B,[2.5,97.5]);
 
-T = {'Difference in relative geometric similarity','and relative topographic similarity',['(RSN: WUC_{std} - cos\theta_{std} | tSNR, rel., ',sprintf('N = %d)',size(d,1))]};
+T = {'Difference in relative rep. similarity','and relative topo. similarity',['(RSN: WUC_{std} - cos\theta_{std} | tSNR, rel., ',sprintf('N = %d)',size(d,1))]};
 plot_to_brain(B, good_rois, cmaprange, T, fs+1);
 exportgraphics(gcf,sprintf('panels_%s/relative_dif_wuc_cosim.png',noise),'ContentType','image','Resolution',300);for i = 1:length(good_rois)
     new_cii_data(atlas_cii.cdata == good_rois(i)) = B(i);
@@ -197,9 +197,9 @@ mapvals = mapvals(keep);
 
 vals = zeros(358, length(mapvals));
 mapname = {};
-[wucb, wucp, cosimb, cosimp] = deal(zeros(length(mapvals),1));
+[wucb, wucp, wucD, cosimb, cosimp, cosimD] = deal(zeros(length(mapvals),1));
 [wucb_CI, cosim_CI] = deal(zeros(length(mapvals),2));
-[mainStd, mainStdP] = deal(zeros(length(mapvals),6));
+[mainStd, mainStdP, mainDStd] = deal(zeros(length(mapvals),6));
 mainStd_CI = zeros(length(mapvals),6,2);
 for i = 1:length(mapvals)
     mapname{i} = regexprep(mapvals(i).name,'(.*)_(.*).csv','$1-$2');
@@ -233,18 +233,18 @@ for i = 1:length(mapvals)
 
     %eval wuc_md
     obs_val = atanh(wuc_md(:, these_good_rois))';
-    [wucb(i), wucb_CI(i,:), wucp(i)] = neuromaps_corr_fx(obs_val, ...
+    [wucb(i), wucb_CI(i,:), wucp(i), wucD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim
     obs_val = atanh(cosim(:,these_good_rois))';
-    [cosimb(i), cosim_CI(i,:), cosimp(i)] = neuromaps_corr_fx(obs_val, ...
+    [cosimb(i), cosim_CI(i,:), cosimp(i), cosimD(i)] = neuromaps_corr_fx(obs_val, ...
         map_val, perm_map, confounds_good_rois);
 
     %eval cosim & wuc interaction
     obs_val1 = atanh(wuc_md(:, these_good_rois))';
     obs_val2 = atanh(cosim(:,these_good_rois))';
-    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
+    [mainStd(i,:), mainStd_CI(i,:,:), mainStdP(i,:), mainDStd(i,:)] = neuromaps_corr_interaction_fx(obs_val1, obs_val2, ...
         map_val, perm_map, confounds_good_rois);
 end
 
@@ -268,8 +268,11 @@ for i = 1:length(wucb)
     int_str{i} = sprintf('%0.3f±%0.3f',mainStd(i,2), mean([mainStd_CI(i,2,2) - mainStd(i,2), mainStd(i,2) - mainStd_CI(i,2,1)],2));
 end
 disp(table(cosimb_str', wucb_str', int_str', ...
-    'VariableNames', {'Topo', 'Geo', 'zGeo-zTopo'}))
-
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}, 'RowNames', abr_mapname))
+disp(table(cosimD, wucD, mainDStd(:,2), ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}, 'RowNames', abr_mapname))
+disp(table(cosimp, wucp, mainStdP(:,2), ...
+    'VariableNames', {'Topo', 'Rep', 'zRep-zTopo'}, 'RowNames', abr_mapname))
 
 buffer = 3; % how many times do we scale the x axis to fit anchor labels on either end?
 
@@ -323,12 +326,12 @@ for i = 1:length(maps)
     hold on;
     errorbar(wucb(i), i, neg_err(i), pos_err(i), '.', 'horizontal', ...
         'capsize', 0, 'color', colors_light(maps{i,6},:), 'linewidth', 2)
-    plot(wucb(i), i,'o','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+    plot(wucb(i), i,'^','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
 end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', [],'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
-title('Geometry (WUC)','fontweight','normal', 'fontsize',fs);
+title('Representation (WUC)','fontweight','normal', 'fontsize',fs);
 xlabel('Mean \beta', 'fontsize',fs)
 box off
 xl = max(max(abs(wucb_CI))).*[-1,1];
@@ -361,13 +364,13 @@ for i = 1:length(maps)
     hold on;
     errorbar(mainStd(i,2), i, neg_err(i), pos_err(i), '.', 'horizontal', ...
         'capsize', 0, 'color', colors_light(maps{i,6},:), 'linewidth', 2)
-    plot(mainStd(i,2), i,'o','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
+    plot(mainStd(i,2), i,'s','MarkerFaceColor', colors_light(maps{i,6},:),'color', colors(maps{i,6},:));
 end
 
 set(gca,'YTick',1:length(mapname), 'YTickLabels', [],'FontSize',fs-3, 'YDir', 'rev','YGrid','on');
 ylim([0.5,length(mapname)+0.5])
 
-title('zGeo - zTopo','fontweight','normal', 'fontsize',fs);
+title('zRep - zTopo','fontweight','normal', 'fontsize',fs);
 xlabel('Mean \Delta\beta_{std}', 'fontsize',fs)
 box off
 xl = max(max(abs(squeeze(mainStd_CI(:,2,:)))))'.*[-1,1];
@@ -487,7 +490,7 @@ if strcmp(noise,'standardized')
 end
 set(ax2, 'YGrid', 'on', 'box', 'off', 'fontsize', fs,...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0)
-ylabel(ax2,{'Mean regional','geometric similarity', '(WUC of RDMs | tSNR, rel.)'});
+ylabel(ax2,{'Mean regional','representational similarity', '(WUC of RDMs | tSNR, rel.)'});
 set(ax1, 'YGrid', 'on', 'box', 'off', 'fontsize', fs, ...
     'XTick', prctile(good_grad_roi, [10,90]), 'XTickLabels', {'Uni', 'Trans'}, 'TickLength', [0,0.025],'XTickLabelRotation',0);
 ylabel(ax1,{'Mean regional','topographic similarity', '(cos\theta of spatial patterns | tSNR, rel.)'});
@@ -527,7 +530,6 @@ sgtitle({'Transmodal representations are most similar','but also implemented mos
 
 % add margulies map
 a1 = axes();
-%a1.Position = [0.18,0.1,0.15,0.15];
 if strcmp(noise,'standardized')
     a1.Position = [0.18,0.095,0.15,0.15];
 else

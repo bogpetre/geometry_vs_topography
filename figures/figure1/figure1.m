@@ -24,27 +24,6 @@ for i = 1:length(atlas_labels)
     cmap(i,:) = atlas_labels(i).rgba(1:3);
 end
 
-% color choices are arbitrary, but chosen to evoke depth correspondences
-% when juxtaposed against brain results
-%{
-layer_color_src = {'Ctx_V1_L', 'Ctx_IFSp_L'; ...
-'Ctx_V2_L', 'Ctx_8C_L'; ...
-'Ctx_V3_L', 'Ctx_8Av_L'; ...
-'Ctx_V4_L', 'Ctx_8Ad_L'; ...
-'Ctx_V4t_L', 'Ctx_8BL_L'; ...
-'Ctx_V8_L', 'Ctx_9m_L'; ...
-'Ctx_FFC_L', 'Ctx_d32_L'; ...
-'Ctx_VVC_L', 'Ctx_a24_L'};
-
-layer_colors = cell(size(layer_color_src));
-for i = 1:size(layer_colors,1)
-    for j = 1:size(layer_colors,2)
-        ind = find(contains({atlas_labels.name}, layer_color_src{i,j}));
-        layer_colors{i,j} = atlas_labels(ind).rgba(1:3);
-    end
-end
-%}
-
 layer_colors = repmat({[0.2471,0.0196,1], [0.3804, 0.3843, 0.3412]},8,1);
 
 %% Plot similarity metrics
@@ -383,10 +362,10 @@ export_fig(gcf,'panels/similarity_coefs.png','-png','-r300','-transparent')
 tdann_ag = table2array(readtable('../../derivatives/models/tdann_agreement.csv'))'*100;
 resnet_ag = table2array(readtable('../../derivatives/models/resnet_agreement.csv'))'*100;
 
-[~,p,~,STATS] = ttest2(resnet_ag(:,1), tdann_ag(:,1));
+[~,p,~,STATS] = ttest(resnet_ag(:,1), tdann_ag(:,1));
 fprintf('ResNet > TDANN 1000-cat agreement: t(%0.1f)=%0.3f, %0.2e\n',STATS.df,STATS.tstat,p)
 
-[~,p,~,STATS] = ttest2(resnet_ag(:,2), tdann_ag(:,2));
+[~,p,~,STATS] = ttest(resnet_ag(:,2), tdann_ag(:,2));
 fprintf('ResNet > TDANN 50-cat agreement: t(%0.1f)=%0.3f, %0.2e\n',STATS.df,STATS.tstat,p)
 
 figure(5);
@@ -455,12 +434,12 @@ export_fig(gcf,'panels/model_agreement.png','-png','-r300','-transparent')
 %% Plot performance metrics
 [resnet_top1, tdann_top1, resnet_top5, tdann_top5] = deal(nan(2*n_networks,1));
 for s = 1:2*n_networks
-    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_spatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s));
+    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_spatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s-1));
     json = jsondecode(data(end-1,:));
     tdann_top1(s) = json.test_accuracy_list_meter.top_1.x0;
     tdann_top5(s) = json.test_accuracy_list_meter.top_5.x0;
 
-    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_nonspatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s));
+    data = readlines(sprintf('../../derivatives/models/checkpoints/linear_eval/simclr_nonspatial_resnet18_swappedon_SineGrating2019_isoswap_3_seed_%d_linear_eval/metrics.json',s-1));
     json = jsondecode(data(end-1,:));
     resnet_top1(s) = json.test_accuracy_list_meter.top_1.x0;
     resnet_top5(s) = json.test_accuracy_list_meter.top_5.x0;
@@ -586,7 +565,7 @@ cbf2.cdata(medial_mask_R) = zscore_fun(cbf2.cdata(medial_mask_R));
 figure(4)
 clf
 t7 = tiledlayout(4,3,'Padding','compact','TileSpacing','tight');
-sgtitle(t7,{'Factors hypothetically associated with','biological circuit variation'},'FontWeight','bold','FontSize',fs+1);
+sgtitle(t7,{'Factors hypothetically associated with','brain topography variation'},'FontWeight','bold','FontSize',fs+1);
 
 
 ax1 = nexttile(t7);

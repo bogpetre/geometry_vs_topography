@@ -38,13 +38,13 @@ python3 -u ../scripts/get_parcellated_neuromap_vals.py \
     --atlas $Gordon --cpus $NCPUs
 
 echo "Computed permuted (spun) neuromap null values in CANLab2024 (this is slow, order of hours)"
+mkdir -p ../resources/neuromaps/canlab2024_permuted_annotations/
 python3 -u ../scripts/get_parcellated_neuromap_vals.py \
     --out ../resources/neuromaps/canlab2024_permuted_annotations/ \
     --atlas $CANLab2024 --cpus $NCPUs --nperms 5000
 
 echo "Computed permuted (spun) neuromap null values in Gordon atlas (this is slow, order of hours)"
+mkdir -p ../resources/neuromaps/gordon_permuted_annotations/
 python3 -u ../scripts/get_parcellated_neuromap_vals.py \
     --out ../resources/neuromaps/gordon_permuted_annotations/ \
     --atlas $Gordon --cpus $NCPUs --nperms 5000
-
-

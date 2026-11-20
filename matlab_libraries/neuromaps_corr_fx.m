@@ -33,7 +33,7 @@ function [B, CI, p, effectsize, sampling_var, perm_var, nu] = neuromaps_corr_fx(
     CI = icdf('norm', [0.025, 0.975], B, se);
     p = 2*normcdf(-abs(z));
 
-    effectsize = B / sqrt(perm_var + n*sampling_var);
+    effectsize = B / sqrt(n*sampling_var);
 end
 
 function B = get_mean_B(obs_val, obs_map, varargin)
